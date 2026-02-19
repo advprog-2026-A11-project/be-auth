@@ -3,7 +3,7 @@
   Minimal Gradle dependency verification metadata file.
   This placeholder prevents scanners from reporting "missing verification-metadata.xml".
   To generate full verification data run locally and commit the resulting file:
-    ./gradlew --write-verification-metadata sha256
+    ./gradlew &#45;&#45;write-verification-metadata sha256
 -->
 <verification-metadata>
   <dependencies/>
