@@ -29,12 +29,14 @@ pmd {
     toolVersion = "7.0.0-rc4"
     isConsoleOutput = true
     rulesMinimumPriority = 5
+    ignoreFailures = false  
 }
 
 tasks.withType<Pmd>().configureEach {
     reports {
         xml.required.set(true)
         html.required.set(true)
+        sarif.required.set(true)  
     }
 }
 
