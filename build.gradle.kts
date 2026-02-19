@@ -1,5 +1,6 @@
 plugins {
     java
+    pmd
     id("org.springframework.boot") version "3.5.10"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -23,6 +24,21 @@ configurations {
 repositories {
     mavenCentral()
 }
+
+pmd {
+    toolVersion = "7.0.0-rc4"
+    isConsoleOutput = true
+    rulesMinimumPriority = 5
+}
+
+tasks.withType<Pmd>().configureEach {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
