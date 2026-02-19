@@ -1,0 +1,25 @@
+name: PMD Code Analysis
+
+on:
+  push:
+
+jobs:
+  pmd:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run PMD
+        run: ./gradlew pmdMain pmdTest
