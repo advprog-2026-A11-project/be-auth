@@ -7,9 +7,6 @@ on:
 jobs:
   pmd:
     runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-      security-events: write
 
     steps:
       - name: Checkout repository
@@ -28,12 +25,7 @@ jobs:
       - name: Run PMD
         run: ./gradlew pmdMain pmdTest
 
-      - name: Upload PMD SARIF (main)
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Publish PMD Results in PR
+        uses: jwgmeligmeyling/pmd-github-action@v1
         with:
-          sarif_file: build/reports/pmd/main.sarif
-
-      - name: Upload PMD SARIF (test)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: build/reports/pmd/test.sarif
+          path: build/reports/pmd
