@@ -3,7 +3,6 @@ package id.ac.ui.cs.advprog.auth.service;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Method;
-
 import org.junit.jupiter.api.Test;
 
 class SupabaseJwtServiceReflectionTest {

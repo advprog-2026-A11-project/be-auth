@@ -3,11 +3,15 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -15,10 +19,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
-
-import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 
 class AuthControllerTest {
 
@@ -49,7 +49,8 @@ class AuthControllerTest {
   void meInvalidTokenReturnsUnauthorized() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn("Bearer bad");
-    when(jwtService.validateAccessToken("bad")).thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
+    when(jwtService.validateAccessToken("bad"))
+        .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
   }
@@ -63,9 +64,10 @@ class AuthControllerTest {
     when(jwt.getClaimAsString("email")).thenReturn("a@b");
     when(jwt.getSubject()).thenReturn("sub");
     when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(java.util.List.of("authenticated"));
+    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
     when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
     when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
 
     when(jwtService.validateAccessToken("tkn")).thenReturn(jwt);
 
@@ -93,9 +95,10 @@ class AuthControllerTest {
     when(jwt.getClaimAsString("email")).thenReturn("x@y");
     when(jwt.getSubject()).thenReturn("sub");
     when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(java.util.List.of("authenticated"));
+    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
     when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
     when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
 
     when(jwtService.validateAccessToken("tkn2")).thenReturn(jwt);
     when(profileService.findByEmail("x@y")).thenReturn(Optional.empty());
