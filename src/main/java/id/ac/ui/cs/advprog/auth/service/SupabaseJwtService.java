@@ -3,7 +3,6 @@ package id.ac.ui.cs.advprog.auth.service;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;

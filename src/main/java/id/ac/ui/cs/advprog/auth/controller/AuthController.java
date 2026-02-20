@@ -1,15 +1,12 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
-import jakarta.servlet.http.HttpServletRequest;
-
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,7 +24,9 @@ public class AuthController {
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
 
-  public AuthController(SupabaseJwtService supabaseJwtService, UserProfileService userProfileService) {
+  public AuthController(
+      SupabaseJwtService supabaseJwtService,
+      UserProfileService userProfileService) {
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
   }
