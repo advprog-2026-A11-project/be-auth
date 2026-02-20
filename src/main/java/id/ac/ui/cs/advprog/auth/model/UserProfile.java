@@ -1,12 +1,14 @@
 package id.ac.ui.cs.advprog.auth.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonAlias;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "users")
@@ -43,7 +45,12 @@ public class UserProfile {
   public UserProfile() {
   }
 
-  public UserProfile(String username, String email, String displayName, String passwordHash, String role,
+  public UserProfile(
+      String username,
+      String email,
+      String displayName,
+      String passwordHash,
+      String role,
       boolean isActive) {
     this.username = username;
     this.email = email;
