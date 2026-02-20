@@ -69,3 +69,8 @@ $env:JDBC_DATABASE_URL='...'
 - Pastikan kredensial database benar dan IP/host tidak diblokir oleh firewall.
 - Jika port 8080 gunakan port 8081 (disini saya menggunakan port 8081)
 - Untuk verifikasi JWT Supabase, isi `SUPABASE_URL` dan (opsional) `SUPABASE_JWKS_URL` di environment.
+
+Integrasi Sederhana yang nunjukkin be, fe dan db terconnect
+
+![BE](pics/image1.png)
+![FE](pics/image2.png)
