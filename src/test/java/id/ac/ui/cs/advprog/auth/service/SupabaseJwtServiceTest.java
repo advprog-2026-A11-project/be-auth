@@ -9,7 +9,9 @@ class SupabaseJwtServiceTest {
   @Test
   void validateAccessTokenWithoutConfigThrows() {
     SupabaseJwtService svc = new SupabaseJwtService("", "", "authenticated", "");
-    Exception ex = assertThrows(SupabaseJwtService.InvalidTokenException.class, () -> svc.validateAccessToken("any"));
+    SupabaseJwtService.InvalidTokenException ex = assertThrows(
+        SupabaseJwtService.InvalidTokenException.class,
+        () -> svc.validateAccessToken("any"));
     assertTrue(ex.getMessage().contains("SUPABASE_JWKS_URL") || ex.getMessage().contains("Invalid Supabase"));
   }
 }

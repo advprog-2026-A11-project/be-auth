@@ -5,7 +5,6 @@ import static org.mockito.Mockito.*;
 
 import java.time.Instant;
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -21,7 +20,7 @@ class SupabaseJwtServiceExtraTest {
 
   @Test
   void validateAccessTokenWrapsJwtExceptionWithCause() throws Exception {
-    SupabaseJwtService svc = new SupabaseJwtService("https://supabase.test", "", "authenticated", "");
+    final SupabaseJwtService svc = new SupabaseJwtService("https://supabase.test", "", "authenticated", "");
     JwtDecoder decoder = mock(JwtDecoder.class);
     when(decoder.decode("bad-token")).thenThrow(new JwtException("decode failure"));
     injectDecoder(svc, decoder);
@@ -34,7 +33,7 @@ class SupabaseJwtServiceExtraTest {
 
   @Test
   void resolveJwksUrlThrowsWhenNoConfig() throws Exception {
-    SupabaseJwtService svc = new SupabaseJwtService("", "", "aud", "");
+    final SupabaseJwtService svc = new SupabaseJwtService("", "", "aud", "");
     java.lang.reflect.Method m = SupabaseJwtService.class.getDeclaredMethod("resolveJwksUrl");
     m.setAccessible(true);
     try {
@@ -51,7 +50,7 @@ class SupabaseJwtServiceExtraTest {
 
   @Test
   void validateAccessTokenThrowsWhenAudienceIsNull() throws Exception {
-    SupabaseJwtService svc = new SupabaseJwtService("https://supabase.test", "", "expected-aud", "");
+    final SupabaseJwtService svc = new SupabaseJwtService("https://supabase.test", "", "expected-aud", "");
     JwtDecoder decoder = mock(JwtDecoder.class);
     Jwt jwt = mock(Jwt.class);
     when(jwt.getExpiresAt()).thenReturn(Instant.now().plusSeconds(3600));

@@ -6,7 +6,6 @@ import static org.mockito.Mockito.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -53,7 +52,8 @@ class SupabaseJwtServiceDetailedTest {
     when(decoder.decode("token-expired")).thenReturn(jwt);
     injectDecoder(decoder);
 
-    SupabaseJwtService.InvalidTokenException ex = assertThrows(SupabaseJwtService.InvalidTokenException.class,
+    SupabaseJwtService.InvalidTokenException ex = assertThrows(
+        SupabaseJwtService.InvalidTokenException.class,
         () -> svc.validateAccessToken("token-expired"));
     assertTrue(ex.getMessage().toLowerCase().contains("expired"));
   }
@@ -70,7 +70,8 @@ class SupabaseJwtServiceDetailedTest {
     when(decoder.decode("tkn")).thenReturn(jwt);
     injectDecoder(decoder);
 
-    SupabaseJwtService.InvalidTokenException ex = assertThrows(SupabaseJwtService.InvalidTokenException.class,
+    SupabaseJwtService.InvalidTokenException ex = assertThrows(
+        SupabaseJwtService.InvalidTokenException.class,
         () -> svc.validateAccessToken("tkn"));
     assertTrue(ex.getMessage().toLowerCase().contains("issuer"));
   }
@@ -86,7 +87,8 @@ class SupabaseJwtServiceDetailedTest {
     when(decoder.decode("tkn2")).thenReturn(jwt);
     injectDecoder(decoder);
 
-    SupabaseJwtService.InvalidTokenException ex = assertThrows(SupabaseJwtService.InvalidTokenException.class,
+    SupabaseJwtService.InvalidTokenException ex = assertThrows(
+        SupabaseJwtService.InvalidTokenException.class,
         () -> svc.validateAccessToken("tkn2"));
     assertTrue(ex.getMessage().toLowerCase().contains("audience"));
   }
