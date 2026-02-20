@@ -61,7 +61,11 @@ class SupabaseJwtServiceDetailedTest {
   @Test
   void validateAccessTokenThrowsOnIssuerMismatch() throws Exception {
     // Create service with configured issuer
-    svc = new SupabaseJwtService("https://supabase.test", "https://good-issuer/", "authenticated", "");
+    svc = new SupabaseJwtService(
+        "https://supabase.test",
+        "https://good-issuer/",
+        "authenticated",
+        "");
     JwtDecoder decoder = mock(JwtDecoder.class);
     Jwt jwt = mock(Jwt.class);
     when(jwt.getExpiresAt()).thenReturn(Instant.now().plusSeconds(1000));

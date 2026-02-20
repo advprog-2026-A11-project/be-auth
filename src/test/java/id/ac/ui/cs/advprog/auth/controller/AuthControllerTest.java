@@ -9,6 +9,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -16,10 +21,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
-
-import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 
 class AuthControllerTest {
 
@@ -50,7 +51,8 @@ class AuthControllerTest {
   void meInvalidTokenReturnsUnauthorized() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn("Bearer bad");
-    when(jwtService.validateAccessToken("bad")).thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
+    when(jwtService.validateAccessToken("bad"))
+        .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
   }
