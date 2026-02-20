@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,7 @@ class AuthControllerTest {
     when(jwt.getAudience()).thenReturn(List.of("authenticated"));
     when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
     when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
 
     when(jwtService.validateAccessToken("tkn")).thenReturn(jwt);
 
@@ -96,6 +98,7 @@ class AuthControllerTest {
     when(jwt.getAudience()).thenReturn(List.of("authenticated"));
     when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
     when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
 
     when(jwtService.validateAccessToken("tkn2")).thenReturn(jwt);
     when(profileService.findByEmail("x@y")).thenReturn(Optional.empty());

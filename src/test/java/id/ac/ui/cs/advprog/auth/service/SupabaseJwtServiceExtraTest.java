@@ -22,7 +22,8 @@ class SupabaseJwtServiceExtraTest {
   void validateAccessTokenWrapsJwtExceptionWithCause() throws Exception {
     final SupabaseJwtService svc = new SupabaseJwtService("https://supabase.test", "", "authenticated", "");
     JwtDecoder decoder = mock(JwtDecoder.class);
-    when(decoder.decode("bad-token")).thenThrow(new JwtException("decode failure"));
+    when(decoder.decode("bad-token"))
+        .thenThrow(new JwtException("decode failure"));
     injectDecoder(svc, decoder);
 
     SupabaseJwtService.InvalidTokenException ex = assertThrows(SupabaseJwtService.InvalidTokenException.class,
@@ -56,7 +57,8 @@ class SupabaseJwtServiceExtraTest {
     when(jwt.getExpiresAt()).thenReturn(Instant.now().plusSeconds(3600));
     when(jwt.getIssuer()).thenReturn(new java.net.URL("https://supabase.test/auth/v1"));
     when(jwt.getAudience()).thenReturn(null);
-    when(decoder.decode("tkn-null-aud")).thenReturn(jwt);
+    when(decoder.decode("tkn-null-aud"))
+        .thenReturn(jwt);
     injectDecoder(svc, decoder);
 
     SupabaseJwtService.InvalidTokenException ex = assertThrows(SupabaseJwtService.InvalidTokenException.class,
