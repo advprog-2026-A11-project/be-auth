@@ -36,5 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
+# Local env files (do not commit secrets)
 .env
 md/
