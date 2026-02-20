@@ -3,17 +3,15 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
