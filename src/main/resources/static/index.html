@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Auth Service - Test Page</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 2rem; }
+      .user { margin-bottom: 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Auth Service - Static Test Page</h1>
+    <p>This simple page verifies the Spring Boot app serves static content.</p>
+    <div>
+      <button id="fetch">Fetch users from API</button>
+      <div id="out"></div>
+    </div>
+    <script>
+      document.getElementById('fetch').addEventListener('click', async () => {
+        const out = document.getElementById('out');
+        out.innerText = 'Loading...';
+        try {
+          const res = await fetch('/api/users');
+          const data = await res.json();
+          out.innerHTML = data.map(u => `<div class="user">${u.id}: ${u.username} (${u.email}) - ${u.displayName || ''}</div>`).join('') || 'No users';
+        } catch (e) {
+          out.innerText = 'Error fetching users';
+        }
+      });
+    </script>
+  </body>
+</html>
