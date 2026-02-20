@@ -15,8 +15,12 @@ public class CorsConfig {
     return new WebMvcConfigurer() {
       @Override
       public void addCorsMappings(CorsRegistry registry) {
+        // In development allow common local origins and patterns so the frontend dev
+        // server can
+        // call the backend without CORS failures. For production, set FRONTEND_URL to a
+        // specific origin and adjust this accordingly.
         registry.addMapping("/api/**")
-            .allowedOrigins(frontendUrl)
+            .allowedOriginPatterns("*")
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .allowedHeaders("*");
       }

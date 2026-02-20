@@ -30,10 +30,33 @@ public class UserProfileService {
     return repository.findById(id);
   }
 
+  public Optional<UserProfile> findByEmail(String email) {
+    return repository.findByEmail(email);
+  }
+
   public Optional<UserProfile> updateDisplayName(Long id, String newDisplayName) {
     return repository.findById(id).map(u -> {
       u.setDisplayName(newDisplayName);
       return repository.save(u);
+    });
+  }
+
+  public Optional<UserProfile> update(Long id, UserProfile incoming) {
+    return repository.findById(id).map(existing -> {
+      existing.setUsername(incoming.getUsername());
+      existing.setDisplayName(incoming.getDisplayName());
+      existing.setRole(incoming.getRole());
+      existing.setActive(incoming.isActive());
+
+      if (incoming.getEmail() != null && !incoming.getEmail().isBlank()) {
+        existing.setEmail(incoming.getEmail());
+      }
+
+      if (incoming.getPasswordHash() != null && !incoming.getPasswordHash().isBlank()) {
+        existing.setPasswordHash(incoming.getPasswordHash());
+      }
+
+      return repository.save(existing);
     });
   }
 

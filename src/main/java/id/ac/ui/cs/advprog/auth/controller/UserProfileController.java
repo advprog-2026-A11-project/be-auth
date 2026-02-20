@@ -24,6 +24,7 @@ public class UserProfileController {
 
   @PostMapping
   public ResponseEntity<UserProfile> create(@RequestBody UserProfile user) {
+    normalizeIntegrationDefaults(user);
     UserProfile created = service.create(user);
     return new ResponseEntity<>(created, HttpStatus.CREATED);
   }
@@ -41,7 +42,7 @@ public class UserProfileController {
   }
 
   @PutMapping("/{id}/displayName")
-  public ResponseEntity<?> updateDisplayName(@PathVariable Long id, @RequestBody Map<String, String> body) {
+  public ResponseEntity<Object> updateDisplayName(@PathVariable Long id, @RequestBody Map<String, String> body) {
     String name = body.get("displayName");
     if (name == null) {
       Map<String, String> err = new HashMap<>();
@@ -50,6 +51,14 @@ public class UserProfileController {
     }
 
     return service.updateDisplayName(id, name)
+        .map(u -> ResponseEntity.ok((Object) u))
+        .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  @PutMapping("/{id}")
+  public ResponseEntity<UserProfile> update(@PathVariable Long id, @RequestBody UserProfile user) {
+    normalizeIntegrationDefaults(user);
+    return service.update(id, user)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -58,5 +67,22 @@ public class UserProfileController {
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     service.deleteById(id);
     return ResponseEntity.noContent().build();
+  }
+
+  private void normalizeIntegrationDefaults(UserProfile user) {
+    String username = user.getUsername() == null ? "" : user.getUsername().trim();
+    user.setUsername(username);
+
+    if (user.getDisplayName() == null) {
+      user.setDisplayName("");
+    }
+
+    if (user.getRole() == null || user.getRole().isBlank()) {
+      user.setRole("USER");
+    }
+
+    if (user.getEmail() == null || user.getEmail().isBlank()) {
+      user.setEmail(username + "@local.test");
+    }
   }
 }
