@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +22,9 @@ class UserProfileControllerTest {
 
   @Mock
   private UserProfileService service;
+
+  @Mock
+  private CurrentUserProvider currentUserProvider;
 
   @InjectMocks
   private UserProfileController controller;

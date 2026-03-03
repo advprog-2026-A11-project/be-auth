@@ -21,6 +21,9 @@ public class UserProfile {
   @Column(unique = true, nullable = false)
   private String email;
 
+  @Column(unique = true)
+  private String supabaseUserId;
+
   private String displayName;
 
   @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
@@ -57,6 +60,23 @@ public class UserProfile {
     this.active = isActive;
   }
 
+  public UserProfile(
+      String username,
+      String email,
+      String supabaseUserId,
+      String displayName,
+      String passwordHash,
+      String role,
+      boolean isActive) {
+    this.username = username;
+    this.email = email;
+    this.supabaseUserId = supabaseUserId;
+    this.displayName = displayName;
+    this.passwordHash = passwordHash;
+    this.role = role;
+    this.active = isActive;
+  }
+
   public Long getId() {
     return id;
   }
@@ -87,6 +107,14 @@ public class UserProfile {
 
   public void setDisplayName(String displayName) {
     this.displayName = displayName;
+  }
+
+  public String getSupabaseUserId() {
+    return supabaseUserId;
+  }
+
+  public void setSupabaseUserId(String supabaseUserId) {
+    this.supabaseUserId = supabaseUserId;
   }
 
   public String getPasswordHash() {

@@ -1,9 +1,17 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,12 +31,18 @@ public class AuthController {
 
   private static final String EMAIL_CLAIM = "email";
 
+  private final AuthLoginService authLoginService;
+  private final GoogleSsoService googleSsoService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
 
   public AuthController(
+      AuthLoginService authLoginService,
+      GoogleSsoService googleSsoService,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService) {
+    this.authLoginService = authLoginService;
+    this.googleSsoService = googleSsoService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
   }
@@ -41,13 +57,18 @@ public class AuthController {
     String token = authHeader.substring(7);
     try {
       Jwt claims = supabaseJwtService.validateAccessToken(token);
+      String sub = claims.getSubject();
       String email = claims.getClaimAsString(EMAIL_CLAIM);
-      final Optional<UserProfile> profile = StringUtils.hasText(email)
-          ? userProfileService.findByEmail(email)
-          : Optional.empty();
+      Optional<UserProfile> profile = Optional.empty();
+      if (StringUtils.hasText(sub)) {
+        profile = safeOptional(userProfileService.findBySupabaseUserId(sub));
+      }
+      if (profile.isEmpty() && StringUtils.hasText(email)) {
+        profile = safeOptional(userProfileService.findByEmail(email));
+      }
 
       Map<String, Object> payload = new HashMap<>();
-      payload.put("sub", claims.getSubject());
+      payload.put("sub", sub);
       payload.put(EMAIL_CLAIM, email);
       payload.put("role", claims.getClaimAsString("role"));
       payload.put("aud", claims.getAudience());
@@ -58,6 +79,7 @@ public class AuthController {
         UserProfile user = profile.get();
         Map<String, Object> profilePayload = new HashMap<>();
         profilePayload.put("id", user.getId());
+        profilePayload.put("supabaseUserId", user.getSupabaseUserId());
         profilePayload.put("username", user.getUsername());
         profilePayload.put(EMAIL_CLAIM, user.getEmail());
         profilePayload.put("displayName", user.getDisplayName());
@@ -74,9 +96,30 @@ public class AuthController {
     }
   }
 
+  @PostMapping("/login")
+  public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    LoginResponse response = authLoginService.login(request.identifier(), request.password());
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/sso/google/url")
+  public ResponseEntity<SsoUrlResponse> googleSsoUrl() {
+    return ResponseEntity.ok(googleSsoService.createSsoUrl());
+  }
+
+  @PostMapping("/sso/google/callback")
+  public ResponseEntity<SsoCallbackResponse> googleSsoCallback(
+      @Valid @RequestBody SsoCallbackRequest request) {
+    return ResponseEntity.ok(googleSsoService.handleCallback(request));
+  }
+
   private ResponseEntity<Map<String, Object>> unauthorized(String message) {
     Map<String, Object> response = new HashMap<>();
     response.put("error", message);
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+  }
+
+  private Optional<UserProfile> safeOptional(Optional<UserProfile> value) {
+    return value == null ? Optional.empty() : value;
   }
 }
