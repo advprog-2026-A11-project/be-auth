@@ -33,6 +33,18 @@ public class UserProfileService {
     return repository.findByEmail(email);
   }
 
+  public Optional<UserProfile> findBySupabaseUserId(String supabaseUserId) {
+    return repository.findBySupabaseUserId(supabaseUserId);
+  }
+
+  public boolean usernameExists(String username) {
+    return repository.existsByUsername(username);
+  }
+
+  public boolean emailExists(String email) {
+    return repository.existsByEmail(email);
+  }
+
   public Optional<UserProfile> updateDisplayName(Long id, String newDisplayName) {
     return repository.findById(id).map(u -> {
       u.setDisplayName(newDisplayName);

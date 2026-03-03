@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
+import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -75,6 +79,29 @@ public class UserProfileController {
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     service.deleteById(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @PatchMapping("/me")
+  public ResponseEntity<Map<String, String>> updateMe(@Valid @RequestBody UpdateProfileRequest request) {
+    if ((request.username() == null || request.username().isBlank())
+        && (request.displayName() == null || request.displayName().isBlank())) {
+      throw new IllegalArgumentException("At least one field must be provided: username or displayName");
+    }
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Profile update contract is ready. Implementation follows in next step.");
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(response);
+  }
+
+  @DeleteMapping("/me")
+  public ResponseEntity<Map<String, String>> deleteMe(@Valid @RequestBody DeleteAccountRequest request) {
+    if (!"DELETE".equalsIgnoreCase(request.confirmation().trim())) {
+      throw new IllegalArgumentException("confirmation must be DELETE");
+    }
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Delete account contract is ready. Implementation follows in next step.");
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(response);
   }
 
   private void normalizeIntegrationDefaults(UserProfile user) {
