@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,12 +30,15 @@ public class AuthController {
 
   private static final String EMAIL_CLAIM = "email";
 
+  private final AuthLoginService authLoginService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
 
   public AuthController(
+      AuthLoginService authLoginService,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService) {
+    this.authLoginService = authLoginService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
   }
@@ -90,7 +94,8 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(LoginResponse.contractOnly());
+    LoginResponse response = authLoginService.login(request.identifier(), request.password());
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/sso/google/url")

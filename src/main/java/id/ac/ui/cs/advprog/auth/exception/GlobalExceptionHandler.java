@@ -48,4 +48,19 @@ public class GlobalExceptionHandler {
         Map.of());
     return ResponseEntity.status(status).body(body);
   }
+
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ApiErrorResponse> handleUnauthorized(
+      UnauthorizedException ex,
+      HttpServletRequest request) {
+    HttpStatus status = HttpStatus.UNAUTHORIZED;
+    ApiErrorResponse body = new ApiErrorResponse(
+        Instant.now(),
+        status.value(),
+        status.getReasonPhrase(),
+        ex.getMessage(),
+        request.getRequestURI(),
+        Map.of());
+    return ResponseEntity.status(status).body(body);
+  }
 }
