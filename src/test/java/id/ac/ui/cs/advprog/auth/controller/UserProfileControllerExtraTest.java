@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +19,9 @@ class UserProfileControllerExtraTest {
 
   @Mock
   private UserProfileService service;
+
+  @Mock
+  private CurrentUserProvider currentUserProvider;
 
   @InjectMocks
   private UserProfileController controller;

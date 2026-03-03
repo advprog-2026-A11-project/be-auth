@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.auth.controller;
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.validation.Valid;
 import java.util.HashMap;
@@ -26,10 +28,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserProfileController {
 
   private final UserProfileService service;
+  private final CurrentUserProvider currentUserProvider;
 
   @Autowired
-  public UserProfileController(UserProfileService service) {
+  public UserProfileController(UserProfileService service, CurrentUserProvider currentUserProvider) {
     this.service = service;
+    this.currentUserProvider = currentUserProvider;
   }
 
   @PostMapping
@@ -88,9 +92,22 @@ public class UserProfileController {
       throw new IllegalArgumentException("At least one field must be provided: username or displayName");
     }
 
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    UserProfile updated = service.updateCurrentUserProfile(
+        principal.sub(),
+        principal.email(),
+        request.username(),
+        request.displayName());
+
     Map<String, String> response = new HashMap<>();
-    response.put("message", "Profile update contract is ready. Implementation follows in next step.");
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(response);
+    response.put("message", "Profile updated");
+    response.put("userId", updated.getSupabaseUserId());
+    response.put("username", updated.getUsername());
+    response.put("displayName", updated.getDisplayName());
+    response.put("email", updated.getEmail());
+    return ResponseEntity.ok(response);
   }
 
   @DeleteMapping("/me")

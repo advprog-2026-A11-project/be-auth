@@ -97,6 +97,42 @@ public class UserProfileService {
     return repository.save(created);
   }
 
+  public UserProfile updateCurrentUserProfile(
+      String supabaseUserId,
+      String email,
+      String username,
+      String displayName) {
+    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
+      throw new IllegalArgumentException("Authenticated user identity is required");
+    }
+
+    Optional<UserProfile> existingOptional = StringUtils.hasText(supabaseUserId)
+        ? repository.findBySupabaseUserId(supabaseUserId)
+        : Optional.empty();
+
+    if (existingOptional.isEmpty() && StringUtils.hasText(email)) {
+      existingOptional = repository.findByEmail(email.trim().toLowerCase());
+    }
+
+    UserProfile existing = existingOptional
+        .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+
+    if (StringUtils.hasText(username)) {
+      String normalizedUsername = username.trim();
+      if (!normalizedUsername.equals(existing.getUsername())
+          && repository.existsByUsername(normalizedUsername)) {
+        throw new ConflictException("Username already taken");
+      }
+      existing.setUsername(normalizedUsername);
+    }
+
+    if (displayName != null) {
+      existing.setDisplayName(displayName.trim());
+    }
+
+    return repository.save(existing);
+  }
+
   public Optional<UserProfile> updateDisplayName(Long id, String newDisplayName) {
     return repository.findById(id).map(u -> {
       u.setDisplayName(newDisplayName);
