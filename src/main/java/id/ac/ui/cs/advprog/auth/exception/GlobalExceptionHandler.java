@@ -63,4 +63,19 @@ public class GlobalExceptionHandler {
         Map.of());
     return ResponseEntity.status(status).body(body);
   }
+
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ApiErrorResponse> handleConflict(
+      ConflictException ex,
+      HttpServletRequest request) {
+    HttpStatus status = HttpStatus.CONFLICT;
+    ApiErrorResponse body = new ApiErrorResponse(
+        Instant.now(),
+        status.value(),
+        status.getReasonPhrase(),
+        ex.getMessage(),
+        request.getRequestURI(),
+        Map.of());
+    return ResponseEntity.status(status).body(body);
+  }
 }

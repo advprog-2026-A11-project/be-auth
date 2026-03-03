@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,14 +32,17 @@ public class AuthController {
   private static final String EMAIL_CLAIM = "email";
 
   private final AuthLoginService authLoginService;
+  private final GoogleSsoService googleSsoService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
 
   public AuthController(
       AuthLoginService authLoginService,
+      GoogleSsoService googleSsoService,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService) {
     this.authLoginService = authLoginService;
+    this.googleSsoService = googleSsoService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
   }
@@ -100,14 +104,13 @@ public class AuthController {
 
   @GetMapping("/sso/google/url")
   public ResponseEntity<SsoUrlResponse> googleSsoUrl() {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-        .body(SsoUrlResponse.contractOnly("google"));
+    return ResponseEntity.ok(googleSsoService.createSsoUrl());
   }
 
   @PostMapping("/sso/google/callback")
   public ResponseEntity<SsoCallbackResponse> googleSsoCallback(
       @Valid @RequestBody SsoCallbackRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(SsoCallbackResponse.contractOnly());
+    return ResponseEntity.ok(googleSsoService.handleCallback(request));
   }
 
   private ResponseEntity<Map<String, Object>> unauthorized(String message) {

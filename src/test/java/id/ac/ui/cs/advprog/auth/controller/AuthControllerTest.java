@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,9 @@ class AuthControllerTest {
 
   @Mock
   private AuthLoginService authLoginService;
+
+  @Mock
+  private GoogleSsoService googleSsoService;
 
   @Mock
   private UserProfileService profileService;

@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.auth.service;
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,10 @@ public class UserProfileService {
   }
 
   public Optional<UserProfile> findByEmail(String email) {
-    return repository.findByEmail(email);
+    if (!StringUtils.hasText(email)) {
+      return Optional.empty();
+    }
+    return repository.findByEmail(email.trim().toLowerCase());
   }
 
   public Optional<UserProfile> findByUsername(String username) {
@@ -74,7 +78,7 @@ public class UserProfileService {
       UserProfile existing = byEmail.get();
       if (StringUtils.hasText(existing.getSupabaseUserId())
           && !supabaseUserId.equals(existing.getSupabaseUserId())) {
-        throw new IllegalArgumentException("identity conflict for email");
+        throw new ConflictException("Identity conflict for email");
       }
       existing.setSupabaseUserId(supabaseUserId);
       if (!StringUtils.hasText(existing.getRole())) {
