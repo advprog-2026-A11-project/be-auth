@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,10 +14,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -29,12 +32,15 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final SupabaseJwtService supabaseJwtService;
+  private final UserProfileService userProfileService;
   private final ObjectMapper objectMapper;
 
   public SupabaseJwtAuthenticationFilter(
       SupabaseJwtService supabaseJwtService,
+      UserProfileService userProfileService,
       ObjectMapper objectMapper) {
     this.supabaseJwtService = supabaseJwtService;
+    this.userProfileService = userProfileService;
     this.objectMapper = objectMapper;
   }
 
@@ -85,7 +91,13 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       Jwt jwt = supabaseJwtService.validateAccessToken(token);
       String sub = jwt.getSubject();
       String email = jwt.getClaimAsString("email");
-      String role = normalizeRole(jwt.getClaimAsString("role"));
+      Optional<UserProfile> profile = resolveProfile(sub, email);
+      if (profile.isPresent() && !profile.get().isActive()) {
+        SecurityContextHolder.clearContext();
+        writeUnauthorized(response, request, "Account is inactive");
+        return;
+      }
+      String role = resolveRole(profile, jwt.getClaimAsString("role"));
       List<GrantedAuthority> authorities = buildAuthorities(role);
 
       AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(sub, email, role);
@@ -112,7 +124,34 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     if (!StringUtils.hasText(role)) {
       return "";
     }
-    return role.trim().toUpperCase();
+    String normalized = role.trim().toUpperCase();
+    if ("AUTHENTICATED".equals(normalized)) {
+      return "USER";
+    }
+    return normalized;
+  }
+
+  private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
+    if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
+      return normalizeRole(profile.get().getRole());
+    }
+
+    return normalizeRole(tokenRole);
+  }
+
+  private Optional<UserProfile> resolveProfile(String sub, String email) {
+    Optional<UserProfile> profile = Optional.empty();
+    if (StringUtils.hasText(sub)) {
+      profile = safeOptional(userProfileService.findBySupabaseUserId(sub));
+    }
+    if (profile.isEmpty() && StringUtils.hasText(email)) {
+      profile = safeOptional(userProfileService.findByEmail(email));
+    }
+    return profile;
+  }
+
+  private Optional<UserProfile> safeOptional(Optional<UserProfile> value) {
+    return value == null ? Optional.empty() : value;
   }
 
   private void writeUnauthorized(

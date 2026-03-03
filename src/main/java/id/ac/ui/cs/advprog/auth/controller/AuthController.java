@@ -6,6 +6,8 @@ import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,9 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,12 +31,18 @@ public class AuthController {
 
   private static final String EMAIL_CLAIM = "email";
 
+  private final AuthLoginService authLoginService;
+  private final GoogleSsoService googleSsoService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
 
   public AuthController(
+      AuthLoginService authLoginService,
+      GoogleSsoService googleSsoService,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService) {
+    this.authLoginService = authLoginService;
+    this.googleSsoService = googleSsoService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
   }
@@ -90,19 +98,19 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(LoginResponse.contractOnly());
+    LoginResponse response = authLoginService.login(request.identifier(), request.password());
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/sso/google/url")
   public ResponseEntity<SsoUrlResponse> googleSsoUrl() {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-        .body(SsoUrlResponse.contractOnly("google"));
+    return ResponseEntity.ok(googleSsoService.createSsoUrl());
   }
 
   @PostMapping("/sso/google/callback")
   public ResponseEntity<SsoCallbackResponse> googleSsoCallback(
       @Valid @RequestBody SsoCallbackRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(SsoCallbackResponse.contractOnly());
+    return ResponseEntity.ok(googleSsoService.handleCallback(request));
   }
 
   private ResponseEntity<Map<String, Object>> unauthorized(String message) {
