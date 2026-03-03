@@ -91,7 +91,13 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       Jwt jwt = supabaseJwtService.validateAccessToken(token);
       String sub = jwt.getSubject();
       String email = jwt.getClaimAsString("email");
-      String role = resolveRole(sub, email, jwt.getClaimAsString("role"));
+      Optional<UserProfile> profile = resolveProfile(sub, email);
+      if (profile.isPresent() && !profile.get().isActive()) {
+        SecurityContextHolder.clearContext();
+        writeUnauthorized(response, request, "Account is inactive");
+        return;
+      }
+      String role = resolveRole(profile, jwt.getClaimAsString("role"));
       List<GrantedAuthority> authorities = buildAuthorities(role);
 
       AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(sub, email, role);
@@ -125,7 +131,15 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     return normalized;
   }
 
-  private String resolveRole(String sub, String email, String tokenRole) {
+  private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
+    if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
+      return normalizeRole(profile.get().getRole());
+    }
+
+    return normalizeRole(tokenRole);
+  }
+
+  private Optional<UserProfile> resolveProfile(String sub, String email) {
     Optional<UserProfile> profile = Optional.empty();
     if (StringUtils.hasText(sub)) {
       profile = safeOptional(userProfileService.findBySupabaseUserId(sub));
@@ -133,12 +147,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     if (profile.isEmpty() && StringUtils.hasText(email)) {
       profile = safeOptional(userProfileService.findByEmail(email));
     }
-
-    if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
-      return normalizeRole(profile.get().getRole());
-    }
-
-    return normalizeRole(tokenRole);
+    return profile;
   }
 
   private Optional<UserProfile> safeOptional(Optional<UserProfile> value) {

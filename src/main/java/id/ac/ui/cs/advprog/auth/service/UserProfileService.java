@@ -133,6 +133,26 @@ public class UserProfileService {
     return repository.save(existing);
   }
 
+  public UserProfile deactivateCurrentUser(String supabaseUserId, String email) {
+    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
+      throw new IllegalArgumentException("Authenticated user identity is required");
+    }
+
+    Optional<UserProfile> existingOptional = StringUtils.hasText(supabaseUserId)
+        ? repository.findBySupabaseUserId(supabaseUserId)
+        : Optional.empty();
+
+    if (existingOptional.isEmpty() && StringUtils.hasText(email)) {
+      existingOptional = repository.findByEmail(email.trim().toLowerCase());
+    }
+
+    UserProfile existing = existingOptional
+        .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+
+    existing.setActive(false);
+    return repository.save(existing);
+  }
+
   public Optional<UserProfile> updateDisplayName(Long id, String newDisplayName) {
     return repository.findById(id).map(u -> {
       u.setDisplayName(newDisplayName);

@@ -116,9 +116,15 @@ public class UserProfileController {
       throw new IllegalArgumentException("confirmation must be DELETE");
     }
 
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
+
     Map<String, String> response = new HashMap<>();
-    response.put("message", "Delete account contract is ready. Implementation follows in next step.");
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(response);
+    response.put("message", "Account deleted");
+    response.put("userId", deactivated.getSupabaseUserId());
+    return ResponseEntity.ok(response);
   }
 
   private void normalizeIntegrationDefaults(UserProfile user) {
