@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.auth.service;
 
+import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
-import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -197,8 +197,10 @@ public class UserProfileService {
       return candidate;
     }
 
-    if (!repository.existsByUsername(base + "-" + supabaseUserId.substring(0, Math.min(6, supabaseUserId.length())))) {
-      return base + "-" + supabaseUserId.substring(0, Math.min(6, supabaseUserId.length()));
+    String suffix = supabaseUserId.substring(0, Math.min(6, supabaseUserId.length()));
+    String suffixedCandidate = base + "-" + suffix;
+    if (!repository.existsByUsername(suffixedCandidate)) {
+      return suffixedCandidate;
     }
 
     return candidate;

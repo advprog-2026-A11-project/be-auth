@@ -57,12 +57,7 @@ class UpdateProfileIntegrationTest {
     mockMvc.perform(patch("/api/users/me")
             .header("Authorization", "Bearer token-user-1")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "username": "user1-new",
-                  "displayName": "User One New"
-                }
-                """))
+            .content("{\"username\":\"user1-new\",\"displayName\":\"User One New\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Profile updated"))
         .andExpect(jsonPath("$.username").value("user1-new"))
@@ -95,11 +90,7 @@ class UpdateProfileIntegrationTest {
     mockMvc.perform(patch("/api/users/me")
             .header("Authorization", "Bearer token-user-2")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "username": "taken-username"
-                }
-                """))
+            .content("{\"username\":\"taken-username\"}"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.message").value("Username already taken"));
   }
@@ -108,12 +99,7 @@ class UpdateProfileIntegrationTest {
   void updateProfileWithoutTokenReturnsUnauthorized() throws Exception {
     mockMvc.perform(patch("/api/users/me")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "username": "abc",
-                  "displayName": "ABC"
-                }
-                """))
+            .content("{\"username\":\"abc\",\"displayName\":\"ABC\"}"))
         .andExpect(status().isUnauthorized());
   }
 
@@ -134,15 +120,9 @@ class UpdateProfileIntegrationTest {
     mockMvc.perform(put("/api/users/999")
             .header("Authorization", "Bearer token-user-4")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "username": "hacker",
-                  "email": "hacker@example.com",
-                  "displayName": "Hacker",
-                  "role": "USER",
-                  "active": true
-                }
-                """))
+            .content(
+                "{\"username\":\"hacker\",\"email\":\"hacker@example.com\","
+                    + "\"displayName\":\"Hacker\",\"role\":\"USER\",\"active\":true}"))
         .andExpect(status().isForbidden());
   }
 

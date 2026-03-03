@@ -39,7 +39,9 @@ class GoogleSsoIntegrationTest {
     mockMvc.perform(get("/api/auth/sso/google/url"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.provider").value("google"))
-        .andExpect(jsonPath("$.authorizationUrl").value("https://supabase.test/auth/v1/authorize?provider=google"));
+        .andExpect(
+            jsonPath("$.authorizationUrl")
+                .value("https://supabase.test/auth/v1/authorize?provider=google"));
   }
 
   @Test
@@ -54,12 +56,7 @@ class GoogleSsoIntegrationTest {
 
     mockMvc.perform(post("/api/auth/sso/google/callback")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "code": "oauth-code",
-                  "state": "opaque-state"
-                }
-                """))
+            .content("{\"code\":\"oauth-code\",\"state\":\"opaque-state\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.userId").value("supabase-user-1"))
         .andExpect(jsonPath("$.linked").value(true));
@@ -72,12 +69,7 @@ class GoogleSsoIntegrationTest {
 
     mockMvc.perform(post("/api/auth/sso/google/callback")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "code": "bad-code",
-                  "state": "expired-state"
-                }
-                """))
+            .content("{\"code\":\"bad-code\",\"state\":\"expired-state\"}"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.message").value("Invalid SSO callback code"));
   }

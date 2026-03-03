@@ -57,12 +57,7 @@ class LoginAndAdminFlowIntegrationTest {
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "identifier": "user@example.com",
-                  "password": "password123"
-                }
-                """))
+            .content("{\"identifier\":\"user@example.com\",\"password\":\"password123\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.userId").value("supabase-user-1"))
         .andExpect(jsonPath("$.role").value("USER"));
@@ -84,12 +79,7 @@ class LoginAndAdminFlowIntegrationTest {
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "identifier": "admin@example.com",
-                  "password": "password123"
-                }
-                """))
+            .content("{\"identifier\":\"admin@example.com\",\"password\":\"password123\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.userId").value("supabase-admin-1"))
         .andExpect(jsonPath("$.role").value("ADMIN"));
@@ -121,7 +111,8 @@ class LoginAndAdminFlowIntegrationTest {
     admin.setSupabaseUserId("supabase-admin-1");
     admin.setRole("ADMIN");
     admin.setEmail("admin@example.com");
-    when(userProfileService.findBySupabaseUserId("supabase-admin-1")).thenReturn(Optional.of(admin));
+    when(userProfileService.findBySupabaseUserId("supabase-admin-1"))
+        .thenReturn(Optional.of(admin));
     when(userProfileService.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
 
     mockMvc.perform(get("/api/admin/ping")

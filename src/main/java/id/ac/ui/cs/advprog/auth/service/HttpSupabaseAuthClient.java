@@ -63,7 +63,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
       String role = readRole(userObject);
 
       if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(supabaseUserId)) {
-        throw new UnauthorizedException("Login failed: invalid token payload from identity provider");
+        throw new UnauthorizedException(
+            "Login failed: invalid token payload from identity provider");
       }
 
       return new LoginResult(

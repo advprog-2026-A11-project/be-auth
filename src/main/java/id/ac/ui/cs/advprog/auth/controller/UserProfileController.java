@@ -31,7 +31,9 @@ public class UserProfileController {
   private final CurrentUserProvider currentUserProvider;
 
   @Autowired
-  public UserProfileController(UserProfileService service, CurrentUserProvider currentUserProvider) {
+  public UserProfileController(
+      UserProfileService service,
+      CurrentUserProvider currentUserProvider) {
     this.service = service;
     this.currentUserProvider = currentUserProvider;
   }
@@ -86,10 +88,12 @@ public class UserProfileController {
   }
 
   @PatchMapping("/me")
-  public ResponseEntity<Map<String, String>> updateMe(@Valid @RequestBody UpdateProfileRequest request) {
+  public ResponseEntity<Map<String, String>> updateMe(
+      @Valid @RequestBody UpdateProfileRequest request) {
     if ((request.username() == null || request.username().isBlank())
         && (request.displayName() == null || request.displayName().isBlank())) {
-      throw new IllegalArgumentException("At least one field must be provided: username or displayName");
+      throw new IllegalArgumentException(
+          "At least one field must be provided: username or displayName");
     }
 
     AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
@@ -111,7 +115,8 @@ public class UserProfileController {
   }
 
   @DeleteMapping("/me")
-  public ResponseEntity<Map<String, String>> deleteMe(@Valid @RequestBody DeleteAccountRequest request) {
+  public ResponseEntity<Map<String, String>> deleteMe(
+      @Valid @RequestBody DeleteAccountRequest request) {
     if (!"DELETE".equalsIgnoreCase(request.confirmation().trim())) {
       throw new IllegalArgumentException("confirmation must be DELETE");
     }

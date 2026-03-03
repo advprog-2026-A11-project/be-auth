@@ -57,26 +57,20 @@ class DeleteAccountIntegrationTest {
     mockMvc.perform(delete("/api/users/me")
             .header("Authorization", "Bearer token-delete-1")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "confirmation": "DELETE"
-                }
-                """))
+            .content("{\"confirmation\":\"DELETE\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Account deleted"))
         .andExpect(jsonPath("$.userId").value("sub-delete-1"));
 
-    UserProfile persisted = userProfileRepository.findBySupabaseUserId("sub-delete-1").orElseThrow();
+    UserProfile persisted = userProfileRepository
+        .findBySupabaseUserId("sub-delete-1")
+        .orElseThrow();
     org.junit.jupiter.api.Assertions.assertFalse(persisted.isActive());
 
     mockMvc.perform(patch("/api/users/me")
             .header("Authorization", "Bearer token-delete-1")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "displayName": "Should Fail"
-                }
-                """))
+            .content("{\"displayName\":\"Should Fail\"}"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.message").value("Account is inactive"));
   }
@@ -98,11 +92,7 @@ class DeleteAccountIntegrationTest {
     mockMvc.perform(delete("/api/users/me")
             .header("Authorization", "Bearer token-delete-2")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "confirmation": "NOPE"
-                }
-                """))
+            .content("{\"confirmation\":\"NOPE\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("confirmation must be DELETE"));
   }

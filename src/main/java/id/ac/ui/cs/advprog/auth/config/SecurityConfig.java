@@ -30,7 +30,10 @@ public class SecurityConfig {
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService,
       ObjectMapper objectMapper) {
-    return new SupabaseJwtAuthenticationFilter(supabaseJwtService, userProfileService, objectMapper);
+    return new SupabaseJwtAuthenticationFilter(
+        supabaseJwtService,
+        userProfileService,
+        objectMapper);
   }
 
   @Bean
@@ -57,7 +60,9 @@ public class SecurityConfig {
             .anyRequest().permitAll())
         .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
             writeUnauthorized(response, request, objectMapper, "Unauthorized")))
-        .addFilterBefore(supabaseJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(
+            supabaseJwtAuthenticationFilter,
+            UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
