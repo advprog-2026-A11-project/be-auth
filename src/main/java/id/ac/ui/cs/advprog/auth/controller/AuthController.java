@@ -67,7 +67,6 @@ public class AuthController {
       Jwt claims = supabaseJwtService.validateAccessToken(token);
       String sub = claims.getSubject();
       String email = claims.getClaimAsString(EMAIL_CLAIM);
-      Optional<UserProfile> profile = resolveProfileSafely(sub, email);
 
       Map<String, Object> payload = new HashMap<>();
       payload.put("sub", sub);
@@ -76,6 +75,8 @@ public class AuthController {
       payload.put("aud", claims.getAudience());
       payload.put("iss", claims.getIssuer());
       payload.put("exp", claims.getExpiresAt());
+
+      Optional<UserProfile> profile = resolveProfileSafely(sub, email);
 
       if (profile.isPresent()) {
         UserProfile user = profile.get();

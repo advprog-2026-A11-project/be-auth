@@ -231,7 +231,7 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       Map<String, Object> parsed = objectMapper.readValue(
           body,
-          new TypeReference<Map<String, Object>>() { });
+          new TypeReference<Map<String, Object>>() {});
       String message = firstNonBlank(
           parsed.get("msg"),
           parsed.get("message"),
