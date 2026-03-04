@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -74,6 +75,21 @@ public class GlobalExceptionHandler {
         status.value(),
         status.getReasonPhrase(),
         ex.getMessage(),
+        request.getRequestURI(),
+        Map.of());
+    return ResponseEntity.status(status).body(body);
+  }
+
+  @ExceptionHandler(DataAccessException.class)
+  public ResponseEntity<ApiErrorResponse> handleDataAccess(
+      DataAccessException ex,
+      HttpServletRequest request) {
+    HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
+    ApiErrorResponse body = new ApiErrorResponse(
+        Instant.now(),
+        status.value(),
+        status.getReasonPhrase(),
+        "Database unavailable. Check Supabase DB host/connection.",
         request.getRequestURI(),
         Map.of());
     return ResponseEntity.status(status).body(body);

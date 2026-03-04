@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.auth.service;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.util.Optional;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -23,19 +24,30 @@ public class AuthLoginService {
     String email = resolveEmailIdentifier(identifier);
     SupabaseAuthClient.LoginResult result = supabaseAuthClient.loginWithPassword(email, password);
 
-    UserProfile profile = userProfileService.upsertFromIdentity(
-        result.supabaseUserId(),
-        result.email(),
-        result.role());
+    try {
+      UserProfile profile = userProfileService.upsertFromIdentity(
+          result.supabaseUserId(),
+          result.email(),
+          result.role());
 
-    return new LoginResponse(
-        result.accessToken(),
-        result.refreshToken(),
-        "Bearer",
-        result.expiresIn(),
-        profile.getSupabaseUserId(),
-        profile.getRole(),
-        "Login successful");
+      return new LoginResponse(
+          result.accessToken(),
+          result.refreshToken(),
+          "Bearer",
+          result.expiresIn(),
+          profile.getSupabaseUserId(),
+          profile.getRole(),
+          "Login successful");
+    } catch (DataAccessException ex) {
+      return new LoginResponse(
+          result.accessToken(),
+          result.refreshToken(),
+          "Bearer",
+          result.expiresIn(),
+          result.supabaseUserId(),
+          normalizeRole(result.role()),
+          "Login successful. Profile sync pending (database unavailable)");
+    }
   }
 
   public LoginResponse register(
@@ -49,27 +61,46 @@ public class AuthLoginService {
         username,
         displayName);
 
-    UserProfile profile = userProfileService.upsertFromIdentity(
-        result.supabaseUserId(),
-        result.email(),
-        result.role());
-
-    if (StringUtils.hasText(username) || StringUtils.hasText(displayName)) {
-      profile = userProfileService.updateCurrentUserProfile(
+    try {
+      UserProfile profile = userProfileService.upsertFromIdentity(
           result.supabaseUserId(),
           result.email(),
-          username,
-          displayName);
-    }
+          result.role());
 
-    return new LoginResponse(
-        result.accessToken(),
-        result.refreshToken(),
-        "Bearer",
-        result.expiresIn(),
-        profile.getSupabaseUserId(),
-        profile.getRole(),
-        "Registration successful");
+      if (StringUtils.hasText(username) || StringUtils.hasText(displayName)) {
+        profile = userProfileService.updateCurrentUserProfile(
+            result.supabaseUserId(),
+            result.email(),
+            username,
+            displayName);
+      }
+
+      String message = StringUtils.hasText(result.accessToken())
+          ? "Registration successful"
+          : "Registration successful. Please verify your email before login";
+
+      return new LoginResponse(
+          result.accessToken(),
+          result.refreshToken(),
+          "Bearer",
+          result.expiresIn(),
+          profile.getSupabaseUserId(),
+          profile.getRole(),
+          message);
+    } catch (DataAccessException ex) {
+      String fallbackMessage = StringUtils.hasText(result.accessToken())
+          ? "Registration successful. Profile sync pending (database unavailable)"
+          : "Registration successful. Please verify email. "
+              + "Profile sync pending (database unavailable)";
+      return new LoginResponse(
+          result.accessToken(),
+          result.refreshToken(),
+          "Bearer",
+          result.expiresIn(),
+          result.supabaseUserId(),
+          normalizeRole(result.role()),
+          fallbackMessage);
+    }
   }
 
   private String resolveEmailIdentifier(String identifier) {
@@ -88,5 +119,20 @@ public class AuthLoginService {
     }
 
     throw new IllegalArgumentException("identifier must be a valid email or an existing username");
+  }
+
+  private String normalizeRole(String incomingRole) {
+    if (!StringUtils.hasText(incomingRole)) {
+      return "USER";
+    }
+
+    String normalized = incomingRole.trim().toUpperCase();
+    if ("AUTHENTICATED".equals(normalized)) {
+      return "USER";
+    }
+    if ("ADMIN".equals(normalized)) {
+      return "ADMIN";
+    }
+    return "USER";
   }
 }

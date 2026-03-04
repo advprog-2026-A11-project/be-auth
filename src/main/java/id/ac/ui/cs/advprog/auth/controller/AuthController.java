@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -60,13 +61,7 @@ public class AuthController {
       Jwt claims = supabaseJwtService.validateAccessToken(token);
       String sub = claims.getSubject();
       String email = claims.getClaimAsString(EMAIL_CLAIM);
-      Optional<UserProfile> profile = Optional.empty();
-      if (StringUtils.hasText(sub)) {
-        profile = safeOptional(userProfileService.findBySupabaseUserId(sub));
-      }
-      if (profile.isEmpty() && StringUtils.hasText(email)) {
-        profile = safeOptional(userProfileService.findByEmail(email));
-      }
+      Optional<UserProfile> profile = resolveProfileSafely(sub, email);
 
       Map<String, Object> payload = new HashMap<>();
       payload.put("sub", sub);
@@ -132,5 +127,20 @@ public class AuthController {
 
   private Optional<UserProfile> safeOptional(Optional<UserProfile> value) {
     return value == null ? Optional.empty() : value;
+  }
+
+  private Optional<UserProfile> resolveProfileSafely(String sub, String email) {
+    try {
+      Optional<UserProfile> profile = Optional.empty();
+      if (StringUtils.hasText(sub)) {
+        profile = safeOptional(userProfileService.findBySupabaseUserId(sub));
+      }
+      if (profile.isEmpty() && StringUtils.hasText(email)) {
+        profile = safeOptional(userProfileService.findByEmail(email));
+      }
+      return profile;
+    } catch (DataAccessException ex) {
+      return Optional.empty();
+    }
   }
 }
