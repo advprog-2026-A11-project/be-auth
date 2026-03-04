@@ -53,6 +53,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/auth/sso/google/callback").permitAll()
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
             .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
+            .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .requestMatchers(HttpMethod.DELETE, "/api/users/me").authenticated()
             .requestMatchers(HttpMethod.PUT, "/api/users/*").hasRole("ADMIN")
             .requestMatchers(HttpMethod.DELETE, "/api/users/*").hasRole("ADMIN")
