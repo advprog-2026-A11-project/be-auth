@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -49,7 +50,13 @@ public class SupabaseJwtService {
 
     synchronized (this) {
       if (jwtDecoder == null) {
-        jwtDecoder = NimbusJwtDecoder.withJwkSetUri(resolveJwksUrl()).build();
+        jwtDecoder = NimbusJwtDecoder.withJwkSetUri(resolveJwksUrl())
+            .jwsAlgorithms(algorithms -> {
+              algorithms.add(SignatureAlgorithm.ES256);
+              algorithms.add(SignatureAlgorithm.RS256);
+              algorithms.add(SignatureAlgorithm.RS512);
+            })
+            .build();
       }
       return jwtDecoder;
     }

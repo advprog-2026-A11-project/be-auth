@@ -171,10 +171,6 @@ public class UserProfileService {
         existing.setEmail(incoming.getEmail());
       }
 
-      if (incoming.getPasswordHash() != null && !incoming.getPasswordHash().isBlank()) {
-        existing.setPasswordHash(incoming.getPasswordHash());
-      }
-
       return repository.save(existing);
     });
   }

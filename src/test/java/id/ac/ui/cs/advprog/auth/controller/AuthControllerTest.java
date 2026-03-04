@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
@@ -16,7 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
@@ -36,12 +37,17 @@ class AuthControllerTest {
   @Mock
   private UserProfileService profileService;
 
-  @InjectMocks
   private AuthController controller;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+    controller = new AuthController(
+        authLoginService,
+        googleSsoService,
+        jwtService,
+        profileService,
+        true);
   }
 
   @Test
@@ -114,5 +120,33 @@ class AuthControllerTest {
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
     assertNull(resp.getBody().get("profile"));
+  }
+
+  @Test
+  void registerReturnsCreated() {
+    RegisterRequest request = new RegisterRequest(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User");
+    LoginResponse response = new LoginResponse(
+        "access",
+        "refresh",
+        "Bearer",
+        3600L,
+        "supabase-user-id",
+        "USER",
+        "Registration successful");
+    when(authLoginService.register(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User")).thenReturn(response);
+
+    ResponseEntity<LoginResponse> result = controller.register(request);
+
+    assertEquals(201, result.getStatusCodeValue());
+    assertNotNull(result.getBody());
+    assertEquals("supabase-user-id", result.getBody().userId());
   }
 }

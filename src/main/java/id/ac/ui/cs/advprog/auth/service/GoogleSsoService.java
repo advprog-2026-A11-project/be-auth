@@ -7,5 +7,9 @@ import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 public interface GoogleSsoService {
   SsoUrlResponse createSsoUrl();
 
+  default SsoUrlResponse createSsoUrl(String redirectTo) {
+    return createSsoUrl();
+  }
+
   SsoCallbackResponse handleCallback(SsoCallbackRequest request);
 }

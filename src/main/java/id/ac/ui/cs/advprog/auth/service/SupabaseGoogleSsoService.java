@@ -30,7 +30,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class SupabaseGoogleSsoService implements GoogleSsoService {
 
   private final String supabaseUrl;
-  private final String supabaseAnonKey;
+  private final String supabaseApiKey;
   private final String redirectUrl;
   private final long stateTtlSeconds;
   private final SupabaseJwtService supabaseJwtService;
@@ -41,13 +41,13 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
 
   public SupabaseGoogleSsoService(
       @Value("${supabase.url:}") String supabaseUrl,
-      @Value("${supabase.anon-key:}") String supabaseAnonKey,
+      @Value("${supabase.api-key:${supabase.anon-key:}}") String supabaseApiKey,
       @Value("${auth.sso.google.redirect-url:}") String redirectUrl,
       @Value("${auth.sso.state-ttl-seconds:600}") long stateTtlSeconds,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService) {
     this.supabaseUrl = supabaseUrl;
-    this.supabaseAnonKey = supabaseAnonKey;
+    this.supabaseApiKey = supabaseApiKey;
     this.redirectUrl = redirectUrl;
     this.stateTtlSeconds = stateTtlSeconds;
     this.supabaseJwtService = supabaseJwtService;
@@ -57,6 +57,11 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
 
   @Override
   public SsoUrlResponse createSsoUrl() {
+    return createSsoUrl(null);
+  }
+
+  @Override
+  public SsoUrlResponse createSsoUrl(String redirectTo) {
     ensureConfig();
     cleanupExpiredStates();
 
@@ -65,11 +70,12 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     String codeChallenge = toS256CodeChallenge(codeVerifier);
     Instant expiresAt = Instant.now().plusSeconds(stateTtlSeconds);
     pkceStates.put(state, new PkceFlowState(codeVerifier, expiresAt));
+    String targetRedirectUrl = resolveRedirectUrl(redirectTo);
 
     String authorizeUrl = UriComponentsBuilder
         .fromHttpUrl(trimTrailingSlash(supabaseUrl) + "/auth/v1/authorize")
         .queryParam("provider", "google")
-        .queryParam("redirect_to", redirectUrl)
+        .queryParam("redirect_to", targetRedirectUrl)
         .queryParam("code_challenge", codeChallenge)
         .queryParam("code_challenge_method", "s256")
         .queryParam("state", state)
@@ -99,8 +105,8 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     try {
       Map<String, Object> tokenResponse = restClient.post()
           .uri(tokenUrl)
-          .header("apikey", supabaseAnonKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseAnonKey)
+          .header("apikey", supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(payload)
@@ -176,12 +182,23 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     if (!StringUtils.hasText(supabaseUrl)) {
       throw new IllegalStateException("supabase.url must be configured");
     }
-    if (!StringUtils.hasText(supabaseAnonKey)) {
-      throw new IllegalStateException("supabase.anon-key must be configured");
+    if (!StringUtils.hasText(supabaseApiKey)) {
+      throw new IllegalStateException("supabase.api-key must be configured");
     }
     if (!StringUtils.hasText(redirectUrl)) {
       throw new IllegalStateException("auth.sso.google.redirect-url must be configured");
     }
+  }
+
+  private String resolveRedirectUrl(String requestedRedirectUrl) {
+    if (!StringUtils.hasText(requestedRedirectUrl)) {
+      return redirectUrl;
+    }
+    String candidate = requestedRedirectUrl.trim();
+    if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
+      return candidate;
+    }
+    throw new IllegalArgumentException("redirectTo must start with http:// or https://");
   }
 
   private String trimTrailingSlash(String value) {
