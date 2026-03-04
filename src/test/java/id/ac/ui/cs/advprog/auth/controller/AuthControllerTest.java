@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
@@ -38,12 +37,17 @@ class AuthControllerTest {
   @Mock
   private UserProfileService profileService;
 
-  @InjectMocks
   private AuthController controller;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+    controller = new AuthController(
+        authLoginService,
+        googleSsoService,
+        jwtService,
+        profileService,
+        true);
   }
 
   @Test

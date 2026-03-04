@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -37,16 +40,19 @@ public class AuthController {
   private final GoogleSsoService googleSsoService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
+  private final boolean passwordAuthEnabled;
 
   public AuthController(
       AuthLoginService authLoginService,
       GoogleSsoService googleSsoService,
       SupabaseJwtService supabaseJwtService,
-      UserProfileService userProfileService) {
+      UserProfileService userProfileService,
+      @Value("${auth.password.enabled:true}") boolean passwordAuthEnabled) {
     this.authLoginService = authLoginService;
     this.googleSsoService = googleSsoService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
+    this.passwordAuthEnabled = passwordAuthEnabled;
   }
 
   @GetMapping("/me")
@@ -94,12 +100,14 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    ensurePasswordAuthEnabled();
     LoginResponse response = authLoginService.login(request.identifier(), request.password());
     return ResponseEntity.ok(response);
   }
 
   @PostMapping("/register")
   public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
+    ensurePasswordAuthEnabled();
     LoginResponse response = authLoginService.register(
         request.email(),
         request.password(),
@@ -109,8 +117,12 @@ public class AuthController {
   }
 
   @GetMapping("/sso/google/url")
-  public ResponseEntity<SsoUrlResponse> googleSsoUrl() {
-    return ResponseEntity.ok(googleSsoService.createSsoUrl());
+  public ResponseEntity<SsoUrlResponse> googleSsoUrl(
+      @RequestParam(value = "redirectTo", required = false) String redirectTo) {
+    if (!StringUtils.hasText(redirectTo)) {
+      return ResponseEntity.ok(googleSsoService.createSsoUrl());
+    }
+    return ResponseEntity.ok(googleSsoService.createSsoUrl(redirectTo));
   }
 
   @PostMapping("/sso/google/callback")
@@ -141,6 +153,14 @@ public class AuthController {
       return profile;
     } catch (DataAccessException ex) {
       return Optional.empty();
+    }
+  }
+
+  private void ensurePasswordAuthEnabled() {
+    if (!passwordAuthEnabled) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN,
+          "Password auth is disabled. Use Google SSO.");
     }
   }
 }

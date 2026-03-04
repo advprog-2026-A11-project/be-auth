@@ -57,6 +57,11 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
 
   @Override
   public SsoUrlResponse createSsoUrl() {
+    return createSsoUrl(null);
+  }
+
+  @Override
+  public SsoUrlResponse createSsoUrl(String redirectTo) {
     ensureConfig();
     cleanupExpiredStates();
 
@@ -65,11 +70,12 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     String codeChallenge = toS256CodeChallenge(codeVerifier);
     Instant expiresAt = Instant.now().plusSeconds(stateTtlSeconds);
     pkceStates.put(state, new PkceFlowState(codeVerifier, expiresAt));
+    String targetRedirectUrl = resolveRedirectUrl(redirectTo);
 
     String authorizeUrl = UriComponentsBuilder
         .fromHttpUrl(trimTrailingSlash(supabaseUrl) + "/auth/v1/authorize")
         .queryParam("provider", "google")
-        .queryParam("redirect_to", redirectUrl)
+        .queryParam("redirect_to", targetRedirectUrl)
         .queryParam("code_challenge", codeChallenge)
         .queryParam("code_challenge_method", "s256")
         .queryParam("state", state)
@@ -182,6 +188,17 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     if (!StringUtils.hasText(redirectUrl)) {
       throw new IllegalStateException("auth.sso.google.redirect-url must be configured");
     }
+  }
+
+  private String resolveRedirectUrl(String requestedRedirectUrl) {
+    if (!StringUtils.hasText(requestedRedirectUrl)) {
+      return redirectUrl;
+    }
+    String candidate = requestedRedirectUrl.trim();
+    if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
+      return candidate;
+    }
+    throw new IllegalArgumentException("redirectTo must start with http:// or https://");
   }
 
   private String trimTrailingSlash(String value) {

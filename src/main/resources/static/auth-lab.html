@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Auth Playground</title>
+    <title>Auth Lab</title>
     <style>
       :root {
-        --bg: #f4f7fb;
+        --bg: #f3f4f6;
         --card: #ffffff;
-        --line: #d6e0eb;
-        --ink: #1f2a37;
-        --muted: #5a6a7d;
-        --primary: #0f766e;
-        --danger: #b42318;
+        --card-2: #fafafa;
+        --line: #d4d4d8;
+        --text: #111111;
+        --muted: #52525b;
+        --accent: #2563eb;
+        --danger: #b91c1c;
       }
 
       * {
@@ -21,208 +22,266 @@
 
       body {
         margin: 0;
-        font-family: Segoe UI, Arial, sans-serif;
-        color: var(--ink);
-        background: radial-gradient(circle at top right, #dff7f4 0%, var(--bg) 45%);
         min-height: 100vh;
         display: grid;
         place-items: center;
-        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Arial, sans-serif;
+        padding: 18px;
       }
 
-      .app {
+      .shell {
         width: min(560px, 100%);
         background: var(--card);
         border: 1px solid var(--line);
         border-radius: 14px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
         overflow: hidden;
       }
 
       .head {
-        padding: 16px 18px;
-        border-bottom: 1px solid var(--line);
+        padding: 22px 26px 12px;
       }
 
-      .head h1 {
+      .eyebrow {
+        font-size: 0.78rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      h1 {
+        margin: 12px 0 6px;
+        font-size: clamp(1.8rem, 2.8vw, 2.35rem);
+      }
+
+      .sub {
         margin: 0;
-        font-size: 1.12rem;
-      }
-
-      .head p {
-        margin: 6px 0 0;
         color: var(--muted);
-        font-size: 0.9rem;
-      }
-
-      .tabs {
-        display: flex;
-        border-bottom: 1px solid var(--line);
-      }
-
-      .tab {
-        flex: 1;
-        border: 0;
-        background: #f8fbff;
-        padding: 11px;
-        cursor: pointer;
-        font-weight: 600;
-        color: var(--muted);
-      }
-
-      .tab.active {
-        background: #ffffff;
-        color: var(--ink);
       }
 
       .panel {
-        display: none;
-        padding: 16px 18px 18px;
+        padding: 16px 26px 26px;
       }
 
-      .panel.active {
-        display: block;
+      .hidden {
+        display: none;
+      }
+
+      .oauth-btn,
+      .primary-btn,
+      .ghost-btn {
+        width: 100%;
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 1rem;
+        border: 1px solid var(--line);
+        cursor: pointer;
+      }
+
+      .oauth-btn {
+        background: #ffffff;
+        color: #111111;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-weight: 700;
+      }
+
+      .primary-btn {
+        margin-top: 18px;
+        background: #111111;
+        border-color: #111111;
+        color: #ffffff;
+        font-weight: 800;
+      }
+
+      .ghost-btn {
+        background: #ffffff;
+        color: #111111;
+      }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 18px 0 14px;
+        color: #6b7280;
+        letter-spacing: 0.12em;
+        font-size: 0.74rem;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: var(--line);
       }
 
       label {
         display: block;
-        margin: 10px 0 4px;
-        font-size: 0.86rem;
+        margin: 12px 0 6px;
+        color: #374151;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 0.74rem;
       }
 
       input {
         width: 100%;
-        padding: 10px;
         border: 1px solid var(--line);
-        border-radius: 9px;
-        font-size: 0.95rem;
+        background: #ffffff;
+        color: #111111;
+        border-radius: 10px;
+        padding: 13px 14px;
+        font-size: 1rem;
+      }
+
+      .switch-line {
+        margin-top: 16px;
+        text-align: center;
+        color: var(--muted);
+      }
+
+      .link-btn {
+        background: none;
+        border: 0;
+        color: var(--accent);
+        cursor: pointer;
+        font-weight: 700;
+        padding: 0;
+      }
+
+      .status {
+        margin: 0;
+        border-top: 1px solid var(--line);
+        padding: 12px 16px;
+        white-space: pre-wrap;
+        font-size: 0.84rem;
+        color: #374151;
+        background: #f9fafb;
+      }
+
+      .status.ok {
+        color: #166534;
+        background: #f0fdf4;
+      }
+
+      .status.err {
+        color: #b91c1c;
+        background: #fef2f2;
+      }
+
+      .account {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--card-2);
+        padding: 14px;
+      }
+
+      .account div {
+        margin: 6px 0;
+      }
+
+      .mono {
+        font-family: Consolas, monospace;
+        font-size: 0.83rem;
+        word-break: break-all;
       }
 
       .row {
         margin-top: 12px;
         display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
+        gap: 10px;
       }
 
-      button {
-        border: 1px solid var(--line);
-        background: #fff;
-        color: var(--ink);
-        border-radius: 10px;
-        padding: 9px 12px;
-        cursor: pointer;
+      .row > button {
+        flex: 1;
       }
 
-      button.primary {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
+      .danger {
+        background: #ffffff;
+        border: 1px solid #fca5a5;
+        color: var(--danger);
       }
 
-      button.danger {
-        background: var(--danger);
-        border-color: var(--danger);
-        color: #fff;
-      }
-
-      .status {
-        margin: 0;
-        padding: 12px 18px;
-        border-top: 1px solid var(--line);
-        background: #f9fcff;
-        color: var(--muted);
-        font-size: 0.87rem;
-        white-space: pre-wrap;
-      }
-
-      .status.ok {
-        color: #0f5132;
-        background: #eafaf1;
-      }
-
-      .status.err {
-        color: #842029;
-        background: #fff1f2;
-      }
-
-      .profile {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 12px;
-        margin-top: 8px;
-        background: #fbfeff;
-      }
-
-      .profile div {
-        margin: 5px 0;
-      }
-
-      .mono {
-        font-family: Consolas, monospace;
-        font-size: 0.82rem;
-        word-break: break-all;
+      @media (max-width: 520px) {
+        .head,
+        .panel {
+          padding-left: 18px;
+          padding-right: 18px;
+        }
       }
     </style>
   </head>
   <body>
-    <main class="app">
+    <main class="shell">
       <section class="head">
-        <h1>Auth Playground</h1>
-        <p>Login, register, or Google SSO. After signed in, see account info and logout.</p>
+        <div class="eyebrow" id="formLabel">Login</div>
+        <h1 id="formTitle">Welcome Back</h1>
+        <p class="sub" id="formDesc">Sign in with Google or continue with email.</p>
       </section>
 
-      <section id="authView">
-        <div class="tabs">
-          <button class="tab active" data-tab="loginPanel">Login</button>
-          <button class="tab" data-tab="registerPanel">Register</button>
-          <button class="tab" data-tab="ssoPanel">Google SSO</button>
-        </div>
+      <section id="authView" class="panel">
+        <section id="loginPanel">
+          <button id="googleLoginBtn" class="oauth-btn" type="button">
+            <span aria-hidden="true">G</span>
+            <span>Login with Google</span>
+          </button>
 
-        <div id="loginPanel" class="panel active">
-          <label for="loginIdentifier">Email or Username</label>
-          <input id="loginIdentifier" placeholder="user@example.com" />
+          <div class="divider">or continue with email</div>
+
+          <label for="loginIdentifier">Email</label>
+          <input id="loginIdentifier" placeholder="you@example.com" />
+
           <label for="loginPassword">Password</label>
-          <input id="loginPassword" type="password" placeholder="password" />
-          <div class="row">
-            <button id="loginBtn" class="primary">Login</button>
-          </div>
-        </div>
+          <input id="loginPassword" type="password" placeholder="********" />
 
-        <div id="registerPanel" class="panel">
+          <button id="loginBtn" class="primary-btn" type="button">Sign In</button>
+
+          <div class="switch-line">
+            Don't have an account?
+            <button id="toRegisterBtn" class="link-btn" type="button">Register</button>
+          </div>
+        </section>
+
+        <section id="registerPanel" class="hidden">
           <label for="registerEmail">Email</label>
           <input id="registerEmail" placeholder="new@example.com" />
+
           <label for="registerPassword">Password</label>
           <input id="registerPassword" type="password" placeholder="minimum 8 characters" />
+
           <label for="registerUsername">Username (optional)</label>
           <input id="registerUsername" placeholder="newuser" />
+
           <label for="registerDisplayName">Display Name (optional)</label>
           <input id="registerDisplayName" placeholder="New User" />
-          <div class="row">
-            <button id="registerBtn" class="primary">Register</button>
-          </div>
-        </div>
 
-        <div id="ssoPanel" class="panel">
-          <div class="row">
-            <button id="getSsoUrlBtn">Get Google SSO URL</button>
+          <button id="registerBtn" class="primary-btn" type="button">Create Account</button>
+
+          <div class="switch-line">
+            Already have an account?
+            <button id="toLoginBtn" class="link-btn" type="button">Login</button>
           </div>
-          <label for="ssoCode">Code</label>
-          <input id="ssoCode" placeholder="code" />
-          <label for="ssoState">State</label>
-          <input id="ssoState" placeholder="state" />
-          <div class="row">
-            <button id="ssoCallbackBtn" class="primary">Complete SSO Callback</button>
-          </div>
-        </div>
+        </section>
       </section>
 
-      <section id="accountView" class="panel" style="display:none; padding-top: 10px;">
-        <h3 style="margin: 0 0 8px;">Signed In</h3>
-        <div id="profileBox" class="profile"></div>
+      <section id="accountView" class="panel hidden">
+        <div class="eyebrow">Signed In</div>
+        <h1 style="font-size:1.7rem; margin:10px 0 0;">Your Account</h1>
+        <p class="sub">Session is active. You can refresh profile or logout.</p>
+
+        <div id="profileBox" class="account"></div>
+
         <div class="row">
-          <button id="refreshMeBtn">Refresh Account</button>
-          <button id="logoutBtn" class="danger">Logout</button>
+          <button id="refreshMeBtn" class="ghost-btn" type="button">Refresh</button>
+          <button id="logoutBtn" class="ghost-btn danger" type="button">Logout</button>
         </div>
       </section>
 
@@ -231,12 +290,16 @@
 
     <script>
       const TOKEN_KEY = "authLabToken";
-      const tabs = [...document.querySelectorAll(".tab")];
       const statusEl = document.getElementById("status");
       const authView = document.getElementById("authView");
       const accountView = document.getElementById("accountView");
+      const loginPanel = document.getElementById("loginPanel");
+      const registerPanel = document.getElementById("registerPanel");
       const profileBox = document.getElementById("profileBox");
       const registerBtn = document.getElementById("registerBtn");
+      const formLabel = document.getElementById("formLabel");
+      const formTitle = document.getElementById("formTitle");
+      const formDesc = document.getElementById("formDesc");
       let registerInFlight = false;
 
       function setStatus(value, kind) {
@@ -246,8 +309,9 @@
         } else if (kind === "err") {
           statusEl.classList.add("err");
         }
-        statusEl.textContent =
-          typeof value === "string" ? value : JSON.stringify(value, null, 2);
+        statusEl.textContent = typeof value === "string"
+          ? value
+          : JSON.stringify(value, null, 2);
       }
 
       function getToken() {
@@ -262,30 +326,45 @@
         }
       }
 
-      function switchTab(panelId) {
-        tabs.forEach((tab) => {
-          tab.classList.toggle("active", tab.dataset.tab === panelId);
-        });
-        ["loginPanel", "registerPanel", "ssoPanel"].forEach((id) => {
-          document.getElementById(id).classList.toggle("active", id === panelId);
-        });
+      function setAuthMode(mode) {
+        if (mode === "register") {
+          loginPanel.classList.add("hidden");
+          registerPanel.classList.remove("hidden");
+          formLabel.textContent = "Register";
+          formTitle.textContent = "Create Account";
+          formDesc.textContent = "Register with email or use Google OAuth login.";
+          return;
+        }
+
+        registerPanel.classList.add("hidden");
+        loginPanel.classList.remove("hidden");
+        formLabel.textContent = "Login";
+        formTitle.textContent = "Welcome Back";
+        formDesc.textContent = "Sign in with Google or continue with email.";
       }
 
-      tabs.forEach((tab) => {
-        tab.addEventListener("click", () => switchTab(tab.dataset.tab));
-      });
+      function showAuthView() {
+        authView.classList.remove("hidden");
+        accountView.classList.add("hidden");
+      }
 
-      async function callApi(path, method, body, auth) {
+      function showAccountView() {
+        authView.classList.add("hidden");
+        accountView.classList.remove("hidden");
+      }
+
+      async function callApi(path, method, body, withAuth) {
         const headers = { "Content-Type": "application/json" };
-        if (auth) {
+
+        if (withAuth) {
           const token = getToken();
           if (!token) {
-            throw new Error("No token. Please login/register first.");
+            throw new Error("No token. Please login first.");
           }
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const res = await fetch(path, {
+        const response = await fetch(path, {
           method,
           headers,
           body: body ? JSON.stringify(body) : undefined,
@@ -293,18 +372,25 @@
 
         let payload;
         try {
-          payload = await res.json();
+          payload = await response.json();
         } catch (_) {
-          payload = await res.text();
+          payload = await response.text();
         }
 
-        return { ok: res.ok, status: res.status, payload, method, path };
+        return {
+          ok: response.ok,
+          status: response.status,
+          payload,
+          method,
+          path,
+        };
       }
 
       function saveTokenFromPayload(payload) {
         if (!payload || typeof payload !== "object") {
           return false;
         }
+
         const token = payload.accessToken || payload.access_token;
         if (token) {
           setToken(token);
@@ -314,51 +400,109 @@
       }
 
       function renderProfile(mePayload) {
-        const p = mePayload && mePayload.profile ? mePayload.profile : null;
-        if (!p) {
+        const profile = mePayload && mePayload.profile ? mePayload.profile : null;
+        if (!profile) {
           profileBox.innerHTML = "<div>Profile not found in response.</div>";
           return;
         }
 
         profileBox.innerHTML = `
-          <div><strong>User ID:</strong> <span class="mono">${p.supabaseUserId || "-"}</span></div>
-          <div><strong>Email:</strong> ${p.email || "-"}</div>
-          <div><strong>Username:</strong> ${p.username || "-"}</div>
-          <div><strong>Display Name:</strong> ${p.displayName || "-"}</div>
-          <div><strong>Role:</strong> ${p.role || "-"}</div>
-          <div><strong>Active:</strong> ${String(p.isActive)}</div>
+          <div><strong>User ID:</strong> <span class="mono">${profile.supabaseUserId || "-"}</span></div>
+          <div><strong>Email:</strong> ${profile.email || "-"}</div>
+          <div><strong>Username:</strong> ${profile.username || "-"}</div>
+          <div><strong>Display Name:</strong> ${profile.displayName || "-"}</div>
+          <div><strong>Role:</strong> ${profile.role || "-"}</div>
+          <div><strong>Active:</strong> ${String(profile.isActive)}</div>
         `;
       }
 
       async function refreshMe() {
         try {
           const result = await callApi("/api/auth/me", "GET", null, true);
-          if (result.ok) {
-            setStatus("Fetch account successful.", "ok");
-          } else {
-            setStatus(result, "err");
-          }
           if (!result.ok) {
+            setStatus(result, "err");
             showAuthView();
             return;
           }
+
+          setStatus("Fetch account successful.", "ok");
           renderProfile(result.payload);
           showAccountView();
-        } catch (err) {
-          setStatus({ error: err.message }, "err");
+        } catch (error) {
+          setStatus({ error: error.message }, "err");
           showAuthView();
         }
       }
 
-      function showAuthView() {
-        authView.style.display = "block";
-        accountView.style.display = "none";
+      async function startGoogleOAuth() {
+        try {
+          const redirectTo = `${window.location.origin}${window.location.pathname}`;
+          const endpoint = `/api/auth/sso/google/url?redirectTo=${encodeURIComponent(redirectTo)}`;
+          const result = await callApi(endpoint, "GET", null, false);
+
+          if (!result.ok) {
+            setStatus(result, "err");
+            return;
+          }
+
+          const url = result.payload.url;
+          if (!url) {
+            setStatus({ error: "Missing Google OAuth URL" }, "err");
+            return;
+          }
+
+          setStatus("Redirecting to Google OAuth...", "ok");
+          window.location.href = url;
+        } catch (error) {
+          setStatus({ error: error.message }, "err");
+        }
       }
 
-      function showAccountView() {
-        authView.style.display = "none";
-        accountView.style.display = "block";
+      async function processGoogleCallbackIfPresent() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        const state = params.get("state");
+
+        if (!code || !state) {
+          return false;
+        }
+
+        try {
+          setStatus("Processing Google OAuth callback...", "ok");
+          const result = await callApi(
+            "/api/auth/sso/google/callback",
+            "POST",
+            { code, state },
+            false
+          );
+
+          if (!result.ok) {
+            setStatus(result, "err");
+            return true;
+          }
+
+          setStatus(result.payload.message || "Google login successful.", "ok");
+          if (saveTokenFromPayload(result.payload)) {
+            await refreshMe();
+          }
+          return true;
+        } catch (error) {
+          setStatus({ error: error.message }, "err");
+          return true;
+        } finally {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       }
+
+      document.getElementById("toRegisterBtn").addEventListener("click", () => {
+        setAuthMode("register");
+      });
+
+      document.getElementById("toLoginBtn").addEventListener("click", () => {
+        setAuthMode("login");
+      });
+
+      document.getElementById("googleLoginBtn").addEventListener("click", startGoogleOAuth);
 
       document.getElementById("loginBtn").addEventListener("click", async () => {
         try {
@@ -371,16 +515,18 @@
             },
             false
           );
-          if (result.ok) {
-            setStatus(result.payload.message || "Login successful.", "ok");
-          } else {
+
+          if (!result.ok) {
             setStatus(result, "err");
+            return;
           }
-          if (result.ok && saveTokenFromPayload(result.payload)) {
+
+          setStatus(result.payload.message || "Login successful.", "ok");
+          if (saveTokenFromPayload(result.payload)) {
             await refreshMe();
           }
-        } catch (err) {
-          setStatus({ error: err.message }, "err");
+        } catch (error) {
+          setStatus({ error: error.message }, "err");
         }
       });
 
@@ -390,67 +536,38 @@
         }
         registerInFlight = true;
         registerBtn.disabled = true;
+
         try {
           const body = {
             email: document.getElementById("registerEmail").value,
             password: document.getElementById("registerPassword").value,
           };
+
           const username = document.getElementById("registerUsername").value.trim();
           const displayName = document.getElementById("registerDisplayName").value.trim();
-          if (username) body.username = username;
-          if (displayName) body.displayName = displayName;
+
+          if (username) {
+            body.username = username;
+          }
+          if (displayName) {
+            body.displayName = displayName;
+          }
 
           const result = await callApi("/api/auth/register", "POST", body, false);
-          if (result.ok) {
-            setStatus(result.payload.message || "Registration successful.", "ok");
-          } else {
+          if (!result.ok) {
             setStatus(result, "err");
+            return;
           }
-          if (result.ok && saveTokenFromPayload(result.payload)) {
+
+          setStatus(result.payload.message || "Registration successful.", "ok");
+          if (saveTokenFromPayload(result.payload)) {
             await refreshMe();
           }
-        } catch (err) {
-          setStatus({ error: err.message }, "err");
+        } catch (error) {
+          setStatus({ error: error.message }, "err");
         } finally {
           registerInFlight = false;
           registerBtn.disabled = false;
-        }
-      });
-
-      document.getElementById("getSsoUrlBtn").addEventListener("click", async () => {
-        try {
-          const result = await callApi("/api/auth/sso/google/url", "GET", null, false);
-          if (result.ok) {
-            setStatus(result.payload.message || "Google SSO URL generated.", "ok");
-          } else {
-            setStatus(result, "err");
-          }
-        } catch (err) {
-          setStatus({ error: err.message }, "err");
-        }
-      });
-
-      document.getElementById("ssoCallbackBtn").addEventListener("click", async () => {
-        try {
-          const result = await callApi(
-            "/api/auth/sso/google/callback",
-            "POST",
-            {
-              code: document.getElementById("ssoCode").value,
-              state: document.getElementById("ssoState").value,
-            },
-            false
-          );
-          if (result.ok) {
-            setStatus(result.payload.message || "Google SSO login successful.", "ok");
-          } else {
-            setStatus(result, "err");
-          }
-          if (result.ok && saveTokenFromPayload(result.payload)) {
-            await refreshMe();
-          }
-        } catch (err) {
-          setStatus({ error: err.message }, "err");
         }
       });
 
@@ -460,13 +577,23 @@
         setToken("");
         setStatus("Logout successful.", "ok");
         showAuthView();
+        setAuthMode("login");
       });
 
-      if (getToken()) {
-        refreshMe();
-      } else {
+      (async () => {
+        const handledGoogleCallback = await processGoogleCallbackIfPresent();
+        if (handledGoogleCallback) {
+          return;
+        }
+
+        if (getToken()) {
+          await refreshMe();
+          return;
+        }
+
         showAuthView();
-      }
+        setAuthMode("login");
+      })();
     </script>
   </body>
 </html>
