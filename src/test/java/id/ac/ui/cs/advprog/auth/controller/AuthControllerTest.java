@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
@@ -114,5 +116,33 @@ class AuthControllerTest {
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
     assertNull(resp.getBody().get("profile"));
+  }
+
+  @Test
+  void registerReturnsCreated() {
+    RegisterRequest request = new RegisterRequest(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User");
+    LoginResponse response = new LoginResponse(
+        "access",
+        "refresh",
+        "Bearer",
+        3600L,
+        "supabase-user-id",
+        "USER",
+        "Registration successful");
+    when(authLoginService.register(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User")).thenReturn(response);
+
+    ResponseEntity<LoginResponse> result = controller.register(request);
+
+    assertEquals(201, result.getStatusCodeValue());
+    assertNotNull(result.getBody());
+    assertEquals("supabase-user-id", result.getBody().userId());
   }
 }

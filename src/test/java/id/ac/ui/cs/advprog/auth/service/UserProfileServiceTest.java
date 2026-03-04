@@ -30,7 +30,7 @@ class UserProfileServiceTest {
 
   @Test
   void createDelegatesToRepository() {
-    UserProfile user = new UserProfile("u", "e", "d", "p", "USER", true);
+    UserProfile user = new UserProfile("u", "e", "d", "USER", true);
     when(repository.save(any())).thenReturn(user);
     UserProfile created = service.create(user);
     assertSame(user, created);

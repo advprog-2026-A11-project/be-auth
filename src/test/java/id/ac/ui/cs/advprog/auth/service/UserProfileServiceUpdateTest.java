@@ -27,14 +27,13 @@ class UserProfileServiceUpdateTest {
   }
 
   @Test
-  void updateAppliesEmailAndPasswordWhenProvided() {
-    UserProfile existing = new UserProfile("u", "old@e", "name", "oldhash", "USER", true);
+  void updateAppliesEmailWhenProvided() {
+    UserProfile existing = new UserProfile("u", "old@e", "name", "USER", true);
     when(repository.findById(7L)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     UserProfile incoming = new UserProfile();
     incoming.setEmail("new@e");
-    incoming.setPasswordHash("newhash");
     incoming.setUsername("u2");
     incoming.setDisplayName("dn");
     incoming.setRole("ADMIN");
@@ -44,26 +43,23 @@ class UserProfileServiceUpdateTest {
     assertTrue(out.isPresent());
     UserProfile updated = out.get();
     assertEquals("new@e", updated.getEmail());
-    assertEquals("newhash", updated.getPasswordHash());
     assertEquals("u2", updated.getUsername());
   }
 
   @Test
-  void updateSkipsEmailAndPasswordWhenBlank() {
-    UserProfile existing = new UserProfile("u", "old@e", "name", "oldhash", "USER", true);
+  void updateSkipsEmailWhenBlank() {
+    UserProfile existing = new UserProfile("u", "old@e", "name", "USER", true);
     when(repository.findById(8L)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     UserProfile incoming = new UserProfile();
     incoming.setEmail("");
-    incoming.setPasswordHash("");
     incoming.setUsername("u3");
 
     Optional<UserProfile> out = service.update(8L, incoming);
     assertTrue(out.isPresent());
     UserProfile updated = out.get();
     assertEquals("old@e", updated.getEmail());
-    assertEquals("oldhash", updated.getPasswordHash());
     assertEquals("u3", updated.getUsername());
   }
 

@@ -86,6 +86,33 @@ class LoginAndAdminFlowIntegrationTest {
   }
 
   @Test
+  void registerEndpointIsPublicAndReturnsCreated() throws Exception {
+    LoginResponse registerResponse = new LoginResponse(
+        "access-register",
+        "refresh-register",
+        "Bearer",
+        3600L,
+        "supabase-user-2",
+        "USER",
+        "Registration successful");
+
+    when(authLoginService.register(
+        eq("new@example.com"),
+        eq("password123"),
+        eq("newuser"),
+        eq("New User"))).thenReturn(registerResponse);
+
+    mockMvc.perform(post("/api/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                "{\"email\":\"new@example.com\",\"password\":\"password123\","
+                    + "\"username\":\"newuser\",\"displayName\":\"New User\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.userId").value("supabase-user-2"))
+        .andExpect(jsonPath("$.role").value("USER"));
+  }
+
+  @Test
   void adminRouteDeniedForUserRole() throws Exception {
     Jwt jwt = validJwt("token-user", "supabase-user-1", "user@example.com");
     when(supabaseJwtService.validateAccessToken("token-user")).thenReturn(jwt);

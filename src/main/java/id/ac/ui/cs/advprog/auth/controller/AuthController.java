@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
@@ -100,6 +101,16 @@ public class AuthController {
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
     LoginResponse response = authLoginService.login(request.identifier(), request.password());
     return ResponseEntity.ok(response);
+  }
+
+  @PostMapping("/register")
+  public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
+    LoginResponse response = authLoginService.register(
+        request.email(),
+        request.password(),
+        request.username(),
+        request.displayName());
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping("/sso/google/url")

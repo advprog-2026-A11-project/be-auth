@@ -38,6 +38,40 @@ public class AuthLoginService {
         "Login successful");
   }
 
+  public LoginResponse register(
+      String email,
+      String password,
+      String username,
+      String displayName) {
+    SupabaseAuthClient.LoginResult result = supabaseAuthClient.registerWithPassword(
+        email.trim().toLowerCase(),
+        password,
+        username,
+        displayName);
+
+    UserProfile profile = userProfileService.upsertFromIdentity(
+        result.supabaseUserId(),
+        result.email(),
+        result.role());
+
+    if (StringUtils.hasText(username) || StringUtils.hasText(displayName)) {
+      profile = userProfileService.updateCurrentUserProfile(
+          result.supabaseUserId(),
+          result.email(),
+          username,
+          displayName);
+    }
+
+    return new LoginResponse(
+        result.accessToken(),
+        result.refreshToken(),
+        "Bearer",
+        result.expiresIn(),
+        profile.getSupabaseUserId(),
+        profile.getRole(),
+        "Registration successful");
+  }
+
   private String resolveEmailIdentifier(String identifier) {
     if (!StringUtils.hasText(identifier)) {
       throw new IllegalArgumentException("identifier is required");
