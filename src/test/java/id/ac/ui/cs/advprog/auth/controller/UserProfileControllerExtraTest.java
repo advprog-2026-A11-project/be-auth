@@ -3,10 +3,10 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
@@ -93,8 +93,8 @@ class UserProfileControllerExtraTest {
 
   @Test
   void updateMeSuccess() {
-    UpdateProfileRequest request = new UpdateProfileRequest("new-user", "New User");
-    AuthenticatedUserPrincipal principal =
+    final UpdateProfileRequest request = new UpdateProfileRequest("new-user", "New User");
+    final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
 
     UserProfile updated = new UserProfile();
@@ -133,8 +133,8 @@ class UserProfileControllerExtraTest {
 
   @Test
   void deleteMeSuccess() {
-    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
-    AuthenticatedUserPrincipal principal =
+    final DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER");
     UserProfile deactivated = new UserProfile();
     deactivated.setSupabaseUserId("sub-789");

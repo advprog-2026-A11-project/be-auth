@@ -6,6 +6,8 @@ on:
       - main
   workflow_dispatch:
 
+permissions: {}
+
 concurrency:
   group: deploy-main
   cancel-in-progress: true

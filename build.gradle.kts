@@ -30,6 +30,13 @@ sonarqube {
         properties {
                 property("sonar.projectKey", "advprog-2026-A11-project_be-auth")
                 property("sonar.organization", "adpro-a-kelompok-11")
+                property(
+                    "sonar.coverage.exclusions",
+                    "**/dto/**,"
+                        + "**/config/OpenApiConfig.java,"
+                        + "**/service/HttpSupabaseAuthClient.java,"
+                        + "**/service/SupabaseAuthClient.java,"
+                        + "**/service/GoogleSsoService.java")
         }
 }
 

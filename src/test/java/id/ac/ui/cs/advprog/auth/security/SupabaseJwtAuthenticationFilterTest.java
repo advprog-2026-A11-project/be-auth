@@ -55,14 +55,17 @@ class SupabaseJwtAuthenticationFilterTest {
 
   @Test
   void shouldNotFilterHandlesAuthEndpointsAndNonApiPath() {
-    MockHttpServletRequest nonApi = new MockHttpServletRequest("GET", "/");
-    MockHttpServletRequest login = new MockHttpServletRequest("POST", "/api/auth/login");
-    MockHttpServletRequest register = new MockHttpServletRequest("POST", "/api/auth/register");
-    MockHttpServletRequest ssoUrl = new MockHttpServletRequest("GET", "/api/auth/sso/google/url");
-    MockHttpServletRequest ssoCallback = new MockHttpServletRequest(
+    final MockHttpServletRequest nonApi = new MockHttpServletRequest("GET", "/");
+    final MockHttpServletRequest login = new MockHttpServletRequest("POST", "/api/auth/login");
+    final MockHttpServletRequest register = new MockHttpServletRequest(
+        "POST",
+        "/api/auth/register");
+    final MockHttpServletRequest ssoUrl =
+        new MockHttpServletRequest("GET", "/api/auth/sso/google/url");
+    final MockHttpServletRequest ssoCallback = new MockHttpServletRequest(
         "POST",
         "/api/auth/sso/google/callback");
-    MockHttpServletRequest protectedApi = new MockHttpServletRequest("GET", "/api/users/me");
+    final MockHttpServletRequest protectedApi = new MockHttpServletRequest("GET", "/api/users/me");
 
     assertTrue(filter.shouldNotFilter(nonApi));
     assertTrue(filter.shouldNotFilter(login));
@@ -130,12 +133,12 @@ class SupabaseJwtAuthenticationFilterTest {
 
   @Test
   void doFilterInternalRejectsInactiveAccount() throws Exception {
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-inactive");
-    MockHttpServletResponse response = new MockHttpServletResponse();
-    FilterChain chain = mock(FilterChain.class);
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
 
-    Jwt jwt = jwt("valid-inactive", "sub-inactive", "inactive@example.com", "USER");
+    final Jwt jwt = jwt("valid-inactive", "sub-inactive", "inactive@example.com", "USER");
     UserProfile inactive = new UserProfile();
     inactive.setSupabaseUserId("sub-inactive");
     inactive.setEmail("inactive@example.com");
@@ -154,12 +157,12 @@ class SupabaseJwtAuthenticationFilterTest {
 
   @Test
   void doFilterInternalAuthenticatesUsingTokenRoleWhenProfileAbsent() throws Exception {
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-user");
-    MockHttpServletResponse response = new MockHttpServletResponse();
-    FilterChain chain = mock(FilterChain.class);
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
 
-    Jwt jwt = jwt("valid-user", "sub-user", "user@example.com", "authenticated");
+    final Jwt jwt = jwt("valid-user", "sub-user", "user@example.com", "authenticated");
     when(supabaseJwtService.validateAccessToken("valid-user")).thenReturn(jwt);
     when(userProfileService.findBySupabaseUserId("sub-user")).thenReturn(Optional.empty());
     when(userProfileService.findByEmail("user@example.com")).thenReturn(Optional.empty());
@@ -173,12 +176,14 @@ class SupabaseJwtAuthenticationFilterTest {
 
   @Test
   void doFilterInternalUsesProfileRoleOverTokenRole() throws Exception {
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/dashboard");
+    final MockHttpServletRequest request = new MockHttpServletRequest(
+        "GET",
+        "/api/admin/dashboard");
     request.addHeader("Authorization", "Bearer valid-admin");
-    MockHttpServletResponse response = new MockHttpServletResponse();
-    FilterChain chain = mock(FilterChain.class);
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
 
-    Jwt jwt = jwt("valid-admin", "sub-admin", "admin@example.com", "USER");
+    final Jwt jwt = jwt("valid-admin", "sub-admin", "admin@example.com", "USER");
     UserProfile admin = new UserProfile();
     admin.setSupabaseUserId("sub-admin");
     admin.setEmail("admin@example.com");
@@ -197,12 +202,12 @@ class SupabaseJwtAuthenticationFilterTest {
 
   @Test
   void doFilterInternalFallsBackToEmailLookupWhenSubMissing() throws Exception {
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-email");
-    MockHttpServletResponse response = new MockHttpServletResponse();
-    FilterChain chain = mock(FilterChain.class);
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
 
-    Jwt jwt = jwt("valid-email", " ", "fallback@example.com", "USER");
+    final Jwt jwt = jwt("valid-email", " ", "fallback@example.com", "USER");
     UserProfile user = new UserProfile();
     user.setSupabaseUserId("sub-fallback");
     user.setEmail("fallback@example.com");

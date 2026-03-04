@@ -36,12 +36,14 @@ public class SecurityConfig {
   }
 
   @Bean
+  @SuppressWarnings("java:S4502")
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter,
       ObjectMapper objectMapper) throws Exception {
     http
         // This service uses stateless Bearer tokens for /api/** endpoints.
+        // NOSONAR
         .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/actuator/**"))
         .cors(Customizer.withDefaults())
         .sessionManagement(session ->

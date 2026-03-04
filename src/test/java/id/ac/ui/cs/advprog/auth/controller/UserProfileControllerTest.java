@@ -38,7 +38,7 @@ class UserProfileControllerTest {
 
   @Test
   void createReturnsCreated() {
-    UserProfileRequest in = new UserProfileRequest();
+    final UserProfileRequest in = new UserProfileRequest();
     UserProfile created = new UserProfile();
     created.setRole("USER");
     created.setActive(true);
