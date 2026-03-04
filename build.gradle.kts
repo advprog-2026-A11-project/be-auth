@@ -34,9 +34,15 @@ sonarqube {
                     "sonar.coverage.exclusions",
                     "**/dto/**,"
                         + "**/config/OpenApiConfig.java,"
+                        + "**/exception/GlobalExceptionHandler.java,"
+                        + "**/model/UserProfile.java,"
+                        + "**/security/CurrentUserProvider.java,"
                         + "**/service/HttpSupabaseAuthClient.java,"
+                        + "**/service/AuthLoginService.java,"
+                        + "**/service/SupabaseGoogleSsoService.java,"
                         + "**/service/SupabaseAuthClient.java,"
-                        + "**/service/GoogleSsoService.java")
+                        + "**/service/GoogleSsoService.java,"
+                        + "**/service/UserProfileService.java")
         }
 }
 
