@@ -2,6 +2,8 @@ package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
@@ -10,6 +12,7 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,20 +42,22 @@ public class UserProfileController {
   }
 
   @PostMapping
-  public ResponseEntity<UserProfile> create(@RequestBody UserProfile user) {
+  public ResponseEntity<UserProfileResponse> create(@RequestBody UserProfileRequest request) {
+    UserProfile user = toEntity(request);
     normalizeIntegrationDefaults(user);
     UserProfile created = service.create(user);
-    return new ResponseEntity<>(created, HttpStatus.CREATED);
+    return new ResponseEntity<>(UserProfileResponse.from(created), HttpStatus.CREATED);
   }
 
   @GetMapping
-  public List<UserProfile> all() {
-    return service.findAll();
+  public List<UserProfileResponse> all() {
+    return service.findAll().stream().map(UserProfileResponse::from).collect(Collectors.toList());
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<UserProfile> getById(@PathVariable Long id) {
+  public ResponseEntity<UserProfileResponse> getById(@PathVariable Long id) {
     return service.findById(id)
+        .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -69,14 +74,19 @@ public class UserProfileController {
     }
 
     return service.updateDisplayName(id, name)
+        .map(UserProfileResponse::from)
         .map(u -> ResponseEntity.ok((Object) u))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   @PutMapping("/{id}")
-  public ResponseEntity<UserProfile> update(@PathVariable Long id, @RequestBody UserProfile user) {
+  public ResponseEntity<UserProfileResponse> update(
+      @PathVariable Long id,
+      @RequestBody UserProfileRequest request) {
+    UserProfile user = toEntity(request);
     normalizeIntegrationDefaults(user);
     return service.update(id, user)
+        .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -147,5 +157,18 @@ public class UserProfileController {
     if (user.getEmail() == null || user.getEmail().isBlank()) {
       user.setEmail(username + "@local.test");
     }
+  }
+
+  private UserProfile toEntity(UserProfileRequest request) {
+    UserProfile user = new UserProfile();
+    user.setUsername(request.getUsername());
+    user.setEmail(request.getEmail());
+    user.setSupabaseUserId(request.getSupabaseUserId());
+    user.setDisplayName(request.getDisplayName());
+    user.setRole(request.getRole());
+    if (request.getActive() != null) {
+      user.setActive(request.getActive());
+    }
+    return user;
   }
 }

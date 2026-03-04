@@ -138,18 +138,14 @@ public class AuthController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
   }
 
-  private Optional<UserProfile> safeOptional(Optional<UserProfile> value) {
-    return value == null ? Optional.empty() : value;
-  }
-
   private Optional<UserProfile> resolveProfileSafely(String sub, String email) {
     try {
       Optional<UserProfile> profile = Optional.empty();
       if (StringUtils.hasText(sub)) {
-        profile = safeOptional(userProfileService.findBySupabaseUserId(sub));
+        profile = userProfileService.findBySupabaseUserId(sub);
       }
       if (profile.isEmpty() && StringUtils.hasText(email)) {
-        profile = safeOptional(userProfileService.findByEmail(email));
+        profile = userProfileService.findByEmail(email);
       }
       return profile;
     } catch (DataAccessException ex) {

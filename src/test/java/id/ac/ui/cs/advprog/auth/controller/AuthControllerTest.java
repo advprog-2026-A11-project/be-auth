@@ -3,8 +3,10 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
@@ -12,7 +14,6 @@ import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,8 +21,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.server.ResponseStatusException;
 
 class AuthControllerTest {
 
@@ -148,5 +151,82 @@ class AuthControllerTest {
     assertEquals(201, result.getStatusCodeValue());
     assertNotNull(result.getBody());
     assertEquals("supabase-user-id", result.getBody().userId());
+  }
+
+  @Test
+  void googleSsoUrlWithRedirectToUsesRedirectVersion() {
+    when(googleSsoService.createSsoUrl("http://localhost:3000/callback"))
+        .thenReturn(new SsoUrlResponse("google", "https://sso", null));
+
+    ResponseEntity<SsoUrlResponse> response =
+        controller.googleSsoUrl("http://localhost:3000/callback");
+
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("https://sso", response.getBody().authorizationUrl());
+    verify(googleSsoService).createSsoUrl("http://localhost:3000/callback");
+    verify(googleSsoService, never()).createSsoUrl();
+  }
+
+  @Test
+  void loginThrowsForbiddenWhenPasswordAuthDisabled() {
+    AuthController disabledController = new AuthController(
+        authLoginService,
+        googleSsoService,
+        jwtService,
+        profileService,
+        false);
+
+    LoginRequest request = new LoginRequest("user@example.com", "password123");
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> disabledController.login(request));
+    assertEquals(403, ex.getStatusCode().value());
+  }
+
+  @Test
+  void meFallsBackToEmailLookupWhenSubIsBlank() throws Exception {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-email-only");
+
+    Jwt jwt = mock(Jwt.class);
+    when(jwt.getClaimAsString("email")).thenReturn("fallback@example.com");
+    when(jwt.getSubject()).thenReturn(" ");
+    when(jwt.getClaimAsString("role")).thenReturn("USER");
+    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
+    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
+    when(jwtService.validateAccessToken("tkn-email-only")).thenReturn(jwt);
+
+    UserProfile user = new UserProfile();
+    user.setEmail("fallback@example.com");
+    user.setUsername("fallback-user");
+    when(profileService.findByEmail("fallback@example.com")).thenReturn(Optional.of(user));
+
+    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+
+    assertEquals(200, resp.getStatusCodeValue());
+    verify(profileService, never()).findBySupabaseUserId(anyString());
+    verify(profileService).findByEmail("fallback@example.com");
+  }
+
+  @Test
+  void meReturnsNullProfileWhenProfileLookupThrowsDataAccessException() throws Exception {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-err");
+
+    Jwt jwt = mock(Jwt.class);
+    when(jwt.getClaimAsString("email")).thenReturn("error@example.com");
+    when(jwt.getSubject()).thenReturn("sub-error");
+    when(jwt.getClaimAsString("role")).thenReturn("USER");
+    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
+    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
+    when(jwtService.validateAccessToken("tkn-err")).thenReturn(jwt);
+    when(profileService.findBySupabaseUserId("sub-error"))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+
+    assertEquals(200, resp.getStatusCodeValue());
+    assertNull(resp.getBody().get("profile"));
   }
 }

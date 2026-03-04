@@ -6,10 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write
-
 concurrency:
   group: deploy-main
   cancel-in-progress: true
@@ -19,6 +15,8 @@ jobs:
     name: Guard (Build and Test)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -48,6 +46,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     timeout-minutes: 20
     environment: production
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout repository

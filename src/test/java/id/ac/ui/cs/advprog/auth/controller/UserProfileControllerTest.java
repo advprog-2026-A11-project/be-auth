@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
@@ -36,10 +38,38 @@ class UserProfileControllerTest {
 
   @Test
   void createReturnsCreated() {
-    UserProfile in = new UserProfile();
-    when(service.create(any())).thenReturn(in);
-    ResponseEntity<UserProfile> resp = controller.create(in);
+    UserProfileRequest in = new UserProfileRequest();
+    UserProfile created = new UserProfile();
+    created.setRole("USER");
+    created.setActive(true);
+    when(service.create(any())).thenReturn(created);
+    ResponseEntity<UserProfileResponse> resp = controller.create(in);
     assertEquals(HttpStatus.CREATED, resp.getStatusCode());
+    assertNotNull(resp.getBody());
+  }
+
+  @Test
+  void createMapsRequestAndPreservesProvidedFields() {
+    UserProfileRequest in = new UserProfileRequest();
+    in.setUsername("alice");
+    in.setEmail("alice@example.com");
+    in.setSupabaseUserId("sub-1");
+    in.setDisplayName("Alice");
+    in.setRole("ADMIN");
+    in.setActive(false);
+
+    when(service.create(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    ResponseEntity<UserProfileResponse> resp = controller.create(in);
+
+    assertEquals(HttpStatus.CREATED, resp.getStatusCode());
+    UserProfileResponse body = resp.getBody();
+    assertNotNull(body);
+    assertEquals("alice", body.username());
+    assertEquals("alice@example.com", body.email());
+    assertEquals("sub-1", body.supabaseUserId());
+    assertEquals("Alice", body.displayName());
+    assertEquals("ADMIN", body.role());
+    assertFalse(body.isActive());
   }
 
   @Test
@@ -57,6 +87,42 @@ class UserProfileControllerTest {
     when(service.updateDisplayName(1L, "bob")).thenReturn(Optional.of(u));
     ResponseEntity<Object> resp = controller.updateDisplayName(1L, body);
     assertEquals(HttpStatus.OK, resp.getStatusCode());
+  }
+
+  @Test
+  void updateDisplayNameNotFoundReturnsNotFound() {
+    Map<String, String> body = new HashMap<>();
+    body.put("displayName", "bob");
+
+    when(service.updateDisplayName(100L, "bob")).thenReturn(Optional.empty());
+    ResponseEntity<Object> resp = controller.updateDisplayName(100L, body);
+    assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
+  }
+
+  @Test
+  void updateReturnsOkWhenFound() {
+    UserProfileRequest request = new UserProfileRequest();
+    request.setUsername("newuser");
+    request.setDisplayName("New User");
+    request.setRole("ADMIN");
+    request.setEmail("newuser@example.com");
+    request.setActive(false);
+
+    UserProfile updated = new UserProfile();
+    updated.setUsername("newuser");
+    updated.setDisplayName("New User");
+    updated.setRole("ADMIN");
+    updated.setEmail("newuser@example.com");
+    updated.setActive(false);
+
+    when(service.update(eq(10L), any())).thenReturn(Optional.of(updated));
+
+    ResponseEntity<UserProfileResponse> resp = controller.update(10L, request);
+    assertEquals(HttpStatus.OK, resp.getStatusCode());
+    assertNotNull(resp.getBody());
+    assertEquals("newuser", resp.getBody().username());
+    assertEquals("newuser@example.com", resp.getBody().email());
+    assertFalse(resp.getBody().isActive());
   }
 
   @Test

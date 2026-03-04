@@ -17,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -42,7 +41,8 @@ public class SecurityConfig {
       SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter,
       ObjectMapper objectMapper) throws Exception {
     http
-        .csrf(AbstractHttpConfigurer::disable)
+        // This service uses stateless Bearer tokens for /api/** endpoints.
+        .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/actuator/**"))
         .cors(Customizer.withDefaults())
         .sessionManagement(session ->
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
