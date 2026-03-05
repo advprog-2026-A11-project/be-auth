@@ -1,15 +1,24 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
+import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -22,27 +31,33 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserProfileController {
 
   private final UserProfileService service;
+  private final CurrentUserProvider currentUserProvider;
 
   @Autowired
-  public UserProfileController(UserProfileService service) {
+  public UserProfileController(
+      UserProfileService service,
+      CurrentUserProvider currentUserProvider) {
     this.service = service;
+    this.currentUserProvider = currentUserProvider;
   }
 
   @PostMapping
-  public ResponseEntity<UserProfile> create(@RequestBody UserProfile user) {
+  public ResponseEntity<UserProfileResponse> create(@RequestBody UserProfileRequest request) {
+    UserProfile user = toEntity(request);
     normalizeIntegrationDefaults(user);
     UserProfile created = service.create(user);
-    return new ResponseEntity<>(created, HttpStatus.CREATED);
+    return new ResponseEntity<>(UserProfileResponse.from(created), HttpStatus.CREATED);
   }
 
   @GetMapping
-  public List<UserProfile> all() {
-    return service.findAll();
+  public List<UserProfileResponse> all() {
+    return service.findAll().stream().map(UserProfileResponse::from).collect(Collectors.toList());
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<UserProfile> getById(@PathVariable Long id) {
+  public ResponseEntity<UserProfileResponse> getById(@PathVariable Long id) {
     return service.findById(id)
+        .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -59,14 +74,19 @@ public class UserProfileController {
     }
 
     return service.updateDisplayName(id, name)
+        .map(UserProfileResponse::from)
         .map(u -> ResponseEntity.ok((Object) u))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   @PutMapping("/{id}")
-  public ResponseEntity<UserProfile> update(@PathVariable Long id, @RequestBody UserProfile user) {
+  public ResponseEntity<UserProfileResponse> update(
+      @PathVariable Long id,
+      @RequestBody UserProfileRequest request) {
+    UserProfile user = toEntity(request);
     normalizeIntegrationDefaults(user);
     return service.update(id, user)
+        .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
@@ -75,6 +95,51 @@ public class UserProfileController {
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     service.deleteById(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @PatchMapping("/me")
+  public ResponseEntity<Map<String, String>> updateMe(
+      @Valid @RequestBody UpdateProfileRequest request) {
+    if ((request.username() == null || request.username().isBlank())
+        && (request.displayName() == null || request.displayName().isBlank())) {
+      throw new IllegalArgumentException(
+          "At least one field must be provided: username or displayName");
+    }
+
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    UserProfile updated = service.updateCurrentUserProfile(
+        principal.sub(),
+        principal.email(),
+        request.username(),
+        request.displayName());
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Profile updated");
+    response.put("userId", updated.getSupabaseUserId());
+    response.put("username", updated.getUsername());
+    response.put("displayName", updated.getDisplayName());
+    response.put("email", updated.getEmail());
+    return ResponseEntity.ok(response);
+  }
+
+  @DeleteMapping("/me")
+  public ResponseEntity<Map<String, String>> deleteMe(
+      @Valid @RequestBody DeleteAccountRequest request) {
+    if (!"DELETE".equalsIgnoreCase(request.confirmation().trim())) {
+      throw new IllegalArgumentException("confirmation must be DELETE");
+    }
+
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Account deleted");
+    response.put("userId", deactivated.getSupabaseUserId());
+    return ResponseEntity.ok(response);
   }
 
   private void normalizeIntegrationDefaults(UserProfile user) {
@@ -92,5 +157,18 @@ public class UserProfileController {
     if (user.getEmail() == null || user.getEmail().isBlank()) {
       user.setEmail(username + "@local.test");
     }
+  }
+
+  private UserProfile toEntity(UserProfileRequest request) {
+    UserProfile user = new UserProfile();
+    user.setUsername(request.getUsername());
+    user.setEmail(request.getEmail());
+    user.setSupabaseUserId(request.getSupabaseUserId());
+    user.setDisplayName(request.getDisplayName());
+    user.setRole(request.getRole());
+    if (request.getActive() != null) {
+      user.setActive(request.getActive());
+    }
+    return user;
   }
 }

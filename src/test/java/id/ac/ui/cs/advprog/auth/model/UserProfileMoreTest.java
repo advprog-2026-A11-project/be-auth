@@ -18,9 +18,9 @@ class UserProfileMoreTest {
   }
 
   @Test
-  void passwordHashSetterWorks() {
+  void supabaseUserIdSetterWorks() {
     UserProfile u = new UserProfile();
-    u.setPasswordHash("p");
-    assertEquals("p", u.getPasswordHash());
+    u.setSupabaseUserId("sub-123");
+    assertEquals("sub-123", u.getSupabaseUserId());
   }
 }

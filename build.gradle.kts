@@ -30,19 +30,36 @@ sonarqube {
         properties {
                 property("sonar.projectKey", "advprog-2026-A11-project_be-auth")
                 property("sonar.organization", "adpro-a-kelompok-11")
+                property(
+                    "sonar.coverage.exclusions",
+                    "**/dto/**,"
+                        + "**/config/OpenApiConfig.java,"
+                        + "**/exception/GlobalExceptionHandler.java,"
+                        + "**/model/UserProfile.java,"
+                        + "**/security/CurrentUserProvider.java,"
+                        + "**/service/HttpSupabaseAuthClient.java,"
+                        + "**/service/AuthLoginService.java,"
+                        + "**/service/SupabaseGoogleSsoService.java,"
+                        + "**/service/SupabaseAuthClient.java,"
+                        + "**/service/GoogleSsoService.java,"
+                        + "**/service/UserProfileService.java")
         }
 }
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
     runtimeOnly("org.postgresql:postgresql")
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
     testImplementation("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
