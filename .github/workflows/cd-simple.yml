@@ -37,6 +37,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}
           source: "build/libs/app.jar"
           target: "~/app"
+          strip_components: 2
+          overwrite: true
 
       - name: Restart application on EC2
         uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
@@ -68,7 +70,20 @@ jobs:
               rm app.pid
             fi
 
-            nohup java -jar app.jar > app.log 2>&1 &
+            JAR_PATH="app.jar"
+            if [ ! -f "$JAR_PATH" ] && [ -f "build/libs/app.jar" ]; then
+              JAR_PATH="build/libs/app.jar"
+            fi
+            if [ ! -f "$JAR_PATH" ]; then
+              JAR_PATH="$(ls -1 *.jar 2>/dev/null | head -n 1 || true)"
+            fi
+            if [ -z "${JAR_PATH:-}" ] || [ ! -f "$JAR_PATH" ]; then
+              echo "No jar found in ~/app"
+              ls -la
+              exit 1
+            fi
+
+            nohup java -jar "$JAR_PATH" > app.log 2>&1 &
             echo $! > app.pid
 
             sleep 3
