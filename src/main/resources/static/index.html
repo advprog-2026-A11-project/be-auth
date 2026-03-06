@@ -354,6 +354,7 @@
       }
 
       async function callApi(path, method, body, withAuth) {
+        const requestUrl = new URL(path, window.location.origin).toString();
         const headers = { "Content-Type": "application/json" };
 
         if (withAuth) {
@@ -364,17 +365,27 @@
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetch(path, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-        });
-
-        let payload;
+        let response;
         try {
-          payload = await response.json();
-        } catch (_) {
-          payload = await response.text();
+          response = await fetch(requestUrl, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+            cache: "no-store",
+          });
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to fetch ${requestUrl} (${method}): ${detail}`);
+        }
+
+        const rawPayload = await response.text();
+        let payload = rawPayload;
+        if (rawPayload) {
+          try {
+            payload = JSON.parse(rawPayload);
+          } catch (_) {
+            payload = rawPayload;
+          }
         }
 
         return {
@@ -382,7 +393,7 @@
           status: response.status,
           payload,
           method,
-          path,
+          path: requestUrl,
         };
       }
 
@@ -505,6 +516,7 @@
       document.getElementById("googleLoginBtn").addEventListener("click", startGoogleOAuth);
 
       document.getElementById("loginBtn").addEventListener("click", async () => {
+        setStatus("Submitting login request...", "ok");
         try {
           const result = await callApi(
             "/api/auth/login",
@@ -536,6 +548,7 @@
         }
         registerInFlight = true;
         registerBtn.disabled = true;
+        setStatus("Submitting registration request...", "ok");
 
         try {
           const body = {
