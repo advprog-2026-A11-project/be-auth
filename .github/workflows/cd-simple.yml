@@ -9,13 +9,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
         with:
           distribution: temurin
           java-version: "21"
@@ -24,30 +25,63 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build project
-        run: ./gradlew clean build -x test
+        run: |
+          ./gradlew clean bootJar -x test
+          cp build/libs/*.jar build/libs/app.jar
 
       - name: Copy JAR to EC2
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}
-          source: "build/libs/*.jar"
+          source: "build/libs/app.jar"
           target: "~/app"
 
       - name: Restart application on EC2
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd ~/app
+
+            if ! command -v java >/dev/null 2>&1; then
+              if command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y java-21-amazon-corretto-headless
+              elif command -v yum >/dev/null 2>&1; then
+                sudo yum install -y java-21-amazon-corretto-headless
+              elif command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update -y
+                sudo apt-get install -y openjdk-21-jre-headless
+              else
+                echo "Java not found and no supported package manager available"
+                exit 1
+              fi
+            fi
+            java -version
 
             if [ -f app.pid ]; then
               kill "$(cat app.pid)" || true
               rm app.pid
             fi
 
-            nohup java -jar build/libs/*.jar > app.log 2>&1 &
+            nohup java -jar app.jar > app.log 2>&1 &
             echo $! > app.pid
+
+            sleep 3
+            if ! kill -0 "$(cat app.pid)" 2>/dev/null; then
+              echo "App failed to start"
+              tail -n 200 app.log || true
+              exit 1
+            fi
+
+      - name: Health check (from GitHub runner)
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          curl --fail --connect-timeout 5 --max-time 10 "http://$HOST:8081/actuator/health" || \
+          curl --fail --connect-timeout 5 --max-time 10 "http://$HOST:8081/" || \
+          (echo "Healthcheck failed. Most common cause: Security Group inbound doesn't allow TCP 8081." && exit 1)
