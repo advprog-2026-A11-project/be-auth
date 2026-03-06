@@ -39,3 +39,4 @@ out/
 # Local env files (do not commit secrets)
 .env
 md/
+.gradle-home/
