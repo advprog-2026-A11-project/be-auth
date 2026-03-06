@@ -78,10 +78,14 @@ jobs:
               exit 1
             fi
 
-      - name: Health check (from GitHub runner)
-        env:
-          HOST: ${{ secrets.EC2_HOST }}
-        run: |
-          curl --fail --connect-timeout 5 --max-time 10 "http://$HOST:8081/actuator/health" || \
-          curl --fail --connect-timeout 5 --max-time 10 "http://$HOST:8081/" || \
-          (echo "Healthcheck failed. Most common cause: Security Group inbound doesn't allow TCP 8081." && exit 1)
+      - name: Health check on EC2 (local loopback)
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            curl --fail --connect-timeout 5 --max-time 10 "http://127.0.0.1:8081/actuator/health" || \
+            curl --fail --connect-timeout 5 --max-time 10 "http://127.0.0.1:8081/" || \
+            (echo "Healthcheck failed on EC2 localhost:8081" && exit 1)
