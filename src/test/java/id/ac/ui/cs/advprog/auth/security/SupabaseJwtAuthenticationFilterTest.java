@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.auth.security;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.anyString;
@@ -73,6 +74,21 @@ class SupabaseJwtAuthenticationFilterTest {
     assertTrue(filter.shouldNotFilter(ssoUrl));
     assertTrue(filter.shouldNotFilter(ssoCallback));
     assertEquals(false, filter.shouldNotFilter(protectedApi));
+  }
+
+  @Test
+  void shouldNotFilterRejectsUnexpectedMethodsForPublicAuthEndpoints() {
+    final MockHttpServletRequest login = new MockHttpServletRequest("GET", "/api/auth/login");
+    final MockHttpServletRequest register = new MockHttpServletRequest("GET", "/api/auth/register");
+    final MockHttpServletRequest ssoUrl =
+        new MockHttpServletRequest("POST", "/api/auth/sso/google/url");
+    final MockHttpServletRequest ssoCallback =
+        new MockHttpServletRequest("GET", "/api/auth/sso/google/callback");
+
+    assertFalse(filter.shouldNotFilter(login));
+    assertFalse(filter.shouldNotFilter(register));
+    assertFalse(filter.shouldNotFilter(ssoUrl));
+    assertFalse(filter.shouldNotFilter(ssoCallback));
   }
 
   @Test
@@ -221,6 +237,55 @@ class SupabaseJwtAuthenticationFilterTest {
 
     verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService).findByEmail("fallback@example.com");
+    verify(chain).doFilter(request, response);
+  }
+
+  @Test
+  void doFilterInternalAuthenticatesWithoutAuthoritiesWhenRoleAndIdentityAreBlank() throws Exception {
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    request.addHeader("Authorization", "Bearer valid-blank-role");
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
+
+    final Jwt jwt = jwt("valid-blank-role", " ", " ", " ");
+    when(supabaseJwtService.validateAccessToken("valid-blank-role")).thenReturn(jwt);
+
+    filter.doFilterInternal(request, response, chain);
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    assertTrue(auth != null);
+    assertTrue(auth.getAuthorities().isEmpty());
+    verify(userProfileService, never()).findBySupabaseUserId(anyString());
+    verify(userProfileService, never()).findByEmail(anyString());
+    verify(chain).doFilter(request, response);
+  }
+
+  @Test
+  void doFilterInternalFallsBackToTokenRoleWhenProfileRoleBlank() throws Exception {
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    request.addHeader("Authorization", "Bearer valid-blank-profile-role");
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
+
+    final Jwt jwt = jwt(
+        "valid-blank-profile-role",
+        "sub-role-fallback",
+        "role@example.com",
+        "authenticated");
+    UserProfile user = new UserProfile();
+    user.setSupabaseUserId("sub-role-fallback");
+    user.setEmail("role@example.com");
+    user.setRole(" ");
+    user.setActive(true);
+
+    when(supabaseJwtService.validateAccessToken("valid-blank-profile-role")).thenReturn(jwt);
+    when(userProfileService.findBySupabaseUserId("sub-role-fallback")).thenReturn(Optional.of(user));
+
+    filter.doFilterInternal(request, response, chain);
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    assertTrue(auth != null);
+    assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_USER".equals(a.getAuthority())));
     verify(chain).doFilter(request, response);
   }
 

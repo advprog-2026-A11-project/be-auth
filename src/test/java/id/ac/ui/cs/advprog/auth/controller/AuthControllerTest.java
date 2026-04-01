@@ -63,6 +63,17 @@ class AuthControllerTest {
   }
 
   @Test
+  void meNonBearerHeaderReturnsUnauthorized() {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn("Basic abc");
+
+    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+
+    assertEquals(401, resp.getStatusCodeValue());
+    assertEquals("Missing Bearer token", resp.getBody().get("error"));
+  }
+
+  @Test
   void meInvalidTokenReturnsUnauthorized() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn("Bearer bad");
@@ -101,6 +112,32 @@ class AuthControllerTest {
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
     assertNotNull(resp.getBody().get("profile"));
+  }
+
+  @Test
+  void meUsesSupabaseUserIdProfileWithoutEmailFallback() throws Exception {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-sub");
+
+    Jwt jwt = mock(Jwt.class);
+    when(jwt.getClaimAsString("email")).thenReturn("sub@example.com");
+    when(jwt.getSubject()).thenReturn("sub-123");
+    when(jwt.getClaimAsString("role")).thenReturn("USER");
+    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
+    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
+    when(jwtService.validateAccessToken("tkn-sub")).thenReturn(jwt);
+
+    UserProfile user = new UserProfile();
+    user.setSupabaseUserId("sub-123");
+    user.setEmail("sub@example.com");
+    when(profileService.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(user));
+
+    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+
+    assertEquals(200, resp.getStatusCodeValue());
+    verify(profileService).findBySupabaseUserId("sub-123");
+    verify(profileService, never()).findByEmail("sub@example.com");
   }
 
   @Test
@@ -206,6 +243,28 @@ class AuthControllerTest {
     assertEquals(200, resp.getStatusCodeValue());
     verify(profileService, never()).findBySupabaseUserId(anyString());
     verify(profileService).findByEmail("fallback@example.com");
+  }
+
+  @Test
+  void meSkipsProfileLookupWhenSubjectAndEmailAreBlank() throws Exception {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-no-profile");
+
+    Jwt jwt = mock(Jwt.class);
+    when(jwt.getClaimAsString("email")).thenReturn(" ");
+    when(jwt.getSubject()).thenReturn(" ");
+    when(jwt.getClaimAsString("role")).thenReturn("USER");
+    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
+    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
+    when(jwt.getExpiresAt()).thenReturn(Instant.now());
+    when(jwtService.validateAccessToken("tkn-no-profile")).thenReturn(jwt);
+
+    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+
+    assertEquals(200, resp.getStatusCodeValue());
+    assertNull(resp.getBody().get("profile"));
+    verify(profileService, never()).findBySupabaseUserId(anyString());
+    verify(profileService, never()).findByEmail(anyString());
   }
 
   @Test

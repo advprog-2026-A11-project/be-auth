@@ -114,8 +114,100 @@ class UserProfileControllerExtraTest {
   }
 
   @Test
+  void updateMeWithUsernameOnlySuccess() {
+    final UpdateProfileRequest request = new UpdateProfileRequest("new-user", " ");
+    final AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setUsername("new-user");
+    updated.setDisplayName("Current Name");
+    updated.setEmail("user@example.com");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", " "))
+        .thenReturn(updated);
+
+    var response = controller.updateMe(request);
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("new-user", response.getBody().get("username"));
+  }
+
+  @Test
+  void updateMeWithDisplayNameOnlySuccess() {
+    final UpdateProfileRequest request = new UpdateProfileRequest(" ", "New User");
+    final AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setUsername("current-user");
+    updated.setDisplayName("New User");
+    updated.setEmail("user@example.com");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(service.updateCurrentUserProfile("sub-123", "user@example.com", " ", "New User"))
+        .thenReturn(updated);
+
+    var response = controller.updateMe(request);
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("New User", response.getBody().get("displayName"));
+  }
+
+  @Test
+  void updateMeWithNullDisplayNameSuccess() {
+    final UpdateProfileRequest request = new UpdateProfileRequest("new-user", null);
+    final AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setUsername("new-user");
+    updated.setDisplayName("Current Name");
+    updated.setEmail("user@example.com");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", null))
+        .thenReturn(updated);
+
+    var response = controller.updateMe(request);
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("new-user", response.getBody().get("username"));
+  }
+
+  @Test
+  void updateMeWithNullUsernameSuccess() {
+    final UpdateProfileRequest request = new UpdateProfileRequest(null, "New User");
+    final AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setUsername("current-user");
+    updated.setDisplayName("New User");
+    updated.setEmail("user@example.com");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(service.updateCurrentUserProfile("sub-123", "user@example.com", null, "New User"))
+        .thenReturn(updated);
+
+    var response = controller.updateMe(request);
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("New User", response.getBody().get("displayName"));
+  }
+
+  @Test
   void updateMeWithoutFieldsThrowsIllegalArgumentException() {
     UpdateProfileRequest request = new UpdateProfileRequest(" ", " ");
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> controller.updateMe(request));
+    assertEquals("At least one field must be provided: username or displayName", ex.getMessage());
+  }
+
+  @Test
+  void updateMeWithoutFieldsWhenNullThrowsIllegalArgumentException() {
+    UpdateProfileRequest request = new UpdateProfileRequest(null, null);
     IllegalArgumentException ex =
         assertThrows(IllegalArgumentException.class, () -> controller.updateMe(request));
     assertEquals("At least one field must be provided: username or displayName", ex.getMessage());

@@ -45,6 +45,21 @@ class CorsConfigTest {
     assertEquals(List.of("http://localhost:3000"), config.getAllowedOriginPatterns());
   }
 
+  @Test
+  void corsConfigurerNormalizesBareLocalOrigins() {
+    WebMvcConfigurer configurer =
+        corsConfig.corsConfigurer("localhost:3000,127.0.0.1:4173");
+
+    ExposedCorsRegistry registry = new ExposedCorsRegistry();
+    configurer.addCorsMappings(registry);
+
+    CorsConfiguration config = registry.configs().get("/api/**");
+    assertNotNull(config);
+    assertEquals(
+        List.of("http://localhost:3000", "http://127.0.0.1:4173"),
+        config.getAllowedOriginPatterns());
+  }
+
   private static class ExposedCorsRegistry extends CorsRegistry {
     Map<String, CorsConfiguration> configs() {
       return getCorsConfigurations();
