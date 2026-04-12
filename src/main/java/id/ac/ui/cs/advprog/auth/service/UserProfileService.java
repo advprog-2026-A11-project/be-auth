@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -28,7 +29,7 @@ public class UserProfileService {
     return repository.findAll();
   }
 
-  public Optional<UserProfile> findById(Long id) {
+  public Optional<UserProfile> findById(UUID id) {
     return repository.findById(id);
   }
 
@@ -203,14 +204,14 @@ public class UserProfileService {
     return repository.save(existing);
   }
 
-  public Optional<UserProfile> updateDisplayName(Long id, String newDisplayName) {
+  public Optional<UserProfile> updateDisplayName(UUID id, String newDisplayName) {
     return repository.findById(id).map(u -> {
       u.setDisplayName(newDisplayName);
       return repository.save(u);
     });
   }
 
-  public Optional<UserProfile> update(Long id, UserProfile incoming) {
+  public Optional<UserProfile> update(UUID id, UserProfile incoming) {
     return repository.findById(id).map(existing -> {
       existing.setUsername(incoming.getUsername());
       existing.setDisplayName(incoming.getDisplayName());
@@ -225,14 +226,14 @@ public class UserProfileService {
     });
   }
 
-  public UserProfile deactivateById(Long id) {
+  public UserProfile deactivateById(UUID id) {
     return repository.findById(id).map(existing -> {
       existing.setActive(false);
       return repository.save(existing);
     }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
   }
 
-  public void deleteById(Long id) {
+  public void deleteById(UUID id) {
     deactivateById(id);
   }
 

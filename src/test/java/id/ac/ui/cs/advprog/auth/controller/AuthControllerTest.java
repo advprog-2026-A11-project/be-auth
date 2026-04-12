@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -114,7 +115,7 @@ class AuthControllerTest {
     when(jwtService.validateAccessToken("tkn")).thenReturn(jwt);
 
     UserProfile user = new UserProfile();
-    user.setId(10L);
+    user.setId(UUID.randomUUID());
     user.setUsername("u");
     user.setEmail("a@b");
     user.setDisplayName("dn");

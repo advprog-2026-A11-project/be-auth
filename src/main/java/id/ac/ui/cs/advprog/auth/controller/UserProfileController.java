@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -67,7 +68,7 @@ public class UserProfileController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<UserProfileResponse> getById(@PathVariable Long id) {
+  public ResponseEntity<UserProfileResponse> getById(@PathVariable UUID id) {
     return service.findById(id)
         .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
@@ -76,7 +77,7 @@ public class UserProfileController {
 
   @PutMapping("/{id}/displayName")
   public ResponseEntity<Object> updateDisplayName(
-      @PathVariable Long id,
+      @PathVariable UUID id,
       @RequestBody Map<String, String> body) {
     String name = body.get("displayName");
     if (name == null) {
@@ -93,7 +94,7 @@ public class UserProfileController {
 
   @PutMapping("/{id}")
   public ResponseEntity<UserProfileResponse> update(
-      @PathVariable Long id,
+      @PathVariable UUID id,
       @RequestBody UserProfileRequest request) {
     UserProfile user = toEntity(request);
     normalizeIntegrationDefaults(user);
@@ -104,7 +105,7 @@ public class UserProfileController {
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable Long id) {
+  public ResponseEntity<Void> delete(@PathVariable UUID id) {
     service.deactivateById(id);
     return ResponseEntity.noContent().build();
   }

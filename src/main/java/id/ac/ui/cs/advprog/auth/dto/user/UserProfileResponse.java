@@ -3,9 +3,10 @@ package id.ac.ui.cs.advprog.auth.dto.user;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record UserProfileResponse(
-    Long id,
+    UUID id,
     String username,
     String email,
     String supabaseUserId,
