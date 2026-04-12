@@ -87,6 +87,8 @@ class SecurityIntegrationTest {
             .header("Authorization", "Bearer valid-token"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.sub").value("supabase-user-1"))
+        .andExpect(jsonPath("$.role").value("STUDENT"))
+        .andExpect(jsonPath("$.profile.role").value("STUDENT"))
         .andExpect(jsonPath("$.profile.supabaseUserId").value("supabase-user-1"));
   }
 

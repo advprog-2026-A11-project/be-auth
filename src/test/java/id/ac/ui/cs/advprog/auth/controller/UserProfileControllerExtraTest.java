@@ -94,7 +94,7 @@ class UserProfileControllerExtraTest {
     UserProfileResponse created = resp.getBody();
     assertNotNull(created.username());
     assertNotNull(created.displayName());
-    assertEquals("USER", created.role());
+    assertEquals("STUDENT", created.role());
     assertTrue(created.email().endsWith("@local.test"));
   }
 

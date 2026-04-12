@@ -32,7 +32,7 @@ class UserProfileResponseTest {
     assertEquals("demo@example.com", response.email());
     assertEquals("sub-xyz", response.supabaseUserId());
     assertEquals("Demo User", response.displayName());
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
     assertFalse(response.isActive());
     assertEquals(createdAt, response.createdAt());
     assertEquals(updatedAt, response.updatedAt());

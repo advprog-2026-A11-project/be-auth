@@ -211,7 +211,8 @@ class SupabaseJwtAuthenticationFilterTest {
     filter.doFilterInternal(request, response, chain);
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_USER".equals(a.getAuthority())));
+    assertTrue(
+        auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
     verify(chain).doFilter(request, response);
   }
 
@@ -312,7 +313,8 @@ class SupabaseJwtAuthenticationFilterTest {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     assertTrue(auth != null);
-    assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_USER".equals(a.getAuthority())));
+    assertTrue(
+        auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
     verify(chain).doFilter(request, response);
   }
 

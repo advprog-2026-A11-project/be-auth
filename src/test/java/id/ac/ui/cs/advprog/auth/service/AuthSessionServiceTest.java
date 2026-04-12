@@ -127,7 +127,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
     assertTrue(response.message().contains("Profile sync pending"));
   }
 
@@ -146,7 +146,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
   }
 
   @Test
@@ -182,7 +182,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
   }
 
   @Test
