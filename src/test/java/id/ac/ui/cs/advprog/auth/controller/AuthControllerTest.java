@@ -6,10 +6,12 @@ import static org.mockito.Mockito.*;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
@@ -335,5 +337,62 @@ class AuthControllerTest {
     assertNotNull(result.getBody());
     assertEquals("Logout successful", result.getBody().message());
     verify(authSessionService).logout("access-token");
+  }
+
+  @Test
+  void logoutThrowsUnauthorizedWhenBearerTokenIsMissing() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn(null);
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> controller.logout(request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Missing Bearer token", ex.getReason());
+  }
+
+  @Test
+  void logoutThrowsUnauthorizedWhenBearerTokenIsEmpty() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Bearer   ");
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> controller.logout(request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Bearer token is empty", ex.getReason());
+  }
+
+  @Test
+  void changePasswordThrowsUnauthorizedWhenCurrentUserIsMissing() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+
+    ResponseStatusException ex = assertThrows(
+        ResponseStatusException.class,
+        () -> controller.changePassword(
+            new ChangePasswordRequest("current-password", "new-password"),
+            request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("No authenticated user in security context", ex.getReason());
+  }
+
+  @Test
+  void changePasswordThrowsUnauthorizedWhenBearerTokenIsEmpty() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER")));
+    when(request.getHeader("Authorization")).thenReturn("Bearer   ");
+
+    ResponseStatusException ex = assertThrows(
+        ResponseStatusException.class,
+        () -> controller.changePassword(
+            new ChangePasswordRequest("current-password", "new-password"),
+            request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Bearer token is empty", ex.getReason());
   }
 }

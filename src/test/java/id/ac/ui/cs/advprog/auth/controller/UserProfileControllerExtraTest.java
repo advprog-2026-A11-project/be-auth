@@ -267,4 +267,34 @@ class UserProfileControllerExtraTest {
         assertThrows(IllegalStateException.class, () -> controller.deleteMe(request, httpRequest));
     assertEquals("No authenticated user in security context", ex.getMessage());
   }
+
+  @Test
+  void deleteMeWithoutBearerTokenThrowsIllegalArgumentException() {
+    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(httpRequest.getHeader("Authorization")).thenReturn(null);
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+
+    assertEquals("Missing Bearer token", ex.getMessage());
+  }
+
+  @Test
+  void deleteMeWithEmptyBearerTokenThrowsIllegalArgumentException() {
+    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer   ");
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+
+    assertEquals("Bearer token is empty", ex.getMessage());
+  }
 }
