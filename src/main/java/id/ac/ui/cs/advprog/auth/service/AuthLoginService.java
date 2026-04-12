@@ -4,12 +4,15 @@ import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class AuthLoginService {
+
+  private static final Pattern PHONE_IDENTIFIER_PATTERN = Pattern.compile("^\\+?[0-9]{8,15}$");
 
   private final SupabaseAuthClient supabaseAuthClient;
   private final UserProfileService userProfileService;
@@ -115,15 +118,22 @@ public class AuthLoginService {
       return normalized;
     }
 
-    Optional<UserProfile> byUsername = userProfileService.findByUsername(normalized);
-    if (byUsername.isPresent() && StringUtils.hasText(byUsername.get().getEmail())) {
-      if (!byUsername.get().isActive()) {
-        throw new UnauthorizedException("Account is inactive");
+    if (PHONE_IDENTIFIER_PATTERN.matcher(normalized).matches()) {
+      Optional<String> resolvedPhone = userProfileService.findByPhone(normalized)
+          .flatMap(this::resolveEmailFromProfile);
+      if (resolvedPhone.isPresent()) {
+        return resolvedPhone.get();
       }
-      return byUsername.get().getEmail();
     }
 
-    throw new IllegalArgumentException("identifier must be a valid email or an existing username");
+    Optional<UserProfile> byUsername = userProfileService.findByUsername(normalized);
+    Optional<String> resolvedUsername = byUsername.flatMap(this::resolveEmailFromProfile);
+    if (resolvedUsername.isPresent()) {
+      return resolvedUsername.get();
+    }
+
+    throw new IllegalArgumentException(
+        "identifier must be a valid email, phone, or an existing username");
   }
 
   private void ensureAccountActive(String email) {
@@ -132,6 +142,16 @@ public class AuthLoginService {
         .ifPresent(existing -> {
           throw new UnauthorizedException("Account is inactive");
         });
+  }
+
+  private Optional<String> resolveEmailFromProfile(UserProfile profile) {
+    if (!profile.isActive()) {
+      throw new UnauthorizedException("Account is inactive");
+    }
+    if (!StringUtils.hasText(profile.getEmail())) {
+      return Optional.empty();
+    }
+    return Optional.of(profile.getEmail());
   }
 
 }
