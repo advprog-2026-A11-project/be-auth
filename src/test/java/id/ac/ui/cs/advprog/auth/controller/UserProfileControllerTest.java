@@ -109,7 +109,6 @@ class UserProfileControllerTest {
 
   @Test
   void updateReturnsOkWhenFound() {
-    UUID id = UUID.randomUUID();
     UserProfileRequest request = new UserProfileRequest();
     request.setUsername("newuser");
     request.setDisplayName("New User");
@@ -124,6 +123,7 @@ class UserProfileControllerTest {
     updated.setEmail("newuser@example.com");
     updated.setActive(false);
 
+    UUID id = UUID.randomUUID();
     when(service.update(eq(id), any())).thenReturn(Optional.of(updated));
 
     ResponseEntity<UserProfileResponse> resp = controller.update(id, request);

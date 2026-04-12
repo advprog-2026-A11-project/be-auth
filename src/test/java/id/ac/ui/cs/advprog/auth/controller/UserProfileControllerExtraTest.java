@@ -351,7 +351,8 @@ class UserProfileControllerExtraTest {
     assertEquals("new@example.com", response.getBody().get("email"));
     verify(authSessionService).changeEmail("access-email-123", "new@example.com");
     verify(service).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
-    verify(service, never()).updateCurrentUserEmail("sub-123", "new@example.com", "old@example.com");
+    verify(service, never()).updateCurrentUserEmail(
+        "sub-123", "new@example.com", "old@example.com");
   }
 
   @Test
