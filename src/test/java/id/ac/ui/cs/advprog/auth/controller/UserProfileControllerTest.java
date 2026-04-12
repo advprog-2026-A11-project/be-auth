@@ -133,6 +133,6 @@ class UserProfileControllerTest {
   void deleteReturnsNoContent() {
     ResponseEntity<Void> resp = controller.delete(2L);
     assertEquals(HttpStatus.NO_CONTENT, resp.getStatusCode());
-    verify(service).deleteById(2L);
+    verify(service).deactivateById(2L);
   }
 }
