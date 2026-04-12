@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,9 @@ class UserProfileControllerTest {
 
   @Mock
   private CurrentUserProvider currentUserProvider;
+
+  @Mock
+  private AuthSessionService authSessionService;
 
   @InjectMocks
   private UserProfileController controller;

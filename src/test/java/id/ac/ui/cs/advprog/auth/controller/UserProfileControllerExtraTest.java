@@ -251,18 +251,20 @@ class UserProfileControllerExtraTest {
   @Test
   void deleteMeInvalidConfirmationThrowsIllegalArgumentException() {
     DeleteAccountRequest request = new DeleteAccountRequest("nope");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request));
+        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
     assertEquals("confirmation must be DELETE", ex.getMessage());
   }
 
   @Test
   void deleteMeWithoutCurrentUserThrowsIllegalStateException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
 
     IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> controller.deleteMe(request));
+        assertThrows(IllegalStateException.class, () -> controller.deleteMe(request, httpRequest));
     assertEquals("No authenticated user in security context", ex.getMessage());
   }
 }

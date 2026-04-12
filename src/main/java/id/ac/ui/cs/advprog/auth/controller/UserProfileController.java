@@ -7,15 +7,19 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,14 +34,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/users")
 public class UserProfileController {
 
+  private static final String BEARER_PREFIX = "Bearer ";
+
   private final UserProfileService service;
+  private final AuthSessionService authSessionService;
   private final CurrentUserProvider currentUserProvider;
 
   @Autowired
   public UserProfileController(
       UserProfileService service,
+      AuthSessionService authSessionService,
       CurrentUserProvider currentUserProvider) {
     this.service = service;
+    this.authSessionService = authSessionService;
     this.currentUserProvider = currentUserProvider;
   }
 
@@ -126,7 +135,8 @@ public class UserProfileController {
 
   @DeleteMapping("/me")
   public ResponseEntity<Map<String, String>> deleteMe(
-      @Valid @RequestBody DeleteAccountRequest request) {
+      @Valid @RequestBody DeleteAccountRequest request,
+      HttpServletRequest httpRequest) {
     if (!"DELETE".equalsIgnoreCase(request.confirmation().trim())) {
       throw new IllegalArgumentException("confirmation must be DELETE");
     }
@@ -135,6 +145,7 @@ public class UserProfileController {
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
 
     UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
+    authSessionService.logout(extractBearerToken(httpRequest));
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Account deleted");
@@ -170,5 +181,18 @@ public class UserProfileController {
       user.setActive(request.getActive());
     }
     return user;
+  }
+
+  private String extractBearerToken(HttpServletRequest request) {
+    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
+      throw new IllegalArgumentException("Missing Bearer token");
+    }
+
+    String token = authHeader.substring(BEARER_PREFIX.length()).trim();
+    if (!StringUtils.hasText(token)) {
+      throw new IllegalArgumentException("Bearer token is empty");
+    }
+    return token;
   }
 }
