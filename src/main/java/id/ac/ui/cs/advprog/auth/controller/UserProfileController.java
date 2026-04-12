@@ -10,6 +10,7 @@ import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -202,7 +203,9 @@ public class UserProfileController {
     }
 
     if (user.getRole() == null || user.getRole().isBlank()) {
-      user.setRole("USER");
+      user.setRole("STUDENT");
+    } else {
+      user.setRole(RoleMapper.canonicalize(user.getRole()));
     }
 
     if (user.getEmail() == null || user.getEmail().isBlank()) {

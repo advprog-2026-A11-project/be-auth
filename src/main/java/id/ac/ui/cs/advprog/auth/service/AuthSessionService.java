@@ -40,7 +40,7 @@ public class AuthSessionService {
           "Bearer",
           result.expiresIn(),
           profile.getSupabaseUserId(),
-          profile.getRole(),
+          RoleMapper.canonicalize(profile.getRole()),
           "Session refreshed");
     } catch (DataAccessException ex) {
       return new LoginResponse(
@@ -49,7 +49,7 @@ public class AuthSessionService {
           "Bearer",
           result.expiresIn(),
           result.supabaseUserId(),
-          normalizeRole(result.role()),
+          RoleMapper.canonicalize(result.role()),
           "Session refreshed. Profile sync pending (database unavailable)");
     }
   }
@@ -82,18 +82,4 @@ public class AuthSessionService {
     supabaseAuthClient.updatePassword(accessToken, newPassword);
   }
 
-  private String normalizeRole(String incomingRole) {
-    if (!org.springframework.util.StringUtils.hasText(incomingRole)) {
-      return "USER";
-    }
-
-    String normalized = incomingRole.trim().toUpperCase();
-    if ("AUTHENTICATED".equals(normalized)) {
-      return "USER";
-    }
-    if ("ADMIN".equals(normalized)) {
-      return "ADMIN";
-    }
-    return "USER";
-  }
 }

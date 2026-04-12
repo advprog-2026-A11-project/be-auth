@@ -15,6 +15,7 @@ import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -85,7 +86,7 @@ public class AuthController {
       Map<String, Object> payload = new HashMap<>();
       payload.put("sub", sub);
       payload.put(EMAIL_CLAIM, email);
-      payload.put("role", claims.getClaimAsString("role"));
+      payload.put("role", RoleMapper.canonicalize(claims.getClaimAsString("role")));
       payload.put("aud", claims.getAudience());
       payload.put("iss", claims.getIssuer());
       payload.put("exp", claims.getExpiresAt());
@@ -101,7 +102,7 @@ public class AuthController {
         profilePayload.put(EMAIL_CLAIM, user.getEmail());
         profilePayload.put("phone", user.getPhone());
         profilePayload.put("displayName", user.getDisplayName());
-        profilePayload.put("role", user.getRole());
+        profilePayload.put("role", RoleMapper.canonicalize(user.getRole()));
         profilePayload.put("authProvider", user.getAuthProvider());
         profilePayload.put("googleSub", user.getGoogleSub());
         profilePayload.put("isActive", user.isActive());

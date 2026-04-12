@@ -20,6 +20,7 @@ public class UserProfileService {
   }
 
   public UserProfile create(UserProfile user) {
+    user.setRole(RoleMapper.canonicalize(user.getRole()));
     return repository.save(user);
   }
 
@@ -74,9 +75,7 @@ public class UserProfileService {
     if (bySub.isPresent()) {
       UserProfile existing = bySub.get();
       existing.setEmail(normalizedEmail);
-      if (!StringUtils.hasText(existing.getRole())) {
-        existing.setRole(normalizeRole(incomingRole));
-      }
+      existing.setRole(RoleMapper.canonicalize(existing.getRole()));
       return repository.save(existing);
     }
 
@@ -88,9 +87,7 @@ public class UserProfileService {
         throw new ConflictException("Identity conflict for email");
       }
       existing.setSupabaseUserId(supabaseUserId);
-      if (!StringUtils.hasText(existing.getRole())) {
-        existing.setRole(normalizeRole(incomingRole));
-      }
+      existing.setRole(RoleMapper.canonicalize(existing.getRole()));
       return repository.save(existing);
     }
 
@@ -99,7 +96,7 @@ public class UserProfileService {
     created.setEmail(normalizedEmail);
     created.setUsername(generateUniqueUsername(normalizedEmail, supabaseUserId));
     created.setDisplayName(extractDisplayName(normalizedEmail));
-    created.setRole(normalizeRole(incomingRole));
+    created.setRole(RoleMapper.canonicalize(incomingRole));
     created.setActive(true);
     return repository.save(created);
   }
@@ -203,7 +200,7 @@ public class UserProfileService {
     return repository.findById(id).map(existing -> {
       existing.setUsername(incoming.getUsername());
       existing.setDisplayName(incoming.getDisplayName());
-      existing.setRole(incoming.getRole());
+      existing.setRole(RoleMapper.canonicalize(incoming.getRole()));
       existing.setActive(incoming.isActive());
 
       if (incoming.getEmail() != null && !incoming.getEmail().isBlank()) {
@@ -301,18 +298,4 @@ public class UserProfileService {
     return atIndex > 0 ? email.substring(0, atIndex) : email;
   }
 
-  private String normalizeRole(String incomingRole) {
-    if (!StringUtils.hasText(incomingRole)) {
-      return "USER";
-    }
-
-    String normalized = incomingRole.trim().toUpperCase();
-    if ("AUTHENTICATED".equals(normalized)) {
-      return "USER";
-    }
-    if ("ADMIN".equals(normalized)) {
-      return "ADMIN";
-    }
-    return "USER";
-  }
 }

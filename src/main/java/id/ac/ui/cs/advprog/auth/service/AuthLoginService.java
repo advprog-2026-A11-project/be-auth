@@ -38,7 +38,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           profile.getSupabaseUserId(),
-          profile.getRole(),
+          RoleMapper.canonicalize(profile.getRole()),
           "Login successful");
     } catch (DataAccessException ex) {
       return new LoginResponse(
@@ -47,7 +47,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           result.supabaseUserId(),
-          normalizeRole(result.role()),
+          RoleMapper.canonicalize(result.role()),
           "Login successful. Profile sync pending (database unavailable)");
     }
   }
@@ -87,7 +87,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           profile.getSupabaseUserId(),
-          profile.getRole(),
+          RoleMapper.canonicalize(profile.getRole()),
           message);
     } catch (DataAccessException ex) {
       String fallbackMessage = StringUtils.hasText(result.accessToken())
@@ -100,7 +100,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           result.supabaseUserId(),
-          normalizeRole(result.role()),
+          RoleMapper.canonicalize(result.role()),
           fallbackMessage);
     }
   }
@@ -134,18 +134,4 @@ public class AuthLoginService {
         });
   }
 
-  private String normalizeRole(String incomingRole) {
-    if (!StringUtils.hasText(incomingRole)) {
-      return "USER";
-    }
-
-    String normalized = incomingRole.trim().toUpperCase();
-    if ("AUTHENTICATED".equals(normalized)) {
-      return "USER";
-    }
-    if ("ADMIN".equals(normalized)) {
-      return "ADMIN";
-    }
-    return "USER";
-  }
 }

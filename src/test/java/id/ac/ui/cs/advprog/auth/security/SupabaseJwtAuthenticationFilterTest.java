@@ -267,7 +267,7 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   @Test
-  void doFilterInternalAuthenticatesWithoutAuthoritiesWhenRoleAndIdentityAreBlank()
+  void doFilterInternalDefaultsToStudentAuthorityWhenRoleAndIdentityAreBlank()
       throws Exception {
     final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-blank-role");
@@ -281,7 +281,8 @@ class SupabaseJwtAuthenticationFilterTest {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     assertTrue(auth != null);
-    assertTrue(auth.getAuthorities().isEmpty());
+    assertTrue(
+        auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
     verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
     verify(chain).doFilter(request, response);
