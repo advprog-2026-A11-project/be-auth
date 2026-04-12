@@ -352,6 +352,18 @@ class AuthControllerTest {
   }
 
   @Test
+  void logoutThrowsUnauthorizedWhenAuthorizationIsNotBearer() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Basic token");
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> controller.logout(request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Missing Bearer token", ex.getReason());
+  }
+
+  @Test
   void logoutThrowsUnauthorizedWhenBearerTokenIsEmpty() {
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(request.getHeader("Authorization")).thenReturn("Bearer   ");

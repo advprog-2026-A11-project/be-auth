@@ -284,6 +284,21 @@ class UserProfileControllerExtraTest {
   }
 
   @Test
+  void deleteMeWithNonBearerTokenThrowsIllegalArgumentException() {
+    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Basic token");
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+
+    assertEquals("Missing Bearer token", ex.getMessage());
+  }
+
+  @Test
   void deleteMeWithEmptyBearerTokenThrowsIllegalArgumentException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
