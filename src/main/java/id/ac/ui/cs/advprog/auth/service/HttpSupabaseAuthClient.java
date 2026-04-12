@@ -94,6 +94,62 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
 
   @Override
   @SuppressWarnings("unchecked")
+  public LoginResult refreshSession(String refreshToken) {
+    ensureConfig();
+
+    String tokenUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/token?grant_type=refresh_token";
+    Map<String, String> requestPayload = Map.of("refresh_token", refreshToken);
+
+    try {
+      Map<String, Object> responseBody = restClient.post()
+          .uri(tokenUrl)
+          .header("apikey", supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
+          .contentType(MediaType.APPLICATION_JSON)
+          .accept(MediaType.APPLICATION_JSON)
+          .body(requestPayload)
+          .retrieve()
+          .body(Map.class);
+
+      if (responseBody == null) {
+        throw new UnauthorizedException("Refresh failed: empty response from identity provider");
+      }
+
+      Map<String, Object> userObject = (Map<String, Object>) responseBody.get("user");
+      if (userObject == null) {
+        throw new UnauthorizedException("Refresh failed: user information missing in response");
+      }
+
+      String accessToken = stringValue(responseBody.get("access_token"));
+      String newRefreshToken = stringValue(responseBody.get("refresh_token"));
+      Long expiresIn = longValue(responseBody.get("expires_in"));
+      String supabaseUserId = stringValue(userObject.get("id"));
+      String normalizedEmail = stringValue(userObject.get("email"));
+      String role = readRole(userObject);
+
+      if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(supabaseUserId)) {
+        throw new UnauthorizedException(
+            "Refresh failed: invalid token payload from identity provider");
+      }
+
+      return new LoginResult(
+          accessToken,
+          newRefreshToken,
+          expiresIn,
+          supabaseUserId,
+          normalizedEmail,
+          role);
+    } catch (HttpStatusCodeException ex) {
+      if (ex.getStatusCode().is4xxClientError()) {
+        String detail = extractSupabaseErrorMessage(ex.getResponseBodyAsString());
+        throw new UnauthorizedException(detail);
+      }
+      throw new IllegalStateException("Identity provider error while refreshing session", ex);
+    }
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
   public LoginResult registerWithPassword(
       String email,
       String password,

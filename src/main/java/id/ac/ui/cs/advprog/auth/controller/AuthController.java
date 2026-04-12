@@ -2,12 +2,14 @@ package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
@@ -37,6 +39,7 @@ public class AuthController {
   private static final String EMAIL_CLAIM = "email";
 
   private final AuthLoginService authLoginService;
+  private final AuthSessionService authSessionService;
   private final GoogleSsoService googleSsoService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
@@ -44,11 +47,13 @@ public class AuthController {
 
   public AuthController(
       AuthLoginService authLoginService,
+      AuthSessionService authSessionService,
       GoogleSsoService googleSsoService,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService,
       @Value("${auth.password.enabled:true}") boolean passwordAuthEnabled) {
     this.authLoginService = authLoginService;
+    this.authSessionService = authSessionService;
     this.googleSsoService = googleSsoService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
@@ -115,6 +120,13 @@ public class AuthController {
         request.username(),
         request.displayName());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @PostMapping("/refresh")
+  public ResponseEntity<LoginResponse> refresh(
+      @Valid @RequestBody RefreshTokenRequest request) {
+    LoginResponse response = authSessionService.refresh(request.refreshToken());
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/sso/google/url")

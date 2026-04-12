@@ -51,6 +51,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/auth/sso/google/url").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/sso/google/callback").permitAll()
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()

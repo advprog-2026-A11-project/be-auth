@@ -61,6 +61,10 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       return true;
     }
 
+    if ("/api/auth/refresh".equals(path) && HttpMethod.POST.matches(method)) {
+      return true;
+    }
+
     if ("/api/auth/sso/google/url".equals(path) && HttpMethod.GET.matches(method)) {
       return true;
     }
