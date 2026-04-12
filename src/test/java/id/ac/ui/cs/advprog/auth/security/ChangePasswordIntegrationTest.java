@@ -62,7 +62,8 @@ class ChangePasswordIntegrationTest {
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
+            .content(
+                """
                 {
                   "currentPassword": "current-password",
                   "newPassword": "new-password"
@@ -94,7 +95,8 @@ class ChangePasswordIntegrationTest {
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
+            .content(
+                """
                 {
                   "currentPassword": "wrong-password",
                   "newPassword": "new-password"
@@ -119,7 +121,8 @@ class ChangePasswordIntegrationTest {
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
+            .content(
+                """
                 {
                   "currentPassword": "current-password",
                   "newPassword": "short"

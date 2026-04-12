@@ -121,7 +121,6 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       }
 
       String accessToken = asString(tokenResponse.get("access_token"));
-      String refreshToken = asString(tokenResponse.get("refresh_token"));
       if (!StringUtils.hasText(accessToken)) {
         throw new UnauthorizedException("Missing access token from SSO callback");
       }
@@ -136,6 +135,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       }
 
       ensureIdentityIsActive(accessToken, sub, email);
+      String refreshToken = asString(tokenResponse.get("refresh_token"));
 
       boolean linked = isExistingIdentity(sub, email);
       UserProfile profile = userProfileService.upsertFromIdentity(sub, email, role);

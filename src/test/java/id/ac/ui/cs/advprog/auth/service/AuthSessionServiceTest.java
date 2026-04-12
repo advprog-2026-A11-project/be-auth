@@ -10,15 +10,14 @@ import static org.mockito.Mockito.when;
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import java.time.Instant;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.security.oauth2.jwt.Jwt;
-
-import java.time.Instant;
-import java.util.Map;
 
 class AuthSessionServiceTest {
 

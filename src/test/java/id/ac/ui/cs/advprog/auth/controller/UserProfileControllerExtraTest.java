@@ -253,7 +253,9 @@ class UserProfileControllerExtraTest {
     DeleteAccountRequest request = new DeleteAccountRequest("nope");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
     assertEquals("confirmation must be DELETE", ex.getMessage());
   }
 
@@ -278,7 +280,9 @@ class UserProfileControllerExtraTest {
     when(httpRequest.getHeader("Authorization")).thenReturn(null);
 
     IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
 
     assertEquals("Missing Bearer token", ex.getMessage());
   }
@@ -293,7 +297,9 @@ class UserProfileControllerExtraTest {
     when(httpRequest.getHeader("Authorization")).thenReturn("Basic token");
 
     IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
 
     assertEquals("Missing Bearer token", ex.getMessage());
   }
@@ -308,7 +314,9 @@ class UserProfileControllerExtraTest {
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer   ");
 
     IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request, httpRequest));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
 
     assertEquals("Bearer token is empty", ex.getMessage());
   }

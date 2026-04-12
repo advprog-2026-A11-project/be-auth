@@ -116,7 +116,8 @@ class SupabaseGoogleSsoServiceTest {
   private static class TokenHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-      byte[] response = """
+      byte[] response =
+          """
           {
             "access_token": "access-token",
             "refresh_token": "refresh-token"
