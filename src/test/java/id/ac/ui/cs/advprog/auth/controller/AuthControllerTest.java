@@ -10,6 +10,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
@@ -46,6 +47,9 @@ class AuthControllerTest {
   @Mock
   private AuthSessionService authSessionService;
 
+  @Mock
+  private CurrentUserProvider currentUserProvider;
+
   private AuthController controller;
 
   @BeforeEach
@@ -57,6 +61,7 @@ class AuthControllerTest {
         googleSsoService,
         jwtService,
         profileService,
+        currentUserProvider,
         true);
   }
 
@@ -219,6 +224,7 @@ class AuthControllerTest {
         googleSsoService,
         jwtService,
         profileService,
+        currentUserProvider,
         false);
 
     LoginRequest request = new LoginRequest("user@example.com", "password123");

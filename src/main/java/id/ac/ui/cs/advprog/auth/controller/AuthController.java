@@ -3,12 +3,15 @@ package id.ac.ui.cs.advprog.auth.controller;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
@@ -46,6 +49,7 @@ public class AuthController {
   private final GoogleSsoService googleSsoService;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
+  private final CurrentUserProvider currentUserProvider;
   private final boolean passwordAuthEnabled;
 
   public AuthController(
@@ -54,12 +58,14 @@ public class AuthController {
       GoogleSsoService googleSsoService,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService,
+      CurrentUserProvider currentUserProvider,
       @Value("${auth.password.enabled:true}") boolean passwordAuthEnabled) {
     this.authLoginService = authLoginService;
     this.authSessionService = authSessionService;
     this.googleSsoService = googleSsoService;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
+    this.currentUserProvider = currentUserProvider;
     this.passwordAuthEnabled = passwordAuthEnabled;
   }
 
@@ -136,6 +142,24 @@ public class AuthController {
   public ResponseEntity<LogoutResponse> logout(HttpServletRequest request) {
     authSessionService.logout(extractBearerToken(request));
     return ResponseEntity.ok(new LogoutResponse("Logout successful"));
+  }
+
+  @PostMapping("/change-password")
+  public ResponseEntity<Map<String, String>> changePassword(
+      @Valid @RequestBody ChangePasswordRequest request,
+      HttpServletRequest httpRequest) {
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.UNAUTHORIZED,
+            "No authenticated user in security context"));
+
+    authSessionService.changePassword(
+        extractBearerToken(httpRequest),
+        principal.email(),
+        request.currentPassword(),
+        request.newPassword());
+
+    return ResponseEntity.ok(Map.of("message", "Password changed"));
   }
 
   @GetMapping("/sso/google/url")
