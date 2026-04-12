@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.Optional;
@@ -69,5 +70,73 @@ class UserProfileServiceUpdateTest {
     UserProfile incoming = new UserProfile();
     Optional<UserProfile> out = service.update(9L, incoming);
     assertTrue(out.isEmpty());
+  }
+
+  @Test
+  void updateCurrentUserEmailNormalizesAndSaves() {
+    UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
+    existing.setSupabaseUserId("sub-123");
+    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    when(repository.existsByEmail("new@example.com")).thenReturn(false);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.updateCurrentUserEmail(
+        "sub-123",
+        "old@example.com",
+        "  New@Example.com  ");
+
+    assertEquals("new@example.com", updated.getEmail());
+    verify(repository).existsByEmail("new@example.com");
+  }
+
+  @Test
+  void updateCurrentUserEmailRejectsDuplicate() {
+    UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
+    existing.setSupabaseUserId("sub-123");
+    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    when(repository.existsByEmail("taken@example.com")).thenReturn(true);
+
+    ConflictException ex = assertThrows(
+        ConflictException.class,
+        () -> service.updateCurrentUserEmail(
+            "sub-123",
+            "old@example.com",
+            "taken@example.com"));
+
+    assertEquals("Email already taken", ex.getMessage());
+  }
+
+  @Test
+  void updateCurrentUserPhoneNormalizesAndSaves() {
+    UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
+    existing.setSupabaseUserId("sub-123");
+    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    when(repository.existsByPhone("+628123456789")).thenReturn(false);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.updateCurrentUserPhone(
+        "sub-123",
+        "old@example.com",
+        "  +628123456789  ");
+
+    assertEquals("+628123456789", updated.getPhone());
+    verify(repository).existsByPhone("+628123456789");
+  }
+
+  @Test
+  void updateCurrentUserPhoneRejectsDuplicate() {
+    UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
+    existing.setSupabaseUserId("sub-123");
+    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    when(repository.existsByPhone("+628999999999")).thenReturn(true);
+
+    ConflictException ex = assertThrows(
+        ConflictException.class,
+        () -> service.updateCurrentUserPhone(
+            "sub-123",
+            "old@example.com",
+            "+628999999999"));
+
+    assertEquals("Phone already taken", ex.getMessage());
   }
 }

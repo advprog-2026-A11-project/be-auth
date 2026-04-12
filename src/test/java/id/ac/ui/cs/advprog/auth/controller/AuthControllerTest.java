@@ -119,6 +119,9 @@ class AuthControllerTest {
     user.setEmail("a@b");
     user.setDisplayName("dn");
     user.setRole("USER");
+    user.setPhone("+628123456789");
+    user.setAuthProvider("PASSWORD");
+    user.setGoogleSub("google-sub-1");
     user.setActive(true);
 
     when(profileService.findByEmail("a@b")).thenReturn(Optional.of(user));
@@ -126,6 +129,11 @@ class AuthControllerTest {
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
     assertNotNull(resp.getBody().get("profile"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> profilePayload = (Map<String, Object>) resp.getBody().get("profile");
+    assertEquals("+628123456789", profilePayload.get("phone"));
+    assertEquals("PASSWORD", profilePayload.get("authProvider"));
+    assertEquals("google-sub-1", profilePayload.get("googleSub"));
   }
 
   @Test
