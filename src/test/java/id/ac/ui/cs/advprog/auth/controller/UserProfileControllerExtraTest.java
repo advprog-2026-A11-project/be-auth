@@ -18,6 +18,7 @@ import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -61,23 +62,26 @@ class UserProfileControllerExtraTest {
 
   @Test
   void getByIdNotFound() {
-    when(service.findById(123L)).thenReturn(Optional.empty());
-    ResponseEntity<UserProfileResponse> resp = controller.getById(123L);
+    UUID id = UUID.randomUUID();
+    when(service.findById(id)).thenReturn(Optional.empty());
+    ResponseEntity<UserProfileResponse> resp = controller.getById(id);
     assertEquals(404, resp.getStatusCodeValue());
   }
 
   @Test
   void getByIdFound() {
+    UUID id = UUID.randomUUID();
     UserProfile u = new UserProfile();
-    when(service.findById(5L)).thenReturn(Optional.of(u));
-    ResponseEntity<UserProfileResponse> resp = controller.getById(5L);
+    when(service.findById(id)).thenReturn(Optional.of(u));
+    ResponseEntity<UserProfileResponse> resp = controller.getById(id);
     assertEquals(200, resp.getStatusCodeValue());
   }
 
   @Test
   void updateNotFoundReturnsNotFound() {
-    when(service.update(eq(10L), any())).thenReturn(Optional.empty());
-    ResponseEntity<UserProfileResponse> resp = controller.update(10L, new UserProfileRequest());
+    UUID id = UUID.randomUUID();
+    when(service.update(eq(id), any())).thenReturn(Optional.empty());
+    ResponseEntity<UserProfileResponse> resp = controller.update(id, new UserProfileRequest());
     assertEquals(404, resp.getStatusCodeValue());
   }
 

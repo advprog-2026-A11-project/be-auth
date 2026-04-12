@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -72,7 +73,7 @@ class SecurityIntegrationTest {
     when(supabaseJwtService.validateAccessToken("valid-token")).thenReturn(jwt);
 
     UserProfile user = new UserProfile();
-    user.setId(1L);
+    user.setId(UUID.randomUUID());
     user.setSupabaseUserId("supabase-user-1");
     user.setEmail("user1@example.com");
     user.setUsername("user1");
@@ -129,7 +130,7 @@ class SecurityIntegrationTest {
         .thenReturn(Optional.of(userProfile("supabase-user-2", "user2@example.com", "USER")));
 
     // Act + Assert
-    mockMvc.perform(get("/api/users/1")
+    mockMvc.perform(get("/api/users/" + UUID.randomUUID())
             .header("Authorization", "Bearer user-token"))
         .andExpect(status().isForbidden());
   }
@@ -143,7 +144,7 @@ class SecurityIntegrationTest {
         .thenReturn(Optional.of(userProfile("supabase-user-2", "user2@example.com", "USER")));
 
     // Act + Assert
-    mockMvc.perform(delete("/api/users/1")
+    mockMvc.perform(delete("/api/users/" + UUID.randomUUID())
             .header("Authorization", "Bearer user-token"))
         .andExpect(status().isForbidden());
   }
@@ -165,16 +166,17 @@ class SecurityIntegrationTest {
 
   @Test
   void getUserByIdWithAdminRoleReturnsOk() throws Exception {
+    UUID id = UUID.randomUUID();
     // Arrange
     when(supabaseJwtService.validateAccessToken("admin-token"))
         .thenReturn(jwt("admin-token", "supabase-admin-1", "admin@example.com"));
     when(userProfileService.findBySupabaseUserId("supabase-admin-1"))
         .thenReturn(Optional.of(userProfile("supabase-admin-1", "admin@example.com", "ADMIN")));
-    when(userProfileService.findById(7L))
+    when(userProfileService.findById(id))
         .thenReturn(Optional.of(userProfile("supabase-user-7", "user7@example.com", "USER")));
 
     // Act + Assert
-    mockMvc.perform(get("/api/users/7")
+    mockMvc.perform(get("/api/users/" + id)
             .header("Authorization", "Bearer admin-token"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.supabaseUserId").value("supabase-user-7"))

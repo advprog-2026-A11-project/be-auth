@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -29,8 +30,9 @@ class UserProfileServiceUpdateTest {
 
   @Test
   void updateAppliesEmailWhenProvided() {
+    UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile("u", "old@e", "name", "USER", true);
-    when(repository.findById(7L)).thenReturn(Optional.of(existing));
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     UserProfile incoming = new UserProfile();
@@ -40,7 +42,7 @@ class UserProfileServiceUpdateTest {
     incoming.setRole("ADMIN");
     incoming.setActive(false);
 
-    Optional<UserProfile> out = service.update(7L, incoming);
+    Optional<UserProfile> out = service.update(id, incoming);
     assertTrue(out.isPresent());
     UserProfile updated = out.get();
     assertEquals("new@e", updated.getEmail());
@@ -49,15 +51,16 @@ class UserProfileServiceUpdateTest {
 
   @Test
   void updateSkipsEmailWhenBlank() {
+    UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile("u", "old@e", "name", "USER", true);
-    when(repository.findById(8L)).thenReturn(Optional.of(existing));
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     UserProfile incoming = new UserProfile();
     incoming.setEmail("");
     incoming.setUsername("u3");
 
-    Optional<UserProfile> out = service.update(8L, incoming);
+    Optional<UserProfile> out = service.update(id, incoming);
     assertTrue(out.isPresent());
     UserProfile updated = out.get();
     assertEquals("old@e", updated.getEmail());
@@ -66,9 +69,10 @@ class UserProfileServiceUpdateTest {
 
   @Test
   void updateReturnsEmptyWhenNotFound() {
-    when(repository.findById(9L)).thenReturn(Optional.empty());
+    UUID id = UUID.randomUUID();
+    when(repository.findById(id)).thenReturn(Optional.empty());
     UserProfile incoming = new UserProfile();
-    Optional<UserProfile> out = service.update(9L, incoming);
+    Optional<UserProfile> out = service.update(id, incoming);
     assertTrue(out.isEmpty());
   }
 

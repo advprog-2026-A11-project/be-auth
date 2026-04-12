@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -47,8 +48,9 @@ class UserProfileServiceTest {
 
   @Test
   void findByIdDelegates() {
-    when(repository.findById(1L)).thenReturn(Optional.of(new UserProfile()));
-    assertTrue(service.findById(1L).isPresent());
+    UUID id = UUID.randomUUID();
+    when(repository.findById(id)).thenReturn(Optional.of(new UserProfile()));
+    assertTrue(service.findById(id).isPresent());
   }
 
   @Test
@@ -59,27 +61,29 @@ class UserProfileServiceTest {
 
   @Test
   void updateDisplayNameSaves() {
+    UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile();
     existing.setDisplayName("old");
-    when(repository.findById(2L)).thenReturn(Optional.of(existing));
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-    Optional<UserProfile> updated = service.updateDisplayName(2L, "new");
+    Optional<UserProfile> updated = service.updateDisplayName(id, "new");
     assertTrue(updated.isPresent());
     assertEquals("new", updated.get().getDisplayName());
   }
 
   @Test
   void deactivateByIdMarksExistingUserInactive() {
+    UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile();
     existing.setActive(true);
-    when(repository.findById(5L)).thenReturn(Optional.of(existing));
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    UserProfile deactivated = service.deactivateById(5L);
+    UserProfile deactivated = service.deactivateById(id);
 
     assertFalse(deactivated.isActive());
     verify(repository).save(existing);
-    verify(repository, never()).deleteById(anyLong());
+    verify(repository, never()).deleteById(any());
   }
 
   @Test
