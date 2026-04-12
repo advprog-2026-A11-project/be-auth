@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.io.IOException;
@@ -96,6 +97,41 @@ class SupabaseGoogleSsoServiceTest {
 
     assertEquals("Account is inactive", ex.getMessage());
     verify(authSessionService).logout("access-token");
+  }
+
+  @Test
+  void handleCallbackPassesGoogleIdentityEnrichmentToProfileSync() {
+    Jwt jwt = new Jwt(
+        "access-token",
+        Instant.now(),
+        Instant.now().plusSeconds(3600),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", "google-sub-123",
+            "email", "google@example.com",
+            "role", "authenticated",
+            "full_name", "Google User",
+            "aud", List.of("authenticated"),
+            "iss", "https://supabase.test/auth/v1"));
+    when(supabaseJwtService.validateAccessToken("access-token")).thenReturn(jwt);
+    when(userProfileService.findBySupabaseUserId("google-sub-123")).thenReturn(Optional.empty());
+    when(userProfileService.findByEmail("google@example.com")).thenReturn(Optional.empty());
+
+    UserProfile profile = new UserProfile();
+    profile.setSupabaseUserId("google-sub-123");
+    when(userProfileService.upsertFromIdentity(
+        "google-sub-123",
+        "google@example.com",
+        "authenticated",
+        "GOOGLE",
+        "google-sub-123",
+        "Google User")).thenReturn(profile);
+
+    SsoCallbackResponse response =
+        service.handleCallback(new SsoCallbackRequest("oauth-code", "opaque-state"));
+
+    assertEquals("google-sub-123", response.userId());
+    assertEquals(false, response.linked());
   }
 
   @SuppressWarnings("unchecked")

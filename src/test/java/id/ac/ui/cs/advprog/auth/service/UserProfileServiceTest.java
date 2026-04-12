@@ -81,4 +81,52 @@ class UserProfileServiceTest {
     verify(repository).save(existing);
     verify(repository, never()).deleteById(anyLong());
   }
+
+  @Test
+  void upsertFromGoogleIdentityCreatesEnrichedProfile() {
+    when(repository.findBySupabaseUserId("google-sub-123")).thenReturn(Optional.empty());
+    when(repository.findByEmail("google@example.com")).thenReturn(Optional.empty());
+    when(repository.existsByUsername("google")).thenReturn(false);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile created = service.upsertFromIdentity(
+        "google-sub-123",
+        "google@example.com",
+        "authenticated",
+        "GOOGLE",
+        "google-sub-123",
+        "Google User");
+
+    assertEquals("GOOGLE", created.getAuthProvider());
+    assertEquals("google-sub-123", created.getGoogleSub());
+    assertEquals("Google User", created.getDisplayName());
+    assertEquals("STUDENT", created.getRole());
+  }
+
+  @Test
+  void upsertFromGoogleIdentityPreservesCustomProfileFields() {
+    UserProfile existing = new UserProfile();
+    existing.setSupabaseUserId("google-sub-123");
+    existing.setEmail("google@example.com");
+    existing.setUsername("custom-user");
+    existing.setDisplayName("Custom Name");
+    existing.setRole("STUDENT");
+    existing.setActive(true);
+
+    when(repository.findBySupabaseUserId("google-sub-123")).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.upsertFromIdentity(
+        "google-sub-123",
+        "google@example.com",
+        "authenticated",
+        "GOOGLE",
+        "google-sub-123",
+        "Google User");
+
+    assertEquals("custom-user", updated.getUsername());
+    assertEquals("Custom Name", updated.getDisplayName());
+    assertEquals("GOOGLE", updated.getAuthProvider());
+    assertEquals("google-sub-123", updated.getGoogleSub());
+  }
 }
