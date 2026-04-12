@@ -31,7 +31,7 @@ public class TokenRevocationService {
 
     cleanupExpired();
     Instant expiresAt = revokedTokens.get(hash(accessToken));
-    return expiresAt != null && expiresAt.isAfter(Instant.now());
+    return expiresAt != null;
   }
 
   private void cleanupExpired() {
