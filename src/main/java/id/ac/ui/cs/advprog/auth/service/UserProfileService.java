@@ -46,6 +46,13 @@ public class UserProfileService {
     return repository.findBySupabaseUserId(supabaseUserId);
   }
 
+  public Optional<UserProfile> findByPhone(String phone) {
+    if (!StringUtils.hasText(phone)) {
+      return Optional.empty();
+    }
+    return repository.findByPhone(phone.trim());
+  }
+
   public boolean usernameExists(String username) {
     return repository.existsByUsername(username);
   }
@@ -153,6 +160,38 @@ public class UserProfileService {
     return repository.save(existing);
   }
 
+  public UserProfile updateCurrentUserEmail(
+      String supabaseUserId,
+      String email,
+      String newEmail) {
+    UserProfile existing = findCurrentUserOrThrow(supabaseUserId, email);
+    String normalizedEmail = normalizeEmailOrThrow(newEmail);
+
+    if (!normalizedEmail.equals(existing.getEmail())
+        && repository.existsByEmail(normalizedEmail)) {
+      throw new ConflictException("Email already taken");
+    }
+
+    existing.setEmail(normalizedEmail);
+    return repository.save(existing);
+  }
+
+  public UserProfile updateCurrentUserPhone(
+      String supabaseUserId,
+      String email,
+      String newPhone) {
+    UserProfile existing = findCurrentUserOrThrow(supabaseUserId, email);
+    String normalizedPhone = normalizePhoneOrThrow(newPhone);
+
+    if (!normalizedPhone.equals(existing.getPhone())
+        && repository.existsByPhone(normalizedPhone)) {
+      throw new ConflictException("Phone already taken");
+    }
+
+    existing.setPhone(normalizedPhone);
+    return repository.save(existing);
+  }
+
   public Optional<UserProfile> updateDisplayName(Long id, String newDisplayName) {
     return repository.findById(id).map(u -> {
       u.setDisplayName(newDisplayName);
@@ -184,6 +223,37 @@ public class UserProfileService {
 
   public void deleteById(Long id) {
     deactivateById(id);
+  }
+
+  private UserProfile findCurrentUserOrThrow(String supabaseUserId, String email) {
+    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
+      throw new IllegalArgumentException("Authenticated user identity is required");
+    }
+
+    Optional<UserProfile> existingOptional = StringUtils.hasText(supabaseUserId)
+        ? repository.findBySupabaseUserId(supabaseUserId)
+        : Optional.empty();
+
+    if (existingOptional.isEmpty() && StringUtils.hasText(email)) {
+      existingOptional = repository.findByEmail(email.trim().toLowerCase());
+    }
+
+    return existingOptional.orElseThrow(
+        () -> new IllegalArgumentException("User profile not found"));
+  }
+
+  private String normalizeEmailOrThrow(String email) {
+    if (!StringUtils.hasText(email)) {
+      throw new IllegalArgumentException("email is required");
+    }
+    return email.trim().toLowerCase();
+  }
+
+  private String normalizePhoneOrThrow(String phone) {
+    if (!StringUtils.hasText(phone)) {
+      throw new IllegalArgumentException("phone is required");
+    }
+    return phone.trim();
   }
 
   private String generateUniqueUsername(String email, String supabaseUserId) {

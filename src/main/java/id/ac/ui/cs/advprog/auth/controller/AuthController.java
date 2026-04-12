@@ -99,8 +99,11 @@ public class AuthController {
         profilePayload.put("supabaseUserId", user.getSupabaseUserId());
         profilePayload.put("username", user.getUsername());
         profilePayload.put(EMAIL_CLAIM, user.getEmail());
+        profilePayload.put("phone", user.getPhone());
         profilePayload.put("displayName", user.getDisplayName());
         profilePayload.put("role", user.getRole());
+        profilePayload.put("authProvider", user.getAuthProvider());
+        profilePayload.put("googleSub", user.getGoogleSub());
         profilePayload.put("isActive", user.isActive());
         payload.put("profile", profilePayload);
       } else {

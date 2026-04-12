@@ -13,7 +13,11 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 
   Optional<UserProfile> findBySupabaseUserId(String supabaseUserId);
 
+  Optional<UserProfile> findByPhone(String phone);
+
   boolean existsByUsername(String username);
 
   boolean existsByEmail(String email);
+
+  boolean existsByPhone(String phone);
 }

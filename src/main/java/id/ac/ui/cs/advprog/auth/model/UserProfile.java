@@ -24,6 +24,14 @@ public class UserProfile {
   @Column(unique = true)
   private String supabaseUserId;
 
+  @Column(unique = true)
+  private String phone;
+
+  private String authProvider;
+
+  @Column(unique = true)
+  private String googleSub;
+
   private String displayName;
 
   private String role;
@@ -108,6 +116,30 @@ public class UserProfile {
 
   public void setSupabaseUserId(String supabaseUserId) {
     this.supabaseUserId = supabaseUserId;
+  }
+
+  public String getPhone() {
+    return phone;
+  }
+
+  public void setPhone(String phone) {
+    this.phone = phone;
+  }
+
+  public String getAuthProvider() {
+    return authProvider;
+  }
+
+  public void setAuthProvider(String authProvider) {
+    this.authProvider = authProvider;
+  }
+
+  public String getGoogleSub() {
+    return googleSub;
+  }
+
+  public void setGoogleSub(String googleSub) {
+    this.googleSub = googleSub;
   }
 
   public String getRole() {
