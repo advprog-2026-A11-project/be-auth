@@ -325,10 +325,10 @@ class UserProfileControllerExtraTest {
 
   @Test
   void updateEmailSuccess() {
-    UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
+    final UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
     AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
-    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     UserProfile updated = new UserProfile();
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
@@ -349,7 +349,7 @@ class UserProfileControllerExtraTest {
 
   @Test
   void updatePhoneSuccess() {
-    UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
+    final UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
     AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
     UserProfile updated = new UserProfile();
