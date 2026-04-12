@@ -149,6 +149,29 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   }
 
   @Override
+  public void logout(String accessToken) {
+    ensureConfig();
+
+    String logoutUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/logout?scope=local";
+
+    try {
+      restClient.post()
+          .uri(logoutUrl)
+          .header("apikey", supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+          .accept(MediaType.APPLICATION_JSON)
+          .retrieve()
+          .toBodilessEntity();
+    } catch (HttpStatusCodeException ex) {
+      if (ex.getStatusCode().is4xxClientError()) {
+        String detail = extractSupabaseErrorMessage(ex.getResponseBodyAsString());
+        throw new UnauthorizedException(detail);
+      }
+      throw new IllegalStateException("Identity provider error while logout", ex);
+    }
+  }
+
+  @Override
   @SuppressWarnings("unchecked")
   public LoginResult registerWithPassword(
       String email,

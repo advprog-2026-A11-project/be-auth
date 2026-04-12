@@ -6,6 +6,8 @@ public interface SupabaseAuthClient {
 
   LoginResult refreshSession(String refreshToken);
 
+  void logout(String accessToken);
+
   LoginResult registerWithPassword(
       String email,
       String password,

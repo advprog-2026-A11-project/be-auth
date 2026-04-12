@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.auth.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,10 +28,12 @@ public class SecurityConfig {
   @Bean
   public SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter(
       SupabaseJwtService supabaseJwtService,
+      TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
       ObjectMapper objectMapper) {
     return new SupabaseJwtAuthenticationFilter(
         supabaseJwtService,
+        tokenRevocationService,
         userProfileService,
         objectMapper);
   }
