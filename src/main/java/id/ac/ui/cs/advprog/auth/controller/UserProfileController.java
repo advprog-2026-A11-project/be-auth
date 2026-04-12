@@ -143,11 +143,21 @@ public class UserProfileController {
     AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
 
-    authSessionService.changeEmail(extractBearerToken(httpRequest), request.email());
+    String accessToken = extractBearerToken(httpRequest);
     UserProfile updated = service.updateCurrentUserEmail(
         principal.sub(),
         principal.email(),
         request.email());
+
+    try {
+      authSessionService.changeEmail(accessToken, request.email());
+    } catch (RuntimeException ex) {
+      service.updateCurrentUserEmail(
+          principal.sub(),
+          updated.getEmail(),
+          principal.email());
+      throw ex;
+    }
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Email updated");

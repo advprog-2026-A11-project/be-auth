@@ -346,6 +346,8 @@ class UserProfileControllerExtraTest {
     assertEquals("Email updated", response.getBody().get("message"));
     assertEquals("new@example.com", response.getBody().get("email"));
     verify(authSessionService).changeEmail("access-email-123", "new@example.com");
+    verify(service).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
+    verify(service, never()).updateCurrentUserEmail("sub-123", "new@example.com", "old@example.com");
   }
 
   @Test
@@ -356,6 +358,7 @@ class UserProfileControllerExtraTest {
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     when(service.updateCurrentUserEmail("sub-123", "old@example.com", "taken@example.com"))
         .thenThrow(new ConflictException("Email already taken"));
 
