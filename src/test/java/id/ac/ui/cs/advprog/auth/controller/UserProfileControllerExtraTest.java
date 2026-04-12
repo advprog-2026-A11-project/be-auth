@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
@@ -319,5 +321,50 @@ class UserProfileControllerExtraTest {
             () -> controller.deleteMe(request, httpRequest));
 
     assertEquals("Bearer token is empty", ex.getMessage());
+  }
+
+  @Test
+  void updateEmailSuccess() {
+    UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
+    AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setEmail("new@example.com");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
+    when(service.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+        .thenReturn(updated);
+
+    ResponseEntity<java.util.Map<String, String>> response =
+        controller.updateEmail(request, httpRequest);
+
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("Email updated", response.getBody().get("message"));
+    assertEquals("new@example.com", response.getBody().get("email"));
+    verify(authSessionService).changeEmail("access-email-123", "new@example.com");
+  }
+
+  @Test
+  void updatePhoneSuccess() {
+    UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
+    AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setPhone("+628123456789");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(service.updateCurrentUserPhone("sub-123", "user@example.com", "+628123456789"))
+        .thenReturn(updated);
+
+    ResponseEntity<java.util.Map<String, String>> response = controller.updatePhone(request);
+
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals("Phone updated", response.getBody().get("message"));
+    assertEquals("+628123456789", response.getBody().get("phone"));
+    verify(authSessionService, never()).changeEmail(anyString(), anyString());
   }
 }

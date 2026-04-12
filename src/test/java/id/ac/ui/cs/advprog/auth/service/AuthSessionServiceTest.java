@@ -83,6 +83,13 @@ class AuthSessionServiceTest {
   }
 
   @Test
+  void changeEmailDelegatesToIdentityProvider() {
+    service.changeEmail("access-token", "new@example.com");
+
+    verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
+  }
+
+  @Test
   void refreshReturnsSyncedProfileWhenDatabaseIsAvailable() {
     SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
         "new-access",
