@@ -5,10 +5,13 @@ import static org.mockito.Mockito.*;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
@@ -40,6 +43,9 @@ class AuthControllerTest {
   @Mock
   private UserProfileService profileService;
 
+  @Mock
+  private AuthSessionService authSessionService;
+
   private AuthController controller;
 
   @BeforeEach
@@ -47,6 +53,7 @@ class AuthControllerTest {
     MockitoAnnotations.openMocks(this);
     controller = new AuthController(
         authLoginService,
+        authSessionService,
         googleSsoService,
         jwtService,
         profileService,
@@ -208,6 +215,7 @@ class AuthControllerTest {
   void loginThrowsForbiddenWhenPasswordAuthDisabled() {
     AuthController disabledController = new AuthController(
         authLoginService,
+        authSessionService,
         googleSsoService,
         jwtService,
         profileService,
@@ -287,5 +295,39 @@ class AuthControllerTest {
 
     assertEquals(200, resp.getStatusCodeValue());
     assertNull(resp.getBody().get("profile"));
+  }
+
+  @Test
+  void refreshReturnsOk() {
+    RefreshTokenRequest request = new RefreshTokenRequest("refresh-token");
+    LoginResponse response = new LoginResponse(
+        "new-access",
+        "new-refresh",
+        "Bearer",
+        3600L,
+        "supabase-user-id",
+        "USER",
+        "Session refreshed");
+    when(authSessionService.refresh("refresh-token")).thenReturn(response);
+
+    ResponseEntity<LoginResponse> result = controller.refresh(request);
+
+    assertEquals(200, result.getStatusCodeValue());
+    assertNotNull(result.getBody());
+    assertEquals("new-access", result.getBody().accessToken());
+    assertEquals("new-refresh", result.getBody().refreshToken());
+  }
+
+  @Test
+  void logoutReturnsOkWhenBearerTokenPresent() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Bearer access-token");
+
+    ResponseEntity<LogoutResponse> result = controller.logout(request);
+
+    assertEquals(200, result.getStatusCodeValue());
+    assertNotNull(result.getBody());
+    assertEquals("Logout successful", result.getBody().message());
+    verify(authSessionService).logout("access-token");
   }
 }
