@@ -129,6 +129,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       String sub = jwt.getSubject();
       String email = jwt.getClaimAsString("email");
       String role = jwt.getClaimAsString("role");
+      String displayName = extractDisplayName(jwt);
 
       if (!StringUtils.hasText(sub)) {
         throw new UnauthorizedException("SSO callback token missing subject");
@@ -138,7 +139,13 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       String refreshToken = asString(tokenResponse.get("refresh_token"));
 
       boolean linked = isExistingIdentity(sub, email);
-      UserProfile profile = userProfileService.upsertFromIdentity(sub, email, role);
+      UserProfile profile = userProfileService.upsertFromIdentity(
+          sub,
+          email,
+          role,
+          "GOOGLE",
+          sub,
+          displayName);
 
       return new SsoCallbackResponse(
           accessToken,
@@ -227,6 +234,32 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
 
   private String asString(Object value) {
     return value == null ? "" : String.valueOf(value);
+  }
+
+  @SuppressWarnings("unchecked")
+  private String extractDisplayName(Jwt jwt) {
+    String fullName = jwt.getClaimAsString("full_name");
+    if (StringUtils.hasText(fullName)) {
+      return fullName.trim();
+    }
+
+    String name = jwt.getClaimAsString("name");
+    if (StringUtils.hasText(name)) {
+      return name.trim();
+    }
+
+    Object userMetadata = jwt.getClaims().get("user_metadata");
+    if (userMetadata instanceof Map<?, ?> metadata) {
+      Object metadataName = metadata.get("full_name");
+      if (metadataName == null) {
+        metadataName = metadata.get("name");
+      }
+      if (metadataName != null && StringUtils.hasText(String.valueOf(metadataName))) {
+        return String.valueOf(metadataName).trim();
+      }
+    }
+
+    return "";
   }
 
   private record PkceFlowState(String codeVerifier, Instant expiresAt) {

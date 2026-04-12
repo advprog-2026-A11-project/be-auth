@@ -63,6 +63,16 @@ public class UserProfileService {
   }
 
   public UserProfile upsertFromIdentity(String supabaseUserId, String email, String incomingRole) {
+    return upsertFromIdentity(supabaseUserId, email, incomingRole, "PASSWORD", null, null);
+  }
+
+  public UserProfile upsertFromIdentity(
+      String supabaseUserId,
+      String email,
+      String incomingRole,
+      String authProvider,
+      String googleSub,
+      String displayName) {
     if (!StringUtils.hasText(supabaseUserId)) {
       throw new IllegalArgumentException("supabaseUserId is required");
     }
@@ -76,6 +86,7 @@ public class UserProfileService {
       UserProfile existing = bySub.get();
       existing.setEmail(normalizedEmail);
       existing.setRole(RoleMapper.canonicalize(existing.getRole()));
+      applyIdentityEnrichment(existing, authProvider, googleSub, displayName);
       return repository.save(existing);
     }
 
@@ -88,6 +99,7 @@ public class UserProfileService {
       }
       existing.setSupabaseUserId(supabaseUserId);
       existing.setRole(RoleMapper.canonicalize(existing.getRole()));
+      applyIdentityEnrichment(existing, authProvider, googleSub, displayName);
       return repository.save(existing);
     }
 
@@ -95,8 +107,10 @@ public class UserProfileService {
     created.setSupabaseUserId(supabaseUserId);
     created.setEmail(normalizedEmail);
     created.setUsername(generateUniqueUsername(normalizedEmail, supabaseUserId));
-    created.setDisplayName(extractDisplayName(normalizedEmail));
+    created.setDisplayName(resolveDisplayName(normalizedEmail, displayName));
     created.setRole(RoleMapper.canonicalize(incomingRole));
+    created.setAuthProvider(resolveAuthProvider(authProvider));
+    created.setGoogleSub(normalizeOptionalValue(googleSub));
     created.setActive(true);
     return repository.save(created);
   }
@@ -296,6 +310,38 @@ public class UserProfileService {
   private String extractDisplayName(String email) {
     int atIndex = email.indexOf("@");
     return atIndex > 0 ? email.substring(0, atIndex) : email;
+  }
+
+  private void applyIdentityEnrichment(
+      UserProfile user,
+      String authProvider,
+      String googleSub,
+      String displayName) {
+    user.setAuthProvider(resolveAuthProvider(authProvider));
+    if (StringUtils.hasText(googleSub)) {
+      user.setGoogleSub(googleSub.trim());
+    }
+    if (!StringUtils.hasText(user.getDisplayName()) && StringUtils.hasText(displayName)) {
+      user.setDisplayName(displayName.trim());
+    }
+  }
+
+  private String resolveDisplayName(String email, String displayName) {
+    if (StringUtils.hasText(displayName)) {
+      return displayName.trim();
+    }
+    return extractDisplayName(email);
+  }
+
+  private String resolveAuthProvider(String authProvider) {
+    if (!StringUtils.hasText(authProvider)) {
+      return "PASSWORD";
+    }
+    return authProvider.trim().toUpperCase();
+  }
+
+  private String normalizeOptionalValue(String value) {
+    return StringUtils.hasText(value) ? value.trim() : null;
   }
 
 }

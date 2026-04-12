@@ -133,9 +133,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
   private List<GrantedAuthority> buildAuthorities(String role) {
     List<GrantedAuthority> authorities = new ArrayList<>();
-    if (StringUtils.hasText(role)) {
-      authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-    }
+    authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
     return authorities;
   }
 
