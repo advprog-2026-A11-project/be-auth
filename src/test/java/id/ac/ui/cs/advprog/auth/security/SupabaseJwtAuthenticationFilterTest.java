@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.auth.security;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
@@ -241,7 +241,8 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   @Test
-  void doFilterInternalAuthenticatesWithoutAuthoritiesWhenRoleAndIdentityAreBlank() throws Exception {
+  void doFilterInternalAuthenticatesWithoutAuthoritiesWhenRoleAndIdentityAreBlank()
+      throws Exception {
     final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-blank-role");
     final MockHttpServletResponse response = new MockHttpServletResponse();
@@ -279,7 +280,8 @@ class SupabaseJwtAuthenticationFilterTest {
     user.setActive(true);
 
     when(supabaseJwtService.validateAccessToken("valid-blank-profile-role")).thenReturn(jwt);
-    when(userProfileService.findBySupabaseUserId("sub-role-fallback")).thenReturn(Optional.of(user));
+    when(userProfileService.findBySupabaseUserId("sub-role-fallback"))
+        .thenReturn(Optional.of(user));
 
     filter.doFilterInternal(request, response, chain);
 
