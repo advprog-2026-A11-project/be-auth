@@ -69,6 +69,15 @@ public class AuthSessionService {
     tokenRevocationService.revoke(accessToken, jwt.getExpiresAt());
   }
 
+  public void changePassword(
+      String accessToken,
+      String email,
+      String currentPassword,
+      String newPassword) {
+    supabaseAuthClient.loginWithPassword(email, currentPassword);
+    supabaseAuthClient.updatePassword(accessToken, newPassword);
+  }
+
   private String normalizeRole(String incomingRole) {
     if (!org.springframework.util.StringUtils.hasText(incomingRole)) {
       return "USER";
