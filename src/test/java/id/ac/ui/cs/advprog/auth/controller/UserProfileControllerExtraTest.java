@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
+import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
@@ -345,6 +346,52 @@ class UserProfileControllerExtraTest {
     assertEquals("Email updated", response.getBody().get("message"));
     assertEquals("new@example.com", response.getBody().get("email"));
     verify(authSessionService).changeEmail("access-email-123", "new@example.com");
+  }
+
+  @Test
+  void updateEmailDuplicateRejectsBeforeIdentityProviderChange() {
+    final UpdateEmailRequest request = new UpdateEmailRequest("taken@example.com");
+    final AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
+    final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(service.updateCurrentUserEmail("sub-123", "old@example.com", "taken@example.com"))
+        .thenThrow(new ConflictException("Email already taken"));
+
+    ConflictException ex = assertThrows(
+        ConflictException.class,
+        () -> controller.updateEmail(request, httpRequest));
+
+    assertEquals("Email already taken", ex.getMessage());
+    verify(authSessionService, never()).changeEmail(anyString(), anyString());
+  }
+
+  @Test
+  void updateEmailRollsBackLocalProfileWhenIdentityProviderUpdateFails() {
+    final UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
+    final AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
+    final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    UserProfile updated = new UserProfile();
+    updated.setSupabaseUserId("sub-123");
+    updated.setEmail("new@example.com");
+
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
+    when(service.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+        .thenReturn(updated);
+    doThrow(new IllegalStateException("Identity provider unavailable"))
+        .when(authSessionService)
+        .changeEmail("access-email-123", "new@example.com");
+
+    IllegalStateException ex = assertThrows(
+        IllegalStateException.class,
+        () -> controller.updateEmail(request, httpRequest));
+
+    assertEquals("Identity provider unavailable", ex.getMessage());
+    verify(service).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
+    verify(service).updateCurrentUserEmail("sub-123", "new@example.com", "old@example.com");
   }
 
   @Test
