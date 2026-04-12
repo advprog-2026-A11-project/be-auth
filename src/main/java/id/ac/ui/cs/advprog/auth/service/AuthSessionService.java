@@ -69,6 +69,10 @@ public class AuthSessionService {
     tokenRevocationService.revoke(accessToken, jwt.getExpiresAt());
   }
 
+  public void changeEmail(String accessToken, String newEmail) {
+    supabaseAuthClient.updateEmail(accessToken, newEmail);
+  }
+
   public void changePassword(
       String accessToken,
       String email,

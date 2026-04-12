@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
@@ -130,6 +132,44 @@ public class UserProfileController {
     response.put("username", updated.getUsername());
     response.put("displayName", updated.getDisplayName());
     response.put("email", updated.getEmail());
+    return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/me/email")
+  public ResponseEntity<Map<String, String>> updateEmail(
+      @Valid @RequestBody UpdateEmailRequest request,
+      HttpServletRequest httpRequest) {
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    authSessionService.changeEmail(extractBearerToken(httpRequest), request.email());
+    UserProfile updated = service.updateCurrentUserEmail(
+        principal.sub(),
+        principal.email(),
+        request.email());
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Email updated");
+    response.put("userId", updated.getSupabaseUserId());
+    response.put("email", updated.getEmail());
+    return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/me/phone")
+  public ResponseEntity<Map<String, String>> updatePhone(
+      @Valid @RequestBody UpdatePhoneRequest request) {
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    UserProfile updated = service.updateCurrentUserPhone(
+        principal.sub(),
+        principal.email(),
+        request.phone());
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Phone updated");
+    response.put("userId", updated.getSupabaseUserId());
+    response.put("phone", updated.getPhone());
     return ResponseEntity.ok(response);
   }
 

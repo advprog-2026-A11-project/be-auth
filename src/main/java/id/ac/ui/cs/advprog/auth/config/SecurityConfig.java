@@ -61,6 +61,8 @@ public class SecurityConfig {
             .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
             .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .requestMatchers(HttpMethod.PATCH, "/api/users/me").authenticated()
+            .requestMatchers(HttpMethod.PATCH, "/api/users/me/email").authenticated()
+            .requestMatchers(HttpMethod.PATCH, "/api/users/me/phone").authenticated()
             .requestMatchers(HttpMethod.DELETE, "/api/users/me").authenticated()
             .requestMatchers("/api/users/**").hasRole("ADMIN")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")

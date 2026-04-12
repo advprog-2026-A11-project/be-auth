@@ -172,6 +172,32 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   }
 
   @Override
+  public void updateEmail(String accessToken, String newEmail) {
+    ensureConfig();
+
+    String userUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/user";
+    Map<String, String> requestPayload = Map.of("email", newEmail);
+
+    try {
+      restClient.put()
+          .uri(userUrl)
+          .header("apikey", supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+          .contentType(MediaType.APPLICATION_JSON)
+          .accept(MediaType.APPLICATION_JSON)
+          .body(requestPayload)
+          .retrieve()
+          .toBodilessEntity();
+    } catch (HttpStatusCodeException ex) {
+      if (ex.getStatusCode().is4xxClientError()) {
+        String detail = extractSupabaseErrorMessage(ex.getResponseBodyAsString());
+        throw new UnauthorizedException(detail);
+      }
+      throw new IllegalStateException("Identity provider error while updating email", ex);
+    }
+  }
+
+  @Override
   public void updatePassword(String accessToken, String newPassword) {
     ensureConfig();
 
