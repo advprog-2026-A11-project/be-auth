@@ -72,7 +72,7 @@ class DeleteAccountIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"displayName\":\"Should Fail\"}"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.message").value("Account is inactive"));
+        .andExpect(jsonPath("$.message").value("Session has been revoked"));
   }
 
   @Test

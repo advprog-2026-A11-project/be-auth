@@ -10,7 +10,9 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,9 @@ class UserProfileControllerExtraTest {
 
   @Mock
   private CurrentUserProvider currentUserProvider;
+
+  @Mock
+  private AuthSessionService authSessionService;
 
   @InjectMocks
   private UserProfileController controller;
@@ -228,16 +233,19 @@ class UserProfileControllerExtraTest {
     final DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER");
+    final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     UserProfile deactivated = new UserProfile();
     deactivated.setSupabaseUserId("sub-789");
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer token-delete-789");
     when(service.deactivateCurrentUser("sub-789", "user2@example.com")).thenReturn(deactivated);
 
-    var response = controller.deleteMe(request);
+    var response = controller.deleteMe(request, httpRequest);
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Account deleted", response.getBody().get("message"));
     assertEquals("sub-789", response.getBody().get("userId"));
+    verify(authSessionService).logout("token-delete-789");
   }
 
   @Test
