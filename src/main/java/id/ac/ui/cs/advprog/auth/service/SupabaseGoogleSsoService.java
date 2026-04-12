@@ -35,6 +35,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
   private final long stateTtlSeconds;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
+  private final AuthSessionService authSessionService;
   private final RestClient restClient;
   private final SecureRandom secureRandom = new SecureRandom();
   private final ConcurrentMap<String, PkceFlowState> pkceStates = new ConcurrentHashMap<>();
@@ -45,13 +46,15 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       @Value("${auth.sso.google.redirect-url:}") String redirectUrl,
       @Value("${auth.sso.state-ttl-seconds:600}") long stateTtlSeconds,
       SupabaseJwtService supabaseJwtService,
-      UserProfileService userProfileService) {
+      UserProfileService userProfileService,
+      AuthSessionService authSessionService) {
     this.supabaseUrl = supabaseUrl;
     this.supabaseApiKey = supabaseApiKey;
     this.redirectUrl = redirectUrl;
     this.stateTtlSeconds = stateTtlSeconds;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
+    this.authSessionService = authSessionService;
     this.restClient = RestClient.builder().build();
   }
 
@@ -132,6 +135,8 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
         throw new UnauthorizedException("SSO callback token missing subject");
       }
 
+      ensureIdentityIsActive(accessToken, sub, email);
+
       boolean linked = isExistingIdentity(sub, email);
       UserProfile profile = userProfileService.upsertFromIdentity(sub, email, role);
 
@@ -155,6 +160,18 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       return true;
     }
     return StringUtils.hasText(email) && userProfileService.findByEmail(email).isPresent();
+  }
+
+  private void ensureIdentityIsActive(String accessToken, String sub, String email) {
+    Optional<UserProfile> existing = userProfileService.findBySupabaseUserId(sub);
+    if (existing.isEmpty() && StringUtils.hasText(email)) {
+      existing = userProfileService.findByEmail(email);
+    }
+
+    if (existing.isPresent() && !existing.get().isActive()) {
+      authSessionService.logout(accessToken);
+      throw new UnauthorizedException("Account is inactive");
+    }
   }
 
   private void cleanupExpiredStates() {
