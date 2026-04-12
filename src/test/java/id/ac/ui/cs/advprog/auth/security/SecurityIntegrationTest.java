@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -118,6 +119,34 @@ class SecurityIntegrationTest {
   }
 
   @Test
+  void getUserByIdWithUserRoleReturnsForbidden() throws Exception {
+    // Arrange
+    when(supabaseJwtService.validateAccessToken("user-token"))
+        .thenReturn(jwt("user-token", "supabase-user-2", "user2@example.com"));
+    when(userProfileService.findBySupabaseUserId("supabase-user-2"))
+        .thenReturn(Optional.of(userProfile("supabase-user-2", "user2@example.com", "USER")));
+
+    // Act + Assert
+    mockMvc.perform(get("/api/users/1")
+            .header("Authorization", "Bearer user-token"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void deleteUserByIdWithUserRoleReturnsForbidden() throws Exception {
+    // Arrange
+    when(supabaseJwtService.validateAccessToken("user-token"))
+        .thenReturn(jwt("user-token", "supabase-user-2", "user2@example.com"));
+    when(userProfileService.findBySupabaseUserId("supabase-user-2"))
+        .thenReturn(Optional.of(userProfile("supabase-user-2", "user2@example.com", "USER")));
+
+    // Act + Assert
+    mockMvc.perform(delete("/api/users/1")
+            .header("Authorization", "Bearer user-token"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void usersCollectionWithAdminRoleReturnsOk() throws Exception {
     when(supabaseJwtService.validateAccessToken("admin-token"))
         .thenReturn(jwt("admin-token", "supabase-admin-1", "admin@example.com"));
@@ -130,6 +159,24 @@ class SecurityIntegrationTest {
             .header("Authorization", "Bearer admin-token"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].supabaseUserId").value("supabase-user-3"));
+  }
+
+  @Test
+  void getUserByIdWithAdminRoleReturnsOk() throws Exception {
+    // Arrange
+    when(supabaseJwtService.validateAccessToken("admin-token"))
+        .thenReturn(jwt("admin-token", "supabase-admin-1", "admin@example.com"));
+    when(userProfileService.findBySupabaseUserId("supabase-admin-1"))
+        .thenReturn(Optional.of(userProfile("supabase-admin-1", "admin@example.com", "ADMIN")));
+    when(userProfileService.findById(7L))
+        .thenReturn(Optional.of(userProfile("supabase-user-7", "user7@example.com", "USER")));
+
+    // Act + Assert
+    mockMvc.perform(get("/api/users/7")
+            .header("Authorization", "Bearer admin-token"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.supabaseUserId").value("supabase-user-7"))
+        .andExpect(jsonPath("$.email").value("user7@example.com"));
   }
 
   private Jwt jwt(String tokenValue, String sub, String email) {
