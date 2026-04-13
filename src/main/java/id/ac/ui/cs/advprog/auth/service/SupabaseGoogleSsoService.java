@@ -68,21 +68,22 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     ensureConfig();
     cleanupExpiredStates();
 
-    String state = UUID.randomUUID().toString();
+    String flowId = UUID.randomUUID().toString();
     String codeVerifier = generateCodeVerifier();
     String codeChallenge = toS256CodeChallenge(codeVerifier);
     Instant expiresAt = Instant.now().plusSeconds(stateTtlSeconds);
-    pkceStates.put(state, new PkceFlowState(codeVerifier, expiresAt));
     String targetRedirectUrl = resolveRedirectUrl(redirectTo);
+    String callbackRedirectUrl = withAppState(targetRedirectUrl, flowId);
+    pkceStates.put(flowId, new PkceFlowState(codeVerifier, expiresAt, callbackRedirectUrl));
 
     String authorizeUrl = UriComponentsBuilder
         .fromHttpUrl(trimTrailingSlash(supabaseUrl) + "/auth/v1/authorize")
         .queryParam("provider", "google")
-        .queryParam("redirect_to", targetRedirectUrl)
+        .queryParam("redirect_to", callbackRedirectUrl)
         .queryParam("code_challenge", codeChallenge)
         .queryParam("code_challenge_method", "s256")
-        .queryParam("state", state)
-        .build(true)
+        .build(false)
+        .encode()
         .toUriString();
 
     return new SsoUrlResponse("google", authorizeUrl, "Google SSO URL generated");
@@ -103,7 +104,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     Map<String, String> payload = Map.of(
         "auth_code", request.code(),
         "code_verifier", flowState.codeVerifier(),
-        "redirect_to", redirectUrl);
+        "redirect_to", flowState.redirectUrl());
 
     try {
       Map<String, Object> tokenResponse = restClient.post()
@@ -225,6 +226,13 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     throw new IllegalArgumentException("redirectTo must start with http:// or https://");
   }
 
+  private String withAppState(String baseRedirectUrl, String flowId) {
+    return UriComponentsBuilder.fromUriString(baseRedirectUrl)
+        .replaceQueryParam("app_state", flowId)
+        .build(true)
+        .toUriString();
+  }
+
   private String trimTrailingSlash(String value) {
     if (!StringUtils.hasText(value)) {
       return value;
@@ -262,6 +270,6 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     return "";
   }
 
-  private record PkceFlowState(String codeVerifier, Instant expiresAt) {
+  private record PkceFlowState(String codeVerifier, Instant expiresAt, String redirectUrl) {
   }
 }

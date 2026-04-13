@@ -11,9 +11,11 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -31,6 +33,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 class SupabaseGoogleSsoServiceTest {
+
+  private static final String CALLBACK_URL = "http://localhost:3000/users/account";
 
   @Mock
   private SupabaseJwtService supabaseJwtService;
@@ -55,7 +59,7 @@ class SupabaseGoogleSsoServiceTest {
     service = new SupabaseGoogleSsoService(
         baseUrl,
         "anon-key",
-        "http://localhost:3000/users/account",
+        CALLBACK_URL,
         600,
         supabaseJwtService,
         userProfileService,
@@ -67,6 +71,15 @@ class SupabaseGoogleSsoServiceTest {
   @AfterEach
   void tearDown() {
     server.stop(0);
+  }
+
+  @Test
+  void createSsoUrlDelegatesFlowStateThroughRedirectTarget() {
+    SsoUrlResponse response = service.createSsoUrl(CALLBACK_URL);
+
+    assertEquals(true, response.authorizationUrl().contains("redirect_to="));
+    assertEquals(false, response.authorizationUrl().contains("&state="));
+    assertEquals(false, response.authorizationUrl().contains("?state="));
   }
 
   @Test
@@ -134,6 +147,42 @@ class SupabaseGoogleSsoServiceTest {
     assertEquals(false, response.linked());
   }
 
+  @Test
+  void handleCallbackUsesStoredRedirectUrlForPkceExchange() {
+    TokenHandler.lastRequestBody = "";
+
+    Jwt jwt = new Jwt(
+        "access-token",
+        Instant.now(),
+        Instant.now().plusSeconds(3600),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", "redirect-sub-123",
+            "email", "redirect@example.com",
+            "role", "authenticated",
+            "aud", List.of("authenticated"),
+            "iss", "https://supabase.test/auth/v1"));
+    when(supabaseJwtService.validateAccessToken("access-token")).thenReturn(jwt);
+    when(userProfileService.findBySupabaseUserId("redirect-sub-123")).thenReturn(Optional.empty());
+    when(userProfileService.findByEmail("redirect@example.com")).thenReturn(Optional.empty());
+
+    UserProfile profile = new UserProfile();
+    profile.setSupabaseUserId("redirect-sub-123");
+    when(userProfileService.upsertFromIdentity(
+        "redirect-sub-123",
+        "redirect@example.com",
+        "authenticated",
+        "GOOGLE",
+        "redirect-sub-123",
+        "")).thenReturn(profile);
+
+    service.handleCallback(new SsoCallbackRequest("oauth-code", "opaque-state"));
+
+    assertEquals(true, TokenHandler.lastRequestBody.contains("redirect_to"));
+    assertEquals(true, TokenHandler.lastRequestBody.contains("app_state"));
+    assertEquals(true, TokenHandler.lastRequestBody.contains("opaque-state"));
+  }
+
   @SuppressWarnings("unchecked")
   private void seedPkceState(String state) throws Exception {
     Field pkceStatesField = SupabaseGoogleSsoService.class.getDeclaredField("pkceStates");
@@ -143,15 +192,23 @@ class SupabaseGoogleSsoServiceTest {
 
     Class<?> stateClass = Class.forName(
         "id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService$PkceFlowState");
-    var constructor = stateClass.getDeclaredConstructor(String.class, Instant.class);
+    var constructor = stateClass.getDeclaredConstructor(String.class, Instant.class, String.class);
     constructor.setAccessible(true);
-    Object flowState = constructor.newInstance("verifier", Instant.now().plusSeconds(300));
+    Object flowState = constructor.newInstance(
+        "verifier",
+        Instant.now().plusSeconds(300),
+        CALLBACK_URL + "?app_state=" + state);
     pkceStates.put(state, flowState);
   }
 
   private static class TokenHandler implements HttpHandler {
+    private static String lastRequestBody = "";
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+      try (InputStream requestBody = exchange.getRequestBody()) {
+        lastRequestBody = new String(requestBody.readAllBytes(), StandardCharsets.UTF_8);
+      }
       byte[] response =
           """
           {
