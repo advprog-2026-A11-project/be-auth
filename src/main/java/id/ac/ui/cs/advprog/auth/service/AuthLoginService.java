@@ -40,7 +40,7 @@ public class AuthLoginService {
           result.refreshToken(),
           "Bearer",
           result.expiresIn(),
-          profile.getSupabaseUserId(),
+          profile.getId().toString(),
           RoleMapper.canonicalize(profile.getRole()),
           "Login successful");
     } catch (DataAccessException ex) {
@@ -49,7 +49,7 @@ public class AuthLoginService {
           result.refreshToken(),
           "Bearer",
           result.expiresIn(),
-          result.supabaseUserId(),
+          null,
           RoleMapper.canonicalize(result.role()),
           "Login successful. Profile sync pending (database unavailable)");
     }
@@ -89,7 +89,7 @@ public class AuthLoginService {
           result.refreshToken(),
           "Bearer",
           result.expiresIn(),
-          profile.getSupabaseUserId(),
+          profile.getId().toString(),
           RoleMapper.canonicalize(profile.getRole()),
           message);
     } catch (DataAccessException ex) {
@@ -102,7 +102,7 @@ public class AuthLoginService {
           result.refreshToken(),
           "Bearer",
           result.expiresIn(),
-          result.supabaseUserId(),
+          null,
           RoleMapper.canonicalize(result.role()),
           fallbackMessage);
     }

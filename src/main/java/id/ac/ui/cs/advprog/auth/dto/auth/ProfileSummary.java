@@ -4,7 +4,6 @@ import java.util.UUID;
 
 public record ProfileSummary(
     UUID id,
-    String supabaseUserId,
     String username,
     String email,
     String displayName,

@@ -130,7 +130,7 @@ public class UserProfileController {
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Profile updated");
-    response.put("userId", updated.getSupabaseUserId());
+    response.put("userId", updated.getId().toString());
     response.put("username", updated.getUsername());
     response.put("displayName", updated.getDisplayName());
     response.put("email", updated.getEmail());
@@ -162,7 +162,7 @@ public class UserProfileController {
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Email updated");
-    response.put("userId", updated.getSupabaseUserId());
+    response.put("userId", updated.getId().toString());
     response.put("email", updated.getEmail());
     return ResponseEntity.ok(response);
   }
@@ -180,7 +180,7 @@ public class UserProfileController {
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Phone updated");
-    response.put("userId", updated.getSupabaseUserId());
+    response.put("userId", updated.getId().toString());
     response.put("phone", updated.getPhone());
     return ResponseEntity.ok(response);
   }
@@ -201,7 +201,7 @@ public class UserProfileController {
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Account deleted");
-    response.put("userId", deactivated.getSupabaseUserId());
+    response.put("userId", deactivated.getId().toString());
     return ResponseEntity.ok(response);
   }
 

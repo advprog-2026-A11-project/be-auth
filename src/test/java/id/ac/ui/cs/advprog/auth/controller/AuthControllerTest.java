@@ -197,7 +197,7 @@ class AuthControllerTest {
         "refresh",
         "Bearer",
         3600L,
-        "supabase-user-id",
+        "535251d5-a941-49b0-9a04-5b26dc55ec61",
         "USER",
         "Registration successful");
     when(authLoginService.register(
@@ -210,7 +210,7 @@ class AuthControllerTest {
 
     assertEquals(201, result.getStatusCodeValue());
     assertNotNull(result.getBody());
-    assertEquals("supabase-user-id", result.getBody().userId());
+    assertEquals("535251d5-a941-49b0-9a04-5b26dc55ec61", result.getBody().userId());
   }
 
   @Test
@@ -322,7 +322,7 @@ class AuthControllerTest {
         "new-refresh",
         "Bearer",
         3600L,
-        "supabase-user-id",
+        "535251d5-a941-49b0-9a04-5b26dc55ec61",
         "USER",
         "Session refreshed");
     when(authSessionService.refresh("refresh-token")).thenReturn(response);

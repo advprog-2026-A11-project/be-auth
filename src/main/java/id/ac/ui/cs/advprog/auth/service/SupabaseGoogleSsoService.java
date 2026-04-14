@@ -151,7 +151,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       return new SsoCallbackResponse(
           accessToken,
           refreshToken,
-          profile.getSupabaseUserId(),
+          profile.getId().toString(),
           linked,
           "Google SSO login successful");
     } catch (HttpStatusCodeException ex) {

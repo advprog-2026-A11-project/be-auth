@@ -108,8 +108,10 @@ class UserProfileControllerExtraTest {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", "New User");
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setUsername("new-user");
     updated.setDisplayName("New User");
@@ -122,7 +124,7 @@ class UserProfileControllerExtraTest {
     var response = controller.updateMe(request);
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Profile updated", response.getBody().get("message"));
-    assertEquals("sub-123", response.getBody().get("userId"));
+    assertEquals(profileId.toString(), response.getBody().get("userId"));
   }
 
   @Test
@@ -130,8 +132,10 @@ class UserProfileControllerExtraTest {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", " ");
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setUsername("new-user");
     updated.setDisplayName("Current Name");
@@ -151,8 +155,10 @@ class UserProfileControllerExtraTest {
     final UpdateProfileRequest request = new UpdateProfileRequest(" ", "New User");
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setUsername("current-user");
     updated.setDisplayName("New User");
@@ -172,8 +178,10 @@ class UserProfileControllerExtraTest {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", null);
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setUsername("new-user");
     updated.setDisplayName("Current Name");
@@ -193,8 +201,10 @@ class UserProfileControllerExtraTest {
     final UpdateProfileRequest request = new UpdateProfileRequest(null, "New User");
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setUsername("current-user");
     updated.setDisplayName("New User");
@@ -241,7 +251,9 @@ class UserProfileControllerExtraTest {
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    final UUID profileId = UUID.randomUUID();
     UserProfile deactivated = new UserProfile();
+    deactivated.setId(profileId);
     deactivated.setSupabaseUserId("sub-789");
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
@@ -251,7 +263,7 @@ class UserProfileControllerExtraTest {
     var response = controller.deleteMe(request, httpRequest);
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Account deleted", response.getBody().get("message"));
-    assertEquals("sub-789", response.getBody().get("userId"));
+    assertEquals(profileId.toString(), response.getBody().get("userId"));
     verify(authSessionService).logout("token-delete-789");
   }
 
@@ -334,7 +346,9 @@ class UserProfileControllerExtraTest {
     AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
 
@@ -381,7 +395,9 @@ class UserProfileControllerExtraTest {
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
 
@@ -407,7 +423,9 @@ class UserProfileControllerExtraTest {
     final UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
     AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+    final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
+    updated.setId(profileId);
     updated.setSupabaseUserId("sub-123");
     updated.setPhone("+628123456789");
 

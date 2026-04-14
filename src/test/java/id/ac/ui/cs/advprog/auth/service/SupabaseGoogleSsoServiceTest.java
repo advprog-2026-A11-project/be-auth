@@ -131,6 +131,7 @@ class SupabaseGoogleSsoServiceTest {
     when(userProfileService.findByEmail("google@example.com")).thenReturn(Optional.empty());
 
     UserProfile profile = new UserProfile();
+    profile.setId(java.util.UUID.randomUUID());
     profile.setSupabaseUserId("google-sub-123");
     when(userProfileService.upsertFromIdentity(
         "google-sub-123",
@@ -143,7 +144,7 @@ class SupabaseGoogleSsoServiceTest {
     SsoCallbackResponse response =
         service.handleCallback(new SsoCallbackRequest("oauth-code", "opaque-state"));
 
-    assertEquals("google-sub-123", response.userId());
+    assertEquals(profile.getId().toString(), response.userId());
     assertEquals(false, response.linked());
   }
 
@@ -167,6 +168,7 @@ class SupabaseGoogleSsoServiceTest {
     when(userProfileService.findByEmail("redirect@example.com")).thenReturn(Optional.empty());
 
     UserProfile profile = new UserProfile();
+    profile.setId(java.util.UUID.randomUUID());
     profile.setSupabaseUserId("redirect-sub-123");
     when(userProfileService.upsertFromIdentity(
         "redirect-sub-123",

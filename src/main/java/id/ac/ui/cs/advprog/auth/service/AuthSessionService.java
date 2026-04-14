@@ -39,7 +39,7 @@ public class AuthSessionService {
           result.refreshToken(),
           "Bearer",
           result.expiresIn(),
-          profile.getSupabaseUserId(),
+          profile.getId().toString(),
           RoleMapper.canonicalize(profile.getRole()),
           "Session refreshed");
     } catch (DataAccessException ex) {
@@ -48,7 +48,7 @@ public class AuthSessionService {
           result.refreshToken(),
           "Bearer",
           result.expiresIn(),
-          result.supabaseUserId(),
+          null,
           RoleMapper.canonicalize(result.role()),
           "Session refreshed. Profile sync pending (database unavailable)");
     }

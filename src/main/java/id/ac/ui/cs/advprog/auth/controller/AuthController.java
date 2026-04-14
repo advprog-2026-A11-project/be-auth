@@ -97,7 +97,6 @@ public class AuthController {
         UserProfile user = profile.get();
         Map<String, Object> profilePayload = new HashMap<>();
         profilePayload.put("id", user.getId());
-        profilePayload.put("supabaseUserId", user.getSupabaseUserId());
         profilePayload.put("username", user.getUsername());
         profilePayload.put(EMAIL_CLAIM, user.getEmail());
         profilePayload.put("phone", user.getPhone());

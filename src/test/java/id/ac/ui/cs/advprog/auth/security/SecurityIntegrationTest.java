@@ -89,8 +89,7 @@ class SecurityIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.sub").value("supabase-user-1"))
         .andExpect(jsonPath("$.role").value("STUDENT"))
-        .andExpect(jsonPath("$.profile.role").value("STUDENT"))
-        .andExpect(jsonPath("$.profile.supabaseUserId").value("supabase-user-1"));
+        .andExpect(jsonPath("$.profile.role").value("STUDENT"));
   }
 
   @Test
@@ -161,7 +160,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(get("/api/users")
             .header("Authorization", "Bearer admin-token"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].supabaseUserId").value("supabase-user-3"));
+        .andExpect(jsonPath("$[0].email").value("user3@example.com"));
   }
 
   @Test
@@ -179,7 +178,7 @@ class SecurityIntegrationTest {
     mockMvc.perform(get("/api/users/" + id)
             .header("Authorization", "Bearer admin-token"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.supabaseUserId").value("supabase-user-7"))
+        .andExpect(jsonPath("$.id").exists())
         .andExpect(jsonPath("$.email").value("user7@example.com"));
   }
 
@@ -200,6 +199,7 @@ class SecurityIntegrationTest {
 
   private UserProfile userProfile(String supabaseUserId, String email, String role) {
     UserProfile user = new UserProfile();
+    user.setId(UUID.randomUUID());
     user.setSupabaseUserId(supabaseUserId);
     user.setEmail(email);
     user.setUsername(email);

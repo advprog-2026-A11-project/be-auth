@@ -71,7 +71,6 @@ class UserProfileControllerTest {
     assertNotNull(body);
     assertEquals("alice", body.username());
     assertEquals("alice@example.com", body.email());
-    assertEquals("sub-1", body.supabaseUserId());
     assertEquals("Alice", body.displayName());
     assertEquals("ADMIN", body.role());
     assertFalse(body.isActive());
