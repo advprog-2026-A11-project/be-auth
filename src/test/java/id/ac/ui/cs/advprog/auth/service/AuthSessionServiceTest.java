@@ -92,7 +92,7 @@ class AuthSessionServiceTest {
 
   @Test
   void refreshReturnsSyncedProfileWhenDatabaseIsAvailable() {
-    SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+    final SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
         "new-access",
         "new-refresh",
         3600L,

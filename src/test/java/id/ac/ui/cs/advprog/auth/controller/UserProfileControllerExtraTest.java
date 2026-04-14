@@ -343,7 +343,7 @@ class UserProfileControllerExtraTest {
   @Test
   void updateEmailSuccess() {
     final UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
-    AuthenticatedUserPrincipal principal =
+    final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     final UUID profileId = UUID.randomUUID();
@@ -421,7 +421,7 @@ class UserProfileControllerExtraTest {
   @Test
   void updatePhoneSuccess() {
     final UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
-    AuthenticatedUserPrincipal principal =
+    final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
     final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
