@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.auth.security;
 
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import java.time.Instant;
 import java.util.List;
@@ -35,6 +37,9 @@ class DeleteAccountIntegrationTest {
   @MockBean
   private SupabaseJwtService supabaseJwtService;
 
+  @MockBean
+  private SupabaseAuthClient supabaseAuthClient;
+
   @BeforeEach
   void setUp() {
     userProfileRepository.deleteAll();
@@ -53,6 +58,7 @@ class DeleteAccountIntegrationTest {
 
     when(supabaseJwtService.validateAccessToken("token-delete-1"))
         .thenReturn(jwt("token-delete-1", "sub-delete-1", "delete1@example.com"));
+    doNothing().when(supabaseAuthClient).logout("token-delete-1");
 
     mockMvc.perform(delete("/api/users/me")
             .header("Authorization", "Bearer token-delete-1")
@@ -72,7 +78,7 @@ class DeleteAccountIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"displayName\":\"Should Fail\"}"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.message").value("Account is inactive"));
+        .andExpect(jsonPath("$.message").value("Session has been revoked"));
   }
 
   @Test

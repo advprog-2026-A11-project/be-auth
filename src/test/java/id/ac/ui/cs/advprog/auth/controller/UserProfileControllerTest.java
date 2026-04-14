@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,9 @@ class UserProfileControllerTest {
 
   @Mock
   private CurrentUserProvider currentUserProvider;
+
+  @Mock
+  private AuthSessionService authSessionService;
 
   @InjectMocks
   private UserProfileController controller;
@@ -129,6 +133,6 @@ class UserProfileControllerTest {
   void deleteReturnsNoContent() {
     ResponseEntity<Void> resp = controller.delete(2L);
     assertEquals(HttpStatus.NO_CONTENT, resp.getStatusCode());
-    verify(service).deleteById(2L);
+    verify(service).deactivateById(2L);
   }
 }

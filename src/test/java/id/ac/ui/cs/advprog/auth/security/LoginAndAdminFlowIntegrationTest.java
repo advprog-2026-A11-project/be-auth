@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import java.time.Instant;
@@ -40,6 +42,9 @@ class LoginAndAdminFlowIntegrationTest {
 
   @MockBean
   private UserProfileService userProfileService;
+
+  @MockBean
+  private SupabaseAuthClient supabaseAuthClient;
 
   @Test
   void loginUserSuccessReturnsOk() throws Exception {
@@ -110,6 +115,69 @@ class LoginAndAdminFlowIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.userId").value("supabase-user-2"))
         .andExpect(jsonPath("$.role").value("USER"));
+  }
+
+  @Test
+  void refreshEndpointIsPublicAndReturnsOk() throws Exception {
+    LoginResponse refreshResponse = new LoginResponse(
+        "access-refresh",
+        "refresh-next",
+        "Bearer",
+        3600L,
+        "supabase-user-3",
+        "USER",
+        "Session refreshed");
+
+    when(supabaseAuthClient.refreshSession(eq("refresh-valid")))
+        .thenReturn(new SupabaseAuthClient.LoginResult(
+            refreshResponse.accessToken(),
+            refreshResponse.refreshToken(),
+            refreshResponse.expiresIn(),
+            refreshResponse.userId(),
+            "refresh@example.com",
+            refreshResponse.role()));
+    UserProfile refreshedUser = new UserProfile();
+    refreshedUser.setSupabaseUserId("supabase-user-3");
+    refreshedUser.setEmail("refresh@example.com");
+    refreshedUser.setRole("USER");
+    refreshedUser.setActive(true);
+    when(userProfileService.upsertFromIdentity(
+        "supabase-user-3",
+        "refresh@example.com",
+        "USER")).thenReturn(refreshedUser);
+
+    mockMvc.perform(post("/api/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"refresh-valid\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").value("access-refresh"))
+        .andExpect(jsonPath("$.refreshToken").value("refresh-next"))
+        .andExpect(jsonPath("$.message").value("Session refreshed"));
+  }
+
+  @Test
+  void logoutEndpointRevokesCurrentToken() throws Exception {
+    Jwt jwt = validJwt("token-logout", "supabase-user-4", "logout@example.com");
+    when(supabaseJwtService.validateAccessToken("token-logout")).thenReturn(jwt);
+
+    UserProfile user = new UserProfile();
+    user.setSupabaseUserId("supabase-user-4");
+    user.setRole("USER");
+    user.setEmail("logout@example.com");
+    user.setActive(true);
+    when(userProfileService.findBySupabaseUserId("supabase-user-4")).thenReturn(Optional.of(user));
+    when(userProfileService.findByEmail("logout@example.com")).thenReturn(Optional.of(user));
+    doNothing().when(supabaseAuthClient).logout("token-logout");
+
+    mockMvc.perform(post("/api/auth/logout")
+            .header("Authorization", "Bearer token-logout"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Logout successful"));
+
+    mockMvc.perform(get("/api/auth/me")
+            .header("Authorization", "Bearer token-logout"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.message").value("Session has been revoked"));
   }
 
   @Test

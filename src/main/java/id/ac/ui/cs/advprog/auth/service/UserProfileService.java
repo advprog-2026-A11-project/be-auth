@@ -175,8 +175,15 @@ public class UserProfileService {
     });
   }
 
+  public UserProfile deactivateById(Long id) {
+    return repository.findById(id).map(existing -> {
+      existing.setActive(false);
+      return repository.save(existing);
+    }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+  }
+
   public void deleteById(Long id) {
-    repository.deleteById(id);
+    deactivateById(id);
   }
 
   private String generateUniqueUsername(String email, String supabaseUserId) {

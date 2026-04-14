@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.FilterChain;
 import java.time.Instant;
@@ -37,6 +38,9 @@ class SupabaseJwtAuthenticationFilterTest {
   @Mock
   private UserProfileService userProfileService;
 
+  @Mock
+  private TokenRevocationService tokenRevocationService;
+
   private SupabaseJwtAuthenticationFilter filter;
 
   @BeforeEach
@@ -44,6 +48,7 @@ class SupabaseJwtAuthenticationFilterTest {
     MockitoAnnotations.openMocks(this);
     filter = new SupabaseJwtAuthenticationFilter(
         supabaseJwtService,
+        tokenRevocationService,
         userProfileService,
         new ObjectMapper());
     SecurityContextHolder.clearContext();
@@ -61,6 +66,7 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletRequest register = new MockHttpServletRequest(
         "POST",
         "/api/auth/register");
+    final MockHttpServletRequest refresh = new MockHttpServletRequest("POST", "/api/auth/refresh");
     final MockHttpServletRequest ssoUrl =
         new MockHttpServletRequest("GET", "/api/auth/sso/google/url");
     final MockHttpServletRequest ssoCallback = new MockHttpServletRequest(
@@ -71,6 +77,7 @@ class SupabaseJwtAuthenticationFilterTest {
     assertTrue(filter.shouldNotFilter(nonApi));
     assertTrue(filter.shouldNotFilter(login));
     assertTrue(filter.shouldNotFilter(register));
+    assertTrue(filter.shouldNotFilter(refresh));
     assertTrue(filter.shouldNotFilter(ssoUrl));
     assertTrue(filter.shouldNotFilter(ssoCallback));
     assertEquals(false, filter.shouldNotFilter(protectedApi));
@@ -80,6 +87,7 @@ class SupabaseJwtAuthenticationFilterTest {
   void shouldNotFilterRejectsUnexpectedMethodsForPublicAuthEndpoints() {
     final MockHttpServletRequest login = new MockHttpServletRequest("GET", "/api/auth/login");
     final MockHttpServletRequest register = new MockHttpServletRequest("GET", "/api/auth/register");
+    final MockHttpServletRequest refresh = new MockHttpServletRequest("GET", "/api/auth/refresh");
     final MockHttpServletRequest ssoUrl =
         new MockHttpServletRequest("POST", "/api/auth/sso/google/url");
     final MockHttpServletRequest ssoCallback =
@@ -87,6 +95,7 @@ class SupabaseJwtAuthenticationFilterTest {
 
     assertFalse(filter.shouldNotFilter(login));
     assertFalse(filter.shouldNotFilter(register));
+    assertFalse(filter.shouldNotFilter(refresh));
     assertFalse(filter.shouldNotFilter(ssoUrl));
     assertFalse(filter.shouldNotFilter(ssoCallback));
   }
@@ -145,6 +154,22 @@ class SupabaseJwtAuthenticationFilterTest {
     assertEquals(401, response.getStatus());
     assertTrue(response.getContentAsString().contains("bad token"));
     verify(chain, never()).doFilter(request, response);
+  }
+
+  @Test
+  void doFilterInternalRejectsRevokedToken() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    request.addHeader("Authorization", "Bearer revoked-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+    when(tokenRevocationService.isRevoked("revoked-token")).thenReturn(true);
+
+    filter.doFilterInternal(request, response, chain);
+
+    assertEquals(401, response.getStatus());
+    assertTrue(response.getContentAsString().contains("Session has been revoked"));
+    verify(chain, never()).doFilter(request, response);
+    verify(supabaseJwtService, never()).validateAccessToken(anyString());
   }
 
   @Test

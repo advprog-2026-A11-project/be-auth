@@ -10,7 +10,9 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,9 @@ class UserProfileControllerExtraTest {
 
   @Mock
   private CurrentUserProvider currentUserProvider;
+
+  @Mock
+  private AuthSessionService authSessionService;
 
   @InjectMocks
   private UserProfileController controller;
@@ -228,33 +233,91 @@ class UserProfileControllerExtraTest {
     final DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     final AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER");
+    final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     UserProfile deactivated = new UserProfile();
     deactivated.setSupabaseUserId("sub-789");
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer token-delete-789");
     when(service.deactivateCurrentUser("sub-789", "user2@example.com")).thenReturn(deactivated);
 
-    var response = controller.deleteMe(request);
+    var response = controller.deleteMe(request, httpRequest);
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Account deleted", response.getBody().get("message"));
     assertEquals("sub-789", response.getBody().get("userId"));
+    verify(authSessionService).logout("token-delete-789");
   }
 
   @Test
   void deleteMeInvalidConfirmationThrowsIllegalArgumentException() {
     DeleteAccountRequest request = new DeleteAccountRequest("nope");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> controller.deleteMe(request));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
     assertEquals("confirmation must be DELETE", ex.getMessage());
   }
 
   @Test
   void deleteMeWithoutCurrentUserThrowsIllegalStateException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
 
     IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> controller.deleteMe(request));
+        assertThrows(IllegalStateException.class, () -> controller.deleteMe(request, httpRequest));
     assertEquals("No authenticated user in security context", ex.getMessage());
+  }
+
+  @Test
+  void deleteMeWithoutBearerTokenThrowsIllegalArgumentException() {
+    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(httpRequest.getHeader("Authorization")).thenReturn(null);
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
+
+    assertEquals("Missing Bearer token", ex.getMessage());
+  }
+
+  @Test
+  void deleteMeWithNonBearerTokenThrowsIllegalArgumentException() {
+    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Basic token");
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
+
+    assertEquals("Missing Bearer token", ex.getMessage());
+  }
+
+  @Test
+  void deleteMeWithEmptyBearerTokenThrowsIllegalArgumentException() {
+    DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(httpRequest.getHeader("Authorization")).thenReturn("Bearer   ");
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> controller.deleteMe(request, httpRequest));
+
+    assertEquals("Bearer token is empty", ex.getMessage());
   }
 }

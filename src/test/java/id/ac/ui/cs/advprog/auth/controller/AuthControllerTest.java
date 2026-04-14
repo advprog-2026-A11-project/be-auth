@@ -3,12 +3,18 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
@@ -40,6 +46,12 @@ class AuthControllerTest {
   @Mock
   private UserProfileService profileService;
 
+  @Mock
+  private AuthSessionService authSessionService;
+
+  @Mock
+  private CurrentUserProvider currentUserProvider;
+
   private AuthController controller;
 
   @BeforeEach
@@ -47,9 +59,11 @@ class AuthControllerTest {
     MockitoAnnotations.openMocks(this);
     controller = new AuthController(
         authLoginService,
+        authSessionService,
         googleSsoService,
         jwtService,
         profileService,
+        currentUserProvider,
         true);
   }
 
@@ -208,9 +222,11 @@ class AuthControllerTest {
   void loginThrowsForbiddenWhenPasswordAuthDisabled() {
     AuthController disabledController = new AuthController(
         authLoginService,
+        authSessionService,
         googleSsoService,
         jwtService,
         profileService,
+        currentUserProvider,
         false);
 
     LoginRequest request = new LoginRequest("user@example.com", "password123");
@@ -287,5 +303,108 @@ class AuthControllerTest {
 
     assertEquals(200, resp.getStatusCodeValue());
     assertNull(resp.getBody().get("profile"));
+  }
+
+  @Test
+  void refreshReturnsOk() {
+    RefreshTokenRequest request = new RefreshTokenRequest("refresh-token");
+    LoginResponse response = new LoginResponse(
+        "new-access",
+        "new-refresh",
+        "Bearer",
+        3600L,
+        "supabase-user-id",
+        "USER",
+        "Session refreshed");
+    when(authSessionService.refresh("refresh-token")).thenReturn(response);
+
+    ResponseEntity<LoginResponse> result = controller.refresh(request);
+
+    assertEquals(200, result.getStatusCodeValue());
+    assertNotNull(result.getBody());
+    assertEquals("new-access", result.getBody().accessToken());
+    assertEquals("new-refresh", result.getBody().refreshToken());
+  }
+
+  @Test
+  void logoutReturnsOkWhenBearerTokenPresent() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Bearer access-token");
+
+    ResponseEntity<LogoutResponse> result = controller.logout(request);
+
+    assertEquals(200, result.getStatusCodeValue());
+    assertNotNull(result.getBody());
+    assertEquals("Logout successful", result.getBody().message());
+    verify(authSessionService).logout("access-token");
+  }
+
+  @Test
+  void logoutThrowsUnauthorizedWhenBearerTokenIsMissing() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn(null);
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> controller.logout(request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Missing Bearer token", ex.getReason());
+  }
+
+  @Test
+  void logoutThrowsUnauthorizedWhenAuthorizationIsNotBearer() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Basic token");
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> controller.logout(request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Missing Bearer token", ex.getReason());
+  }
+
+  @Test
+  void logoutThrowsUnauthorizedWhenBearerTokenIsEmpty() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Bearer   ");
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> controller.logout(request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Bearer token is empty", ex.getReason());
+  }
+
+  @Test
+  void changePasswordThrowsUnauthorizedWhenCurrentUserIsMissing() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+
+    ResponseStatusException ex = assertThrows(
+        ResponseStatusException.class,
+        () -> controller.changePassword(
+            new ChangePasswordRequest("current-password", "new-password"),
+            request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("No authenticated user in security context", ex.getReason());
+  }
+
+  @Test
+  void changePasswordThrowsUnauthorizedWhenBearerTokenIsEmpty() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser())
+        .thenReturn(Optional.of(
+            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER")));
+    when(request.getHeader("Authorization")).thenReturn("Bearer   ");
+
+    ResponseStatusException ex = assertThrows(
+        ResponseStatusException.class,
+        () -> controller.changePassword(
+            new ChangePasswordRequest("current-password", "new-password"),
+            request));
+
+    assertEquals(401, ex.getStatusCode().value());
+    assertEquals("Bearer token is empty", ex.getReason());
   }
 }

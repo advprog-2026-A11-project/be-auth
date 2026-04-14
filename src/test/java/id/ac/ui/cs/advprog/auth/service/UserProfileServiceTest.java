@@ -69,9 +69,16 @@ class UserProfileServiceTest {
   }
 
   @Test
-  void deleteByIdDelegates() {
-    doNothing().when(repository).deleteById(5L);
-    service.deleteById(5L);
-    verify(repository).deleteById(5L);
+  void deactivateByIdMarksExistingUserInactive() {
+    UserProfile existing = new UserProfile();
+    existing.setActive(true);
+    when(repository.findById(5L)).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    UserProfile deactivated = service.deactivateById(5L);
+
+    assertFalse(deactivated.isActive());
+    verify(repository).save(existing);
+    verify(repository, never()).deleteById(anyLong());
   }
 }

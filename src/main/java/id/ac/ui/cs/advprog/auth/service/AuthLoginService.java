@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.service;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.util.Optional;
 import org.springframework.dao.DataAccessException;
@@ -22,6 +23,7 @@ public class AuthLoginService {
 
   public LoginResponse login(String identifier, String password) {
     String email = resolveEmailIdentifier(identifier);
+    ensureAccountActive(email);
     SupabaseAuthClient.LoginResult result = supabaseAuthClient.loginWithPassword(email, password);
 
     try {
@@ -115,10 +117,21 @@ public class AuthLoginService {
 
     Optional<UserProfile> byUsername = userProfileService.findByUsername(normalized);
     if (byUsername.isPresent() && StringUtils.hasText(byUsername.get().getEmail())) {
+      if (!byUsername.get().isActive()) {
+        throw new UnauthorizedException("Account is inactive");
+      }
       return byUsername.get().getEmail();
     }
 
     throw new IllegalArgumentException("identifier must be a valid email or an existing username");
+  }
+
+  private void ensureAccountActive(String email) {
+    userProfileService.findByEmail(email)
+        .filter(existing -> !existing.isActive())
+        .ifPresent(existing -> {
+          throw new UnauthorizedException("Account is inactive");
+        });
   }
 
   private String normalizeRole(String incomingRole) {

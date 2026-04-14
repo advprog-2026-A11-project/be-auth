@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.auth.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,14 +33,17 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final SupabaseJwtService supabaseJwtService;
+  private final TokenRevocationService tokenRevocationService;
   private final UserProfileService userProfileService;
   private final ObjectMapper objectMapper;
 
   public SupabaseJwtAuthenticationFilter(
       SupabaseJwtService supabaseJwtService,
+      TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
       ObjectMapper objectMapper) {
     this.supabaseJwtService = supabaseJwtService;
+    this.tokenRevocationService = tokenRevocationService;
     this.userProfileService = userProfileService;
     this.objectMapper = objectMapper;
   }
@@ -58,6 +62,10 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     if ("/api/auth/register".equals(path) && HttpMethod.POST.matches(method)) {
+      return true;
+    }
+
+    if ("/api/auth/refresh".equals(path) && HttpMethod.POST.matches(method)) {
       return true;
     }
 
@@ -92,6 +100,12 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     try {
+      if (tokenRevocationService.isRevoked(token)) {
+        SecurityContextHolder.clearContext();
+        writeUnauthorized(response, request, "Session has been revoked");
+        return;
+      }
+
       Jwt jwt = supabaseJwtService.validateAccessToken(token);
       String sub = jwt.getSubject();
       String email = jwt.getClaimAsString("email");
