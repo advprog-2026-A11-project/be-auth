@@ -1,3 +1,7 @@
+import org.gradle.api.tasks.testing.Test
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
+import org.gradle.testing.jacoco.tasks.JacocoReport
+
 plugins {
     java
     id("jacoco")
@@ -26,23 +30,28 @@ repositories {
     mavenCentral()
 }
 
+val coverageExclusions = listOf(
+    "**/AuthApplication*",
+    "**/dto/**",
+    "**/config/OpenApiConfig*",
+    "**/exception/GlobalExceptionHandler*",
+    "**/model/UserProfile*",
+    "**/security/CurrentUserProvider*",
+    "**/service/HttpSupabaseAuthClient*",
+    "**/service/AuthLoginService*",
+    "**/service/SupabaseGoogleSsoService*",
+    "**/service/SupabaseAuthClient*",
+    "**/service/GoogleSsoService*",
+    "**/service/UserProfileService*"
+)
+
 sonarqube {
         properties {
                 property("sonar.projectKey", "advprog-2026-A11-project_be-auth")
                 property("sonar.organization", "adpro-a-kelompok-11")
                 property(
                     "sonar.coverage.exclusions",
-                    "**/dto/**,"
-                        + "**/config/OpenApiConfig.java,"
-                        + "**/exception/GlobalExceptionHandler.java,"
-                        + "**/model/UserProfile.java,"
-                        + "**/security/CurrentUserProvider.java,"
-                        + "**/service/HttpSupabaseAuthClient.java,"
-                        + "**/service/AuthLoginService.java,"
-                        + "**/service/SupabaseGoogleSsoService.java,"
-                        + "**/service/SupabaseAuthClient.java,"
-                        + "**/service/GoogleSsoService.java,"
-                        + "**/service/UserProfileService.java")
+                    coverageExclusions.joinToString(","))
         }
 }
 
@@ -65,12 +74,62 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 }
 
-tasks.withType<Test> {
+tasks.named<Test>("test") {
     useJUnitPlatform()
+    filter {
+        excludeTestsMatching("*FunctionalTest")
+    }
 }
 
-tasks.withType<JacocoReport> {
+val functionalTest by tasks.registering(Test::class) {
+    description = "Runs functional smoke tests."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
+    shouldRunAfter(tasks.named("test"))
+    filter {
+        includeTestsMatching("*FunctionalTest")
+    }
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("test"))
+    classDirectories.setFrom(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude(coverageExclusions)
+        }
+    )
     reports {
         xml.required.set(true)
+        html.required.set(true)
     }
+}
+
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named("jacocoTestReport"))
+    classDirectories.setFrom(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude(coverageExclusions)
+        }
+    )
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(tasks.named("jacocoTestCoverageVerification"))
+    dependsOn(functionalTest)
 }
