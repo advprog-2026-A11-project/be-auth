@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -47,8 +48,9 @@ class UserProfileServiceTest {
 
   @Test
   void findByIdDelegates() {
-    when(repository.findById(1L)).thenReturn(Optional.of(new UserProfile()));
-    assertTrue(service.findById(1L).isPresent());
+    UUID id = UUID.randomUUID();
+    when(repository.findById(id)).thenReturn(Optional.of(new UserProfile()));
+    assertTrue(service.findById(id).isPresent());
   }
 
   @Test
@@ -59,26 +61,76 @@ class UserProfileServiceTest {
 
   @Test
   void updateDisplayNameSaves() {
+    UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile();
     existing.setDisplayName("old");
-    when(repository.findById(2L)).thenReturn(Optional.of(existing));
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-    Optional<UserProfile> updated = service.updateDisplayName(2L, "new");
+    Optional<UserProfile> updated = service.updateDisplayName(id, "new");
     assertTrue(updated.isPresent());
     assertEquals("new", updated.get().getDisplayName());
   }
 
   @Test
   void deactivateByIdMarksExistingUserInactive() {
+    UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile();
     existing.setActive(true);
-    when(repository.findById(5L)).thenReturn(Optional.of(existing));
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    UserProfile deactivated = service.deactivateById(5L);
+    UserProfile deactivated = service.deactivateById(id);
 
     assertFalse(deactivated.isActive());
     verify(repository).save(existing);
-    verify(repository, never()).deleteById(anyLong());
+    verify(repository, never()).deleteById(any());
+  }
+
+  @Test
+  void upsertFromGoogleIdentityCreatesEnrichedProfile() {
+    when(repository.findBySupabaseUserId("google-sub-123")).thenReturn(Optional.empty());
+    when(repository.findByEmail("google@example.com")).thenReturn(Optional.empty());
+    when(repository.existsByUsername("google")).thenReturn(false);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile created = service.upsertFromIdentity(
+        "google-sub-123",
+        "google@example.com",
+        "authenticated",
+        "GOOGLE",
+        "google-sub-123",
+        "Google User");
+
+    assertEquals("GOOGLE", created.getAuthProvider());
+    assertEquals("google-sub-123", created.getGoogleSub());
+    assertEquals("Google User", created.getDisplayName());
+    assertEquals("STUDENT", created.getRole());
+  }
+
+  @Test
+  void upsertFromGoogleIdentityPreservesCustomProfileFields() {
+    UserProfile existing = new UserProfile();
+    existing.setSupabaseUserId("google-sub-123");
+    existing.setEmail("google@example.com");
+    existing.setUsername("custom-user");
+    existing.setDisplayName("Custom Name");
+    existing.setRole("STUDENT");
+    existing.setActive(true);
+
+    when(repository.findBySupabaseUserId("google-sub-123")).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.upsertFromIdentity(
+        "google-sub-123",
+        "google@example.com",
+        "authenticated",
+        "GOOGLE",
+        "google-sub-123",
+        "Google User");
+
+    assertEquals("custom-user", updated.getUsername());
+    assertEquals("Custom Name", updated.getDisplayName());
+    assertEquals("GOOGLE", updated.getAuthProvider());
+    assertEquals("google-sub-123", updated.getGoogleSub());
   }
 }

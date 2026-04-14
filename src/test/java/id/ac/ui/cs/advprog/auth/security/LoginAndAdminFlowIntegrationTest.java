@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -53,7 +54,7 @@ class LoginAndAdminFlowIntegrationTest {
         "refresh-user",
         "Bearer",
         3600L,
-        "supabase-user-1",
+        "535251d5-a941-49b0-9a04-5b26dc55ec61",
         "USER",
         "Login successful");
 
@@ -64,7 +65,7 @@ class LoginAndAdminFlowIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"identifier\":\"user@example.com\",\"password\":\"password123\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.userId").value("supabase-user-1"))
+        .andExpect(jsonPath("$.userId").value("535251d5-a941-49b0-9a04-5b26dc55ec61"))
         .andExpect(jsonPath("$.role").value("USER"));
   }
 
@@ -75,7 +76,7 @@ class LoginAndAdminFlowIntegrationTest {
         "refresh-admin",
         "Bearer",
         3600L,
-        "supabase-admin-1",
+        "a8df4b87-2d2c-4d7b-9cb9-e13cc298a3b8",
         "ADMIN",
         "Login successful");
 
@@ -86,7 +87,7 @@ class LoginAndAdminFlowIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"identifier\":\"admin@example.com\",\"password\":\"password123\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.userId").value("supabase-admin-1"))
+        .andExpect(jsonPath("$.userId").value("a8df4b87-2d2c-4d7b-9cb9-e13cc298a3b8"))
         .andExpect(jsonPath("$.role").value("ADMIN"));
   }
 
@@ -97,7 +98,7 @@ class LoginAndAdminFlowIntegrationTest {
         "refresh-register",
         "Bearer",
         3600L,
-        "supabase-user-2",
+        "8aab73b9-1f18-4fc3-b645-5932daff10fa",
         "USER",
         "Registration successful");
 
@@ -113,7 +114,7 @@ class LoginAndAdminFlowIntegrationTest {
                 "{\"email\":\"new@example.com\",\"password\":\"password123\","
                     + "\"username\":\"newuser\",\"displayName\":\"New User\"}"))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.userId").value("supabase-user-2"))
+        .andExpect(jsonPath("$.userId").value("8aab73b9-1f18-4fc3-b645-5932daff10fa"))
         .andExpect(jsonPath("$.role").value("USER"));
   }
 
@@ -124,7 +125,7 @@ class LoginAndAdminFlowIntegrationTest {
         "refresh-next",
         "Bearer",
         3600L,
-        "supabase-user-3",
+        "fca43fa7-2ad7-4357-9c6b-2df30224cffe",
         "USER",
         "Session refreshed");
 
@@ -133,10 +134,11 @@ class LoginAndAdminFlowIntegrationTest {
             refreshResponse.accessToken(),
             refreshResponse.refreshToken(),
             refreshResponse.expiresIn(),
-            refreshResponse.userId(),
+            "supabase-user-3",
             "refresh@example.com",
             refreshResponse.role()));
     UserProfile refreshedUser = new UserProfile();
+    refreshedUser.setId(UUID.fromString("fca43fa7-2ad7-4357-9c6b-2df30224cffe"));
     refreshedUser.setSupabaseUserId("supabase-user-3");
     refreshedUser.setEmail("refresh@example.com");
     refreshedUser.setRole("USER");
@@ -203,6 +205,7 @@ class LoginAndAdminFlowIntegrationTest {
     when(supabaseJwtService.validateAccessToken("token-admin")).thenReturn(jwt);
 
     UserProfile admin = new UserProfile();
+    admin.setId(UUID.fromString("cc0d1aa4-9a09-4f8b-b7f6-cb9c903d2fc7"));
     admin.setSupabaseUserId("supabase-admin-1");
     admin.setRole("ADMIN");
     admin.setEmail("admin@example.com");
@@ -214,7 +217,7 @@ class LoginAndAdminFlowIntegrationTest {
             .header("Authorization", "Bearer token-admin"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Admin access granted"))
-        .andExpect(jsonPath("$.userId").value("supabase-admin-1"));
+        .andExpect(jsonPath("$.userId").value("cc0d1aa4-9a09-4f8b-b7f6-cb9c903d2fc7"));
   }
 
   private Jwt validJwt(String tokenValue, String sub, String email) {

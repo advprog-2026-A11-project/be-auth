@@ -13,6 +13,7 @@ import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -70,7 +71,6 @@ class UserProfileControllerTest {
     assertNotNull(body);
     assertEquals("alice", body.username());
     assertEquals("alice@example.com", body.email());
-    assertEquals("sub-1", body.supabaseUserId());
     assertEquals("Alice", body.displayName());
     assertEquals("ADMIN", body.role());
     assertFalse(body.isActive());
@@ -78,28 +78,31 @@ class UserProfileControllerTest {
 
   @Test
   void updateDisplayNameMissingReturnsBadRequest() {
+    UUID id = UUID.randomUUID();
     Map<String, String> body = new HashMap<>();
-    ResponseEntity<Object> resp = controller.updateDisplayName(1L, body);
+    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
     assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
   }
 
   @Test
   void updateDisplayNameSuccessReturnsOk() {
+    UUID id = UUID.randomUUID();
     Map<String, String> body = new HashMap<>();
     body.put("displayName", "bob");
     UserProfile u = new UserProfile();
-    when(service.updateDisplayName(1L, "bob")).thenReturn(Optional.of(u));
-    ResponseEntity<Object> resp = controller.updateDisplayName(1L, body);
+    when(service.updateDisplayName(id, "bob")).thenReturn(Optional.of(u));
+    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
     assertEquals(HttpStatus.OK, resp.getStatusCode());
   }
 
   @Test
   void updateDisplayNameNotFoundReturnsNotFound() {
+    UUID id = UUID.randomUUID();
     Map<String, String> body = new HashMap<>();
     body.put("displayName", "bob");
 
-    when(service.updateDisplayName(100L, "bob")).thenReturn(Optional.empty());
-    ResponseEntity<Object> resp = controller.updateDisplayName(100L, body);
+    when(service.updateDisplayName(id, "bob")).thenReturn(Optional.empty());
+    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
     assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
   }
 
@@ -119,9 +122,10 @@ class UserProfileControllerTest {
     updated.setEmail("newuser@example.com");
     updated.setActive(false);
 
-    when(service.update(eq(10L), any())).thenReturn(Optional.of(updated));
+    UUID id = UUID.randomUUID();
+    when(service.update(eq(id), any())).thenReturn(Optional.of(updated));
 
-    ResponseEntity<UserProfileResponse> resp = controller.update(10L, request);
+    ResponseEntity<UserProfileResponse> resp = controller.update(id, request);
     assertEquals(HttpStatus.OK, resp.getStatusCode());
     assertNotNull(resp.getBody());
     assertEquals("newuser", resp.getBody().username());
@@ -131,8 +135,9 @@ class UserProfileControllerTest {
 
   @Test
   void deleteReturnsNoContent() {
-    ResponseEntity<Void> resp = controller.delete(2L);
+    UUID id = UUID.randomUUID();
+    ResponseEntity<Void> resp = controller.delete(id);
     assertEquals(HttpStatus.NO_CONTENT, resp.getStatusCode());
-    verify(service).deactivateById(2L);
+    verify(service).deactivateById(id);
   }
 }

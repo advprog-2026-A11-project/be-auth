@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -12,8 +13,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 public class UserProfile {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
 
   @Column(unique = true, nullable = false)
   private String username;
@@ -23,6 +24,14 @@ public class UserProfile {
 
   @Column(unique = true)
   private String supabaseUserId;
+
+  @Column(unique = true)
+  private String phone;
+
+  private String authProvider;
+
+  @Column(unique = true)
+  private String googleSub;
 
   private String displayName;
 
@@ -70,11 +79,11 @@ public class UserProfile {
     this.active = isActive;
   }
 
-  public Long getId() {
+  public UUID getId() {
     return id;
   }
 
-  public void setId(Long id) {
+  public void setId(UUID id) {
     this.id = id;
   }
 
@@ -108,6 +117,30 @@ public class UserProfile {
 
   public void setSupabaseUserId(String supabaseUserId) {
     this.supabaseUserId = supabaseUserId;
+  }
+
+  public String getPhone() {
+    return phone;
+  }
+
+  public void setPhone(String phone) {
+    this.phone = phone;
+  }
+
+  public String getAuthProvider() {
+    return authProvider;
+  }
+
+  public void setAuthProvider(String authProvider) {
+    this.authProvider = authProvider;
+  }
+
+  public String getGoogleSub() {
+    return googleSub;
+  }
+
+  public void setGoogleSub(String googleSub) {
+    this.googleSub = googleSub;
   }
 
   public String getRole() {

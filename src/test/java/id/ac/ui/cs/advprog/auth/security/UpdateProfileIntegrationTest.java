@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import java.time.Instant;
 import java.util.List;
@@ -34,6 +35,9 @@ class UpdateProfileIntegrationTest {
 
   @MockBean
   private SupabaseJwtService supabaseJwtService;
+
+  @MockBean
+  private SupabaseAuthClient supabaseAuthClient;
 
   @BeforeEach
   void setUp() {
@@ -124,6 +128,52 @@ class UpdateProfileIntegrationTest {
                 "{\"username\":\"hacker\",\"email\":\"hacker@example.com\","
                     + "\"displayName\":\"Hacker\",\"role\":\"USER\",\"active\":true}"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void updateEmailSuccess() throws Exception {
+    UserProfile me = new UserProfile();
+    me.setSupabaseUserId("sub-user-email");
+    me.setEmail("old@example.com");
+    me.setUsername("user-email");
+    me.setDisplayName("User Email");
+    me.setRole("USER");
+    me.setActive(true);
+    userProfileRepository.save(me);
+
+    when(supabaseJwtService.validateAccessToken("token-email"))
+        .thenReturn(jwt("token-email", "sub-user-email", "old@example.com"));
+
+    mockMvc.perform(patch("/api/users/me/email")
+            .header("Authorization", "Bearer token-email")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"new@example.com\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Email updated"))
+        .andExpect(jsonPath("$.email").value("new@example.com"));
+  }
+
+  @Test
+  void updatePhoneSuccess() throws Exception {
+    UserProfile me = new UserProfile();
+    me.setSupabaseUserId("sub-user-phone");
+    me.setEmail("phone@example.com");
+    me.setUsername("user-phone");
+    me.setDisplayName("User Phone");
+    me.setRole("USER");
+    me.setActive(true);
+    userProfileRepository.save(me);
+
+    when(supabaseJwtService.validateAccessToken("token-phone"))
+        .thenReturn(jwt("token-phone", "sub-user-phone", "phone@example.com"));
+
+    mockMvc.perform(patch("/api/users/me/phone")
+            .header("Authorization", "Bearer token-phone")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"phone\":\"+628123456789\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Phone updated"))
+        .andExpect(jsonPath("$.phone").value("+628123456789"));
   }
 
   private Jwt jwt(String tokenValue, String sub, String email) {

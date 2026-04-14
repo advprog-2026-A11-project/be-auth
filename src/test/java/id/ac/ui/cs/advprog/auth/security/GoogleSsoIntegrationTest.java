@@ -50,7 +50,7 @@ class GoogleSsoIntegrationTest {
         .thenReturn(new SsoCallbackResponse(
             "access-token",
             "refresh-token",
-            "supabase-user-1",
+            "535251d5-a941-49b0-9a04-5b26dc55ec61",
             true,
             "Google SSO login successful"));
 
@@ -58,7 +58,7 @@ class GoogleSsoIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"code\":\"oauth-code\",\"state\":\"opaque-state\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.userId").value("supabase-user-1"))
+        .andExpect(jsonPath("$.userId").value("535251d5-a941-49b0-9a04-5b26dc55ec61"))
         .andExpect(jsonPath("$.linked").value(true));
   }
 

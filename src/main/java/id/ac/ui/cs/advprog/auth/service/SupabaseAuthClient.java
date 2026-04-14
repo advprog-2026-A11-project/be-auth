@@ -8,6 +8,8 @@ public interface SupabaseAuthClient {
 
   void logout(String accessToken);
 
+  void updateEmail(String accessToken, String newEmail);
+
   void updatePassword(String accessToken, String newPassword);
 
   LoginResult registerWithPassword(

@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -114,11 +115,14 @@ class AuthControllerTest {
     when(jwtService.validateAccessToken("tkn")).thenReturn(jwt);
 
     UserProfile user = new UserProfile();
-    user.setId(10L);
+    user.setId(UUID.randomUUID());
     user.setUsername("u");
     user.setEmail("a@b");
     user.setDisplayName("dn");
     user.setRole("USER");
+    user.setPhone("+628123456789");
+    user.setAuthProvider("PASSWORD");
+    user.setGoogleSub("google-sub-1");
     user.setActive(true);
 
     when(profileService.findByEmail("a@b")).thenReturn(Optional.of(user));
@@ -126,6 +130,11 @@ class AuthControllerTest {
     ResponseEntity<Map<String, Object>> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
     assertNotNull(resp.getBody().get("profile"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> profilePayload = (Map<String, Object>) resp.getBody().get("profile");
+    assertEquals("+628123456789", profilePayload.get("phone"));
+    assertEquals("PASSWORD", profilePayload.get("authProvider"));
+    assertEquals("google-sub-1", profilePayload.get("googleSub"));
   }
 
   @Test
@@ -188,7 +197,7 @@ class AuthControllerTest {
         "refresh",
         "Bearer",
         3600L,
-        "supabase-user-id",
+        "535251d5-a941-49b0-9a04-5b26dc55ec61",
         "USER",
         "Registration successful");
     when(authLoginService.register(
@@ -201,7 +210,7 @@ class AuthControllerTest {
 
     assertEquals(201, result.getStatusCodeValue());
     assertNotNull(result.getBody());
-    assertEquals("supabase-user-id", result.getBody().userId());
+    assertEquals("535251d5-a941-49b0-9a04-5b26dc55ec61", result.getBody().userId());
   }
 
   @Test
@@ -313,7 +322,7 @@ class AuthControllerTest {
         "new-refresh",
         "Bearer",
         3600L,
-        "supabase-user-id",
+        "535251d5-a941-49b0-9a04-5b26dc55ec61",
         "USER",
         "Session refreshed");
     when(authSessionService.refresh("refresh-token")).thenReturn(response);

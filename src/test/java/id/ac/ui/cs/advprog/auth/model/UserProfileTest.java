@@ -14,7 +14,13 @@ class UserProfileTest {
     assertEquals("disp", u.getDisplayName());
     assertEquals("ADMIN", u.getRole());
     assertFalse(u.isActive());
+    u.setPhone("+628123456789");
+    u.setAuthProvider("PASSWORD");
+    u.setGoogleSub("google-sub-1");
     u.setActive(true);
+    assertEquals("+628123456789", u.getPhone());
+    assertEquals("PASSWORD", u.getAuthProvider());
+    assertEquals("google-sub-1", u.getGoogleSub());
     assertTrue(u.isActive());
   }
 }

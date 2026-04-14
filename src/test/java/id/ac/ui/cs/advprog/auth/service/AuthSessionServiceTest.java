@@ -12,6 +12,7 @@ import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -83,8 +84,15 @@ class AuthSessionServiceTest {
   }
 
   @Test
+  void changeEmailDelegatesToIdentityProvider() {
+    service.changeEmail("access-token", "new@example.com");
+
+    verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
+  }
+
+  @Test
   void refreshReturnsSyncedProfileWhenDatabaseIsAvailable() {
-    SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+    final SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
         "new-access",
         "new-refresh",
         3600L,
@@ -92,6 +100,7 @@ class AuthSessionServiceTest {
         "user@example.com",
         "USER");
     UserProfile profile = new UserProfile();
+    profile.setId(UUID.randomUUID());
     profile.setSupabaseUserId("sub-123");
     profile.setRole("ADMIN");
     when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(result);
@@ -100,7 +109,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("sub-123", response.userId());
+    assertEquals(profile.getId().toString(), response.userId());
     assertEquals("ADMIN", response.role());
     assertEquals("Session refreshed", response.message());
   }
@@ -120,7 +129,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
     assertTrue(response.message().contains("Profile sync pending"));
   }
 
@@ -139,7 +148,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
   }
 
   @Test
@@ -175,7 +184,7 @@ class AuthSessionServiceTest {
 
     var response = service.refresh("refresh-token");
 
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
   }
 
   @Test

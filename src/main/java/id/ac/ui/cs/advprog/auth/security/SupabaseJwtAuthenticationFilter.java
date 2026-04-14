@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
@@ -132,29 +133,16 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
   private List<GrantedAuthority> buildAuthorities(String role) {
     List<GrantedAuthority> authorities = new ArrayList<>();
-    if (StringUtils.hasText(role)) {
-      authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-    }
+    authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
     return authorities;
-  }
-
-  private String normalizeRole(String role) {
-    if (!StringUtils.hasText(role)) {
-      return "";
-    }
-    String normalized = role.trim().toUpperCase();
-    if ("AUTHENTICATED".equals(normalized)) {
-      return "USER";
-    }
-    return normalized;
   }
 
   private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
     if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
-      return normalizeRole(profile.get().getRole());
+      return RoleMapper.canonicalize(profile.get().getRole());
     }
 
-    return normalizeRole(tokenRole);
+    return RoleMapper.canonicalize(tokenRole);
   }
 
   private Optional<UserProfile> resolveProfile(String sub, String email) {

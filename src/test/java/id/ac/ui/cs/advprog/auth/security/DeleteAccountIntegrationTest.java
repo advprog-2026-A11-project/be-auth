@@ -66,7 +66,7 @@ class DeleteAccountIntegrationTest {
             .content("{\"confirmation\":\"DELETE\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Account deleted"))
-        .andExpect(jsonPath("$.userId").value("sub-delete-1"));
+        .andExpect(jsonPath("$.userId").value(me.getId().toString()));
 
     UserProfile persisted = userProfileRepository
         .findBySupabaseUserId("sub-delete-1")

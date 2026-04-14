@@ -1,6 +1,8 @@
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.springframework.boot.gradle.tasks.run.BootRun
+import java.io.ByteArrayOutputStream
 
 plugins {
     java
@@ -132,4 +134,70 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
 tasks.named("check") {
     dependsOn(tasks.named("jacocoTestCoverageVerification"))
     dependsOn(functionalTest)
+}
+
+fun configuredServerPort(): Int {
+    val envPort = System.getenv("SERVER_PORT")?.toIntOrNull()
+    if (envPort != null) {
+        return envPort
+    }
+
+    val appProperties = file("src/main/resources/application.properties")
+    val defaultPort = Regex("""server\.port=\$\{SERVER_PORT:(\d+)}""")
+        .find(appProperties.readText())
+        ?.groupValues
+        ?.get(1)
+        ?.toIntOrNull()
+
+    return defaultPort ?: 8081
+}
+
+fun runAndCapture(vararg command: String): String {
+    val process = ProcessBuilder(*command)
+        .redirectErrorStream(true)
+        .start()
+    val output = process.inputStream.bufferedReader().use { it.readText() }
+    process.waitFor()
+    return output.trim()
+}
+
+fun releasePortIfBusy(port: Int) {
+    val isWindows = System.getProperty("os.name").lowercase().contains("win")
+    val pidOutput = if (isWindows) {
+        runAndCapture(
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-NetTCPConnection -LocalPort $port -State Listen | " +
+                "Select-Object -ExpandProperty OwningProcess -Unique"
+        )
+    } else {
+        runAndCapture("bash", "-lc", "lsof -ti tcp:$port -sTCP:LISTEN")
+    }
+
+    pidOutput
+        .lineSequence()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .distinct()
+        .forEach { pid ->
+            logger.lifecycle("Stopping process $pid that is already using port $port")
+            if (isWindows) {
+                ProcessBuilder("taskkill", "/PID", pid, "/F")
+                    .redirectErrorStream(true)
+                    .start()
+                    .waitFor()
+            } else {
+                ProcessBuilder("kill", "-9", pid)
+                    .redirectErrorStream(true)
+                    .start()
+                    .waitFor()
+            }
+        }
+}
+
+tasks.named<BootRun>("bootRun") {
+    doFirst {
+        releasePortIfBusy(configuredServerPort())
+    }
 }
