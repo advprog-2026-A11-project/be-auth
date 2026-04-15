@@ -85,8 +85,6 @@ public class AuthController {
 
       Map<String, Object> payload = new HashMap<>();
       payload.put("sub", sub);
-      payload.put(EMAIL_CLAIM, email);
-      payload.put("role", RoleMapper.canonicalize(claims.getClaimAsString("role")));
       payload.put("aud", claims.getAudience());
       payload.put("iss", claims.getIssuer());
       payload.put("exp", claims.getExpiresAt());
