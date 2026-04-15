@@ -2,7 +2,9 @@ package id.ac.ui.cs.advprog.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,14 +34,17 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final SupabaseJwtService supabaseJwtService;
+  private final TokenRevocationService tokenRevocationService;
   private final UserProfileService userProfileService;
   private final ObjectMapper objectMapper;
 
   public SupabaseJwtAuthenticationFilter(
       SupabaseJwtService supabaseJwtService,
+      TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
       ObjectMapper objectMapper) {
     this.supabaseJwtService = supabaseJwtService;
+    this.tokenRevocationService = tokenRevocationService;
     this.userProfileService = userProfileService;
     this.objectMapper = objectMapper;
   }
@@ -58,6 +63,10 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     if ("/api/auth/register".equals(path) && HttpMethod.POST.matches(method)) {
+      return true;
+    }
+
+    if ("/api/auth/refresh".equals(path) && HttpMethod.POST.matches(method)) {
       return true;
     }
 
@@ -92,6 +101,12 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     try {
+      if (tokenRevocationService.isRevoked(token)) {
+        SecurityContextHolder.clearContext();
+        writeUnauthorized(response, request, "Session has been revoked");
+        return;
+      }
+
       Jwt jwt = supabaseJwtService.validateAccessToken(token);
       String sub = jwt.getSubject();
       String email = jwt.getClaimAsString("email");
@@ -118,29 +133,16 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
   private List<GrantedAuthority> buildAuthorities(String role) {
     List<GrantedAuthority> authorities = new ArrayList<>();
-    if (StringUtils.hasText(role)) {
-      authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-    }
+    authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
     return authorities;
-  }
-
-  private String normalizeRole(String role) {
-    if (!StringUtils.hasText(role)) {
-      return "";
-    }
-    String normalized = role.trim().toUpperCase();
-    if ("AUTHENTICATED".equals(normalized)) {
-      return "USER";
-    }
-    return normalized;
   }
 
   private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
     if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
-      return normalizeRole(profile.get().getRole());
+      return RoleMapper.canonicalize(profile.get().getRole());
     }
 
-    return normalizeRole(tokenRole);
+    return RoleMapper.canonicalize(tokenRole);
   }
 
   private Optional<UserProfile> resolveProfile(String sub, String email) {

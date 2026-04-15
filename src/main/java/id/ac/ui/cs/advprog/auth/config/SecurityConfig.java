@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.auth.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,10 +28,12 @@ public class SecurityConfig {
   @Bean
   public SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter(
       SupabaseJwtService supabaseJwtService,
+      TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
       ObjectMapper objectMapper) {
     return new SupabaseJwtAuthenticationFilter(
         supabaseJwtService,
+        tokenRevocationService,
         userProfileService,
         objectMapper);
   }
@@ -51,14 +54,17 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/auth/sso/google/url").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/sso/google/callback").permitAll()
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
             .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
             .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+            .requestMatchers(HttpMethod.PATCH, "/api/users/me").authenticated()
+            .requestMatchers(HttpMethod.PATCH, "/api/users/me/email").authenticated()
+            .requestMatchers(HttpMethod.PATCH, "/api/users/me/phone").authenticated()
             .requestMatchers(HttpMethod.DELETE, "/api/users/me").authenticated()
-            .requestMatchers(HttpMethod.PUT, "/api/users/*").hasRole("ADMIN")
-            .requestMatchers(HttpMethod.DELETE, "/api/users/*").hasRole("ADMIN")
+            .requestMatchers("/api/users/**").hasRole("ADMIN")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll())

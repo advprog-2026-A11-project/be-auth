@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class UserProfileResponseTest {
@@ -14,8 +15,9 @@ class UserProfileResponseTest {
     UserProfile user = new UserProfile();
     LocalDateTime createdAt = LocalDateTime.now().minusDays(1);
     LocalDateTime updatedAt = LocalDateTime.now();
+    UUID id = UUID.randomUUID();
 
-    user.setId(10L);
+    user.setId(id);
     user.setUsername("demo");
     user.setEmail("demo@example.com");
     user.setSupabaseUserId("sub-xyz");
@@ -27,12 +29,11 @@ class UserProfileResponseTest {
 
     UserProfileResponse response = UserProfileResponse.from(user);
 
-    assertEquals(10L, response.id());
+    assertEquals(id, response.id());
     assertEquals("demo", response.username());
     assertEquals("demo@example.com", response.email());
-    assertEquals("sub-xyz", response.supabaseUserId());
     assertEquals("Demo User", response.displayName());
-    assertEquals("USER", response.role());
+    assertEquals("STUDENT", response.role());
     assertFalse(response.isActive());
     assertEquals(createdAt, response.createdAt());
     assertEquals(updatedAt, response.updatedAt());

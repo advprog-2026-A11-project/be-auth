@@ -1,21 +1,29 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,14 +38,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/users")
 public class UserProfileController {
 
+  private static final String BEARER_PREFIX = "Bearer ";
+
   private final UserProfileService service;
+  private final AuthSessionService authSessionService;
   private final CurrentUserProvider currentUserProvider;
 
   @Autowired
   public UserProfileController(
       UserProfileService service,
+      AuthSessionService authSessionService,
       CurrentUserProvider currentUserProvider) {
     this.service = service;
+    this.authSessionService = authSessionService;
     this.currentUserProvider = currentUserProvider;
   }
 
@@ -55,7 +68,7 @@ public class UserProfileController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<UserProfileResponse> getById(@PathVariable Long id) {
+  public ResponseEntity<UserProfileResponse> getById(@PathVariable UUID id) {
     return service.findById(id)
         .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
@@ -64,7 +77,7 @@ public class UserProfileController {
 
   @PutMapping("/{id}/displayName")
   public ResponseEntity<Object> updateDisplayName(
-      @PathVariable Long id,
+      @PathVariable UUID id,
       @RequestBody Map<String, String> body) {
     String name = body.get("displayName");
     if (name == null) {
@@ -81,7 +94,7 @@ public class UserProfileController {
 
   @PutMapping("/{id}")
   public ResponseEntity<UserProfileResponse> update(
-      @PathVariable Long id,
+      @PathVariable UUID id,
       @RequestBody UserProfileRequest request) {
     UserProfile user = toEntity(request);
     normalizeIntegrationDefaults(user);
@@ -92,8 +105,8 @@ public class UserProfileController {
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable Long id) {
-    service.deleteById(id);
+  public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    service.deactivateById(id);
     return ResponseEntity.noContent().build();
   }
 
@@ -117,16 +130,65 @@ public class UserProfileController {
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Profile updated");
-    response.put("userId", updated.getSupabaseUserId());
+    response.put("userId", updated.getId().toString());
     response.put("username", updated.getUsername());
     response.put("displayName", updated.getDisplayName());
     response.put("email", updated.getEmail());
     return ResponseEntity.ok(response);
   }
 
+  @PatchMapping("/me/email")
+  public ResponseEntity<Map<String, String>> updateEmail(
+      @Valid @RequestBody UpdateEmailRequest request,
+      HttpServletRequest httpRequest) {
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    String accessToken = extractBearerToken(httpRequest);
+    UserProfile updated = service.updateCurrentUserEmail(
+        principal.sub(),
+        principal.email(),
+        request.email());
+
+    try {
+      authSessionService.changeEmail(accessToken, request.email());
+    } catch (RuntimeException ex) {
+      service.updateCurrentUserEmail(
+          principal.sub(),
+          updated.getEmail(),
+          principal.email());
+      throw ex;
+    }
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Email updated");
+    response.put("userId", updated.getId().toString());
+    response.put("email", updated.getEmail());
+    return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/me/phone")
+  public ResponseEntity<Map<String, String>> updatePhone(
+      @Valid @RequestBody UpdatePhoneRequest request) {
+    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
+        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+
+    UserProfile updated = service.updateCurrentUserPhone(
+        principal.sub(),
+        principal.email(),
+        request.phone());
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Phone updated");
+    response.put("userId", updated.getId().toString());
+    response.put("phone", updated.getPhone());
+    return ResponseEntity.ok(response);
+  }
+
   @DeleteMapping("/me")
   public ResponseEntity<Map<String, String>> deleteMe(
-      @Valid @RequestBody DeleteAccountRequest request) {
+      @Valid @RequestBody DeleteAccountRequest request,
+      HttpServletRequest httpRequest) {
     if (!"DELETE".equalsIgnoreCase(request.confirmation().trim())) {
       throw new IllegalArgumentException("confirmation must be DELETE");
     }
@@ -135,10 +197,11 @@ public class UserProfileController {
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
 
     UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
+    authSessionService.logout(extractBearerToken(httpRequest));
 
     Map<String, String> response = new HashMap<>();
     response.put("message", "Account deleted");
-    response.put("userId", deactivated.getSupabaseUserId());
+    response.put("userId", deactivated.getId().toString());
     return ResponseEntity.ok(response);
   }
 
@@ -151,7 +214,9 @@ public class UserProfileController {
     }
 
     if (user.getRole() == null || user.getRole().isBlank()) {
-      user.setRole("USER");
+      user.setRole("STUDENT");
+    } else {
+      user.setRole(RoleMapper.canonicalize(user.getRole()));
     }
 
     if (user.getEmail() == null || user.getEmail().isBlank()) {
@@ -170,5 +235,18 @@ public class UserProfileController {
       user.setActive(request.getActive());
     }
     return user;
+  }
+
+  private String extractBearerToken(HttpServletRequest request) {
+    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
+      throw new IllegalArgumentException("Missing Bearer token");
+    }
+
+    String token = authHeader.substring(BEARER_PREFIX.length()).trim();
+    if (!StringUtils.hasText(token)) {
+      throw new IllegalArgumentException("Bearer token is empty");
+    }
+    return token;
   }
 }

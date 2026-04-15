@@ -1,3 +1,9 @@
+import org.gradle.api.tasks.testing.Test
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
+import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.springframework.boot.gradle.tasks.run.BootRun
+import java.io.ByteArrayOutputStream
+
 plugins {
     java
     id("jacoco")
@@ -26,23 +32,28 @@ repositories {
     mavenCentral()
 }
 
+val coverageExclusions = listOf(
+    "**/AuthApplication*",
+    "**/dto/**",
+    "**/config/OpenApiConfig*",
+    "**/exception/GlobalExceptionHandler*",
+    "**/model/UserProfile*",
+    "**/security/CurrentUserProvider*",
+    "**/service/HttpSupabaseAuthClient*",
+    "**/service/AuthLoginService*",
+    "**/service/SupabaseGoogleSsoService*",
+    "**/service/SupabaseAuthClient*",
+    "**/service/GoogleSsoService*",
+    "**/service/UserProfileService*"
+)
+
 sonarqube {
         properties {
                 property("sonar.projectKey", "advprog-2026-A11-project_be-auth")
                 property("sonar.organization", "adpro-a-kelompok-11")
                 property(
                     "sonar.coverage.exclusions",
-                    "**/dto/**,"
-                        + "**/config/OpenApiConfig.java,"
-                        + "**/exception/GlobalExceptionHandler.java,"
-                        + "**/model/UserProfile.java,"
-                        + "**/security/CurrentUserProvider.java,"
-                        + "**/service/HttpSupabaseAuthClient.java,"
-                        + "**/service/AuthLoginService.java,"
-                        + "**/service/SupabaseGoogleSsoService.java,"
-                        + "**/service/SupabaseAuthClient.java,"
-                        + "**/service/GoogleSsoService.java,"
-                        + "**/service/UserProfileService.java")
+                    coverageExclusions.joinToString(","))
         }
 }
 
@@ -65,12 +76,128 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 }
 
-tasks.withType<Test> {
+tasks.named<Test>("test") {
     useJUnitPlatform()
+    filter {
+        excludeTestsMatching("*FunctionalTest")
+    }
 }
 
-tasks.withType<JacocoReport> {
+val functionalTest by tasks.registering(Test::class) {
+    description = "Runs functional smoke tests."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
+    shouldRunAfter(tasks.named("test"))
+    filter {
+        includeTestsMatching("*FunctionalTest")
+    }
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("test"))
+    classDirectories.setFrom(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude(coverageExclusions)
+        }
+    )
     reports {
         xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named("jacocoTestReport"))
+    classDirectories.setFrom(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude(coverageExclusions)
+        }
+    )
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(tasks.named("jacocoTestCoverageVerification"))
+    dependsOn(functionalTest)
+}
+
+fun configuredServerPort(): Int {
+    val envPort = System.getenv("SERVER_PORT")?.toIntOrNull()
+    if (envPort != null) {
+        return envPort
+    }
+
+    val appProperties = file("src/main/resources/application.properties")
+    val defaultPort = Regex("""server\.port=\$\{SERVER_PORT:(\d+)}""")
+        .find(appProperties.readText())
+        ?.groupValues
+        ?.get(1)
+        ?.toIntOrNull()
+
+    return defaultPort ?: 8081
+}
+
+fun runAndCapture(vararg command: String): String {
+    val process = ProcessBuilder(*command)
+        .redirectErrorStream(true)
+        .start()
+    val output = process.inputStream.bufferedReader().use { it.readText() }
+    process.waitFor()
+    return output.trim()
+}
+
+fun releasePortIfBusy(port: Int) {
+    val isWindows = System.getProperty("os.name").lowercase().contains("win")
+    val pidOutput = if (isWindows) {
+        runAndCapture(
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-NetTCPConnection -LocalPort $port -State Listen | " +
+                "Select-Object -ExpandProperty OwningProcess -Unique"
+        )
+    } else {
+        runAndCapture("bash", "-lc", "lsof -ti tcp:$port -sTCP:LISTEN")
+    }
+
+    pidOutput
+        .lineSequence()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .distinct()
+        .forEach { pid ->
+            logger.lifecycle("Stopping process $pid that is already using port $port")
+            if (isWindows) {
+                ProcessBuilder("taskkill", "/PID", pid, "/F")
+                    .redirectErrorStream(true)
+                    .start()
+                    .waitFor()
+            } else {
+                ProcessBuilder("kill", "-9", pid)
+                    .redirectErrorStream(true)
+                    .start()
+                    .waitFor()
+            }
+        }
+}
+
+tasks.named<BootRun>("bootRun") {
+    doFirst {
+        releasePortIfBusy(configuredServerPort())
     }
 }

@@ -35,6 +35,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
   private final long stateTtlSeconds;
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
+  private final AuthSessionService authSessionService;
   private final RestClient restClient;
   private final SecureRandom secureRandom = new SecureRandom();
   private final ConcurrentMap<String, PkceFlowState> pkceStates = new ConcurrentHashMap<>();
@@ -45,13 +46,15 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       @Value("${auth.sso.google.redirect-url:}") String redirectUrl,
       @Value("${auth.sso.state-ttl-seconds:600}") long stateTtlSeconds,
       SupabaseJwtService supabaseJwtService,
-      UserProfileService userProfileService) {
+      UserProfileService userProfileService,
+      AuthSessionService authSessionService) {
     this.supabaseUrl = supabaseUrl;
     this.supabaseApiKey = supabaseApiKey;
     this.redirectUrl = redirectUrl;
     this.stateTtlSeconds = stateTtlSeconds;
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
+    this.authSessionService = authSessionService;
     this.restClient = RestClient.builder().build();
   }
 
@@ -65,21 +68,22 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     ensureConfig();
     cleanupExpiredStates();
 
-    String state = UUID.randomUUID().toString();
+    String flowId = UUID.randomUUID().toString();
     String codeVerifier = generateCodeVerifier();
     String codeChallenge = toS256CodeChallenge(codeVerifier);
     Instant expiresAt = Instant.now().plusSeconds(stateTtlSeconds);
-    pkceStates.put(state, new PkceFlowState(codeVerifier, expiresAt));
     String targetRedirectUrl = resolveRedirectUrl(redirectTo);
+    String callbackRedirectUrl = withAppState(targetRedirectUrl, flowId);
+    pkceStates.put(flowId, new PkceFlowState(codeVerifier, expiresAt, callbackRedirectUrl));
 
     String authorizeUrl = UriComponentsBuilder
         .fromHttpUrl(trimTrailingSlash(supabaseUrl) + "/auth/v1/authorize")
         .queryParam("provider", "google")
-        .queryParam("redirect_to", targetRedirectUrl)
+        .queryParam("redirect_to", callbackRedirectUrl)
         .queryParam("code_challenge", codeChallenge)
         .queryParam("code_challenge_method", "s256")
-        .queryParam("state", state)
-        .build(true)
+        .build(false)
+        .encode()
         .toUriString();
 
     return new SsoUrlResponse("google", authorizeUrl, "Google SSO URL generated");
@@ -100,7 +104,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     Map<String, String> payload = Map.of(
         "auth_code", request.code(),
         "code_verifier", flowState.codeVerifier(),
-        "redirect_to", redirectUrl);
+        "redirect_to", flowState.redirectUrl());
 
     try {
       Map<String, Object> tokenResponse = restClient.post()
@@ -118,7 +122,6 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       }
 
       String accessToken = asString(tokenResponse.get("access_token"));
-      String refreshToken = asString(tokenResponse.get("refresh_token"));
       if (!StringUtils.hasText(accessToken)) {
         throw new UnauthorizedException("Missing access token from SSO callback");
       }
@@ -127,18 +130,28 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       String sub = jwt.getSubject();
       String email = jwt.getClaimAsString("email");
       String role = jwt.getClaimAsString("role");
+      String displayName = extractDisplayName(jwt);
 
       if (!StringUtils.hasText(sub)) {
         throw new UnauthorizedException("SSO callback token missing subject");
       }
 
+      ensureIdentityIsActive(accessToken, sub, email);
+      String refreshToken = asString(tokenResponse.get("refresh_token"));
+
       boolean linked = isExistingIdentity(sub, email);
-      UserProfile profile = userProfileService.upsertFromIdentity(sub, email, role);
+      UserProfile profile = userProfileService.upsertFromIdentity(
+          sub,
+          email,
+          role,
+          "GOOGLE",
+          sub,
+          displayName);
 
       return new SsoCallbackResponse(
           accessToken,
           refreshToken,
-          profile.getSupabaseUserId(),
+          profile.getId().toString(),
           linked,
           "Google SSO login successful");
     } catch (HttpStatusCodeException ex) {
@@ -155,6 +168,18 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
       return true;
     }
     return StringUtils.hasText(email) && userProfileService.findByEmail(email).isPresent();
+  }
+
+  private void ensureIdentityIsActive(String accessToken, String sub, String email) {
+    Optional<UserProfile> existing = userProfileService.findBySupabaseUserId(sub);
+    if (existing.isEmpty() && StringUtils.hasText(email)) {
+      existing = userProfileService.findByEmail(email);
+    }
+
+    if (existing.isPresent() && !existing.get().isActive()) {
+      authSessionService.logout(accessToken);
+      throw new UnauthorizedException("Account is inactive");
+    }
   }
 
   private void cleanupExpiredStates() {
@@ -201,6 +226,13 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     throw new IllegalArgumentException("redirectTo must start with http:// or https://");
   }
 
+  private String withAppState(String baseRedirectUrl, String flowId) {
+    return UriComponentsBuilder.fromUriString(baseRedirectUrl)
+        .replaceQueryParam("app_state", flowId)
+        .build(true)
+        .toUriString();
+  }
+
   private String trimTrailingSlash(String value) {
     if (!StringUtils.hasText(value)) {
       return value;
@@ -212,6 +244,32 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     return value == null ? "" : String.valueOf(value);
   }
 
-  private record PkceFlowState(String codeVerifier, Instant expiresAt) {
+  @SuppressWarnings("unchecked")
+  private String extractDisplayName(Jwt jwt) {
+    String fullName = jwt.getClaimAsString("full_name");
+    if (StringUtils.hasText(fullName)) {
+      return fullName.trim();
+    }
+
+    String name = jwt.getClaimAsString("name");
+    if (StringUtils.hasText(name)) {
+      return name.trim();
+    }
+
+    Object userMetadata = jwt.getClaims().get("user_metadata");
+    if (userMetadata instanceof Map<?, ?> metadata) {
+      Object metadataName = metadata.get("full_name");
+      if (metadataName == null) {
+        metadataName = metadata.get("name");
+      }
+      if (metadataName != null && StringUtils.hasText(String.valueOf(metadataName))) {
+        return String.valueOf(metadataName).trim();
+      }
+    }
+
+    return "";
+  }
+
+  private record PkceFlowState(String codeVerifier, Instant expiresAt, String redirectUrl) {
   }
 }

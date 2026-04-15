@@ -4,6 +4,14 @@ public interface SupabaseAuthClient {
 
   LoginResult loginWithPassword(String email, String password);
 
+  LoginResult refreshSession(String refreshToken);
+
+  void logout(String accessToken);
+
+  void updateEmail(String accessToken, String newEmail);
+
+  void updatePassword(String accessToken, String newPassword);
+
   LoginResult registerWithPassword(
       String email,
       String password,

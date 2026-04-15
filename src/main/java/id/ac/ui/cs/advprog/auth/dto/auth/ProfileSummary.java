@@ -1,8 +1,9 @@
 package id.ac.ui.cs.advprog.auth.dto.auth;
 
+import java.util.UUID;
+
 public record ProfileSummary(
-    Long id,
-    String supabaseUserId,
+    UUID id,
     String username,
     String email,
     String displayName,
