@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -64,6 +65,7 @@ class AuthLoginServiceTest {
   @Test
   void loginResolvesPhoneIdentifierToEmailBeforeCallingIdentityProvider() {
     UserProfile user = new UserProfile();
+    user.setId(UUID.randomUUID());
     user.setPhone("+628123456789");
     user.setEmail("phone@example.com");
     user.setRole("STUDENT");
