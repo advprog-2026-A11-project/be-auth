@@ -13,6 +13,8 @@ import org.springframework.util.StringUtils;
 public class AuthLoginService {
 
   private static final Pattern PHONE_IDENTIFIER_PATTERN = Pattern.compile("^\\+?[0-9]{8,15}$");
+  private static final String BANNED_ACCOUNT_MESSAGE =
+      "Your account has been banned. Please contact an administrator.";
 
   private final SupabaseAuthClient supabaseAuthClient;
   private final UserProfileService userProfileService;
@@ -140,13 +142,13 @@ public class AuthLoginService {
     userProfileService.findByEmail(email)
         .filter(existing -> !existing.isActive())
         .ifPresent(existing -> {
-          throw new UnauthorizedException("Account is inactive");
+          throw new UnauthorizedException(BANNED_ACCOUNT_MESSAGE);
         });
   }
 
   private Optional<String> resolveEmailFromProfile(UserProfile profile) {
     if (!profile.isActive()) {
-      throw new UnauthorizedException("Account is inactive");
+      throw new UnauthorizedException(BANNED_ACCOUNT_MESSAGE);
     }
     if (!StringUtils.hasText(profile.getEmail())) {
       return Optional.empty();

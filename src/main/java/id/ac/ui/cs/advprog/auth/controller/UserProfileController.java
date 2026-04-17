@@ -110,6 +110,11 @@ public class UserProfileController {
     return ResponseEntity.noContent().build();
   }
 
+  @PatchMapping("/{id}/activate")
+  public ResponseEntity<UserProfileResponse> activate(@PathVariable UUID id) {
+    return ResponseEntity.ok(UserProfileResponse.from(service.activateById(id)));
+  }
+
   @PatchMapping("/me")
   public ResponseEntity<Map<String, String>> updateMe(
       @Valid @RequestBody UpdateProfileRequest request) {

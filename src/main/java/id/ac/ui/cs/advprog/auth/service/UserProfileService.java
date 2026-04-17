@@ -233,6 +233,13 @@ public class UserProfileService {
     }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
   }
 
+  public UserProfile activateById(UUID id) {
+    return repository.findById(id).map(existing -> {
+      existing.setActive(true);
+      return repository.save(existing);
+    }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+  }
+
   public void deleteById(UUID id) {
     deactivateById(id);
   }

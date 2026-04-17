@@ -32,6 +32,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
   private static final String BEARER_PREFIX = "Bearer ";
+  private static final String BANNED_ACCOUNT_MESSAGE =
+      "Your account has been banned. Please contact an administrator.";
 
   private final SupabaseJwtService supabaseJwtService;
   private final TokenRevocationService tokenRevocationService;
@@ -113,7 +115,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       Optional<UserProfile> profile = resolveProfile(sub, email);
       if (profile.isPresent() && !profile.get().isActive()) {
         SecurityContextHolder.clearContext();
-        writeUnauthorized(response, request, "Account is inactive");
+        writeUnauthorized(response, request, BANNED_ACCOUNT_MESSAGE);
         return;
       }
       String role = resolveRole(profile, jwt.getClaimAsString("role"));

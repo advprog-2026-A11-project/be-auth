@@ -192,7 +192,8 @@ class SupabaseJwtAuthenticationFilterTest {
     filter.doFilterInternal(request, response, chain);
 
     assertEquals(401, response.getStatus());
-    assertTrue(response.getContentAsString().contains("Account is inactive"));
+    assertTrue(response.getContentAsString()
+        .contains("Your account has been banned. Please contact an administrator."));
     verify(chain, never()).doFilter(request, response);
   }
 
