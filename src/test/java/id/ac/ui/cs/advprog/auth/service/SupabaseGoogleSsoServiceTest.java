@@ -109,7 +109,7 @@ class SupabaseGoogleSsoServiceTest {
         () -> service.handleCallback(new SsoCallbackRequest("oauth-code", "opaque-state")));
 
     assertEquals(
-        "Your account has been banned. Please contact an administrator.",
+        "Your account has been deactivated. Please contact an administrator.",
         ex.getMessage());
     verify(authSessionService).logout("access-token");
   }

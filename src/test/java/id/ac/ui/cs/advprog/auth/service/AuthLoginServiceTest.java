@@ -43,7 +43,7 @@ class AuthLoginServiceTest {
         () -> service.login("inactive@example.com", "password123"));
 
     assertEquals(
-        "Your account has been banned. Please contact an administrator.",
+        "Your account has been deactivated. Please contact an administrator.",
         ex.getMessage());
     verify(supabaseAuthClient, never()).loginWithPassword("inactive@example.com", "password123");
   }
@@ -61,7 +61,7 @@ class AuthLoginServiceTest {
         () -> service.login("inactive-user", "password123"));
 
     assertEquals(
-        "Your account has been banned. Please contact an administrator.",
+        "Your account has been deactivated. Please contact an administrator.",
         ex.getMessage());
     verify(supabaseAuthClient, never()).loginWithPassword("inactive@example.com", "password123");
   }
@@ -109,7 +109,7 @@ class AuthLoginServiceTest {
         () -> service.login("+628999999999", "password123"));
 
     assertEquals(
-        "Your account has been banned. Please contact an administrator.",
+        "Your account has been deactivated. Please contact an administrator.",
         ex.getMessage());
     verify(supabaseAuthClient, never())
         .loginWithPassword("inactive-phone@example.com", "password123");
