@@ -6,7 +6,6 @@ import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +14,6 @@ public class UserProfileService {
 
   private final UserProfileRepository repository;
 
-  @Autowired
   public UserProfileService(UserProfileRepository repository) {
     this.repository = repository;
   }
