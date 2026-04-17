@@ -108,7 +108,9 @@ class SupabaseGoogleSsoServiceTest {
         UnauthorizedException.class,
         () -> service.handleCallback(new SsoCallbackRequest("oauth-code", "opaque-state")));
 
-    assertEquals("Account is inactive", ex.getMessage());
+    assertEquals(
+        "Your account has been deactivated. Please contact an administrator.",
+        ex.getMessage());
     verify(authSessionService).logout("access-token");
   }
 

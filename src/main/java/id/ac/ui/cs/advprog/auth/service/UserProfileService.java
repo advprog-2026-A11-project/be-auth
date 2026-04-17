@@ -6,7 +6,6 @@ import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +14,6 @@ public class UserProfileService {
 
   private final UserProfileRepository repository;
 
-  @Autowired
   public UserProfileService(UserProfileRepository repository) {
     this.repository = repository;
   }
@@ -229,6 +227,13 @@ public class UserProfileService {
   public UserProfile deactivateById(UUID id) {
     return repository.findById(id).map(existing -> {
       existing.setActive(false);
+      return repository.save(existing);
+    }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+  }
+
+  public UserProfile activateById(UUID id) {
+    return repository.findById(id).map(existing -> {
+      existing.setActive(true);
       return repository.save(existing);
     }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
   }

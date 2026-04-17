@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.MessageResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
@@ -146,7 +147,7 @@ public class AuthController {
   }
 
   @PostMapping("/change-password")
-  public ResponseEntity<Map<String, String>> changePassword(
+  public ResponseEntity<MessageResponse> changePassword(
       @Valid @RequestBody ChangePasswordRequest request,
       HttpServletRequest httpRequest) {
     AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
@@ -160,7 +161,7 @@ public class AuthController {
         request.currentPassword(),
         request.newPassword());
 
-    return ResponseEntity.ok(Map.of("message", "Password changed"));
+    return ResponseEntity.ok(new MessageResponse("Password changed"));
   }
 
   @GetMapping("/sso/google/url")

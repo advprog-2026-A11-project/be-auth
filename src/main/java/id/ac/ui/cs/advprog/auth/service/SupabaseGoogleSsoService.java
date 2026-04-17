@@ -29,6 +29,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class SupabaseGoogleSsoService implements GoogleSsoService {
 
+  private static final String DEACTIVATED_ACCOUNT_MESSAGE =
+      "Your account has been deactivated. Please contact an administrator.";
+
   private final String supabaseUrl;
   private final String supabaseApiKey;
   private final String redirectUrl;
@@ -178,7 +181,7 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
 
     if (existing.isPresent() && !existing.get().isActive()) {
       authSessionService.logout(accessToken);
-      throw new UnauthorizedException("Account is inactive");
+      throw new UnauthorizedException(DEACTIVATED_ACCOUNT_MESSAGE);
     }
   }
 
