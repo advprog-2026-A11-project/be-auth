@@ -1,9 +1,8 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.AdminPingResponse;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-import java.util.HashMap;
-import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,14 +23,11 @@ public class AdminController {
   }
 
   @GetMapping("/ping")
-  public ResponseEntity<Map<String, String>> ping() {
+  public ResponseEntity<AdminPingResponse> ping() {
     var currentUser = currentUserProvider.getCurrentUser()
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
     var profile = userProfileService.findBySupabaseUserId(currentUser.sub())
         .orElseThrow(() -> new IllegalStateException("Authenticated user profile not found"));
-    Map<String, String> response = new HashMap<>();
-    response.put("message", "Admin access granted");
-    response.put("userId", profile.getId().toString());
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(new AdminPingResponse("Admin access granted", profile.getId()));
   }
 }
