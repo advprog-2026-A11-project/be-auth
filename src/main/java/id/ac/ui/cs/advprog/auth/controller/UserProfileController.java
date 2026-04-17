@@ -1,9 +1,13 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
@@ -114,7 +118,7 @@ public class UserProfileController {
   }
 
   @PatchMapping("/me")
-  public ResponseEntity<Map<String, String>> updateMe(
+  public ResponseEntity<UpdateProfileResponse> updateMe(
       @Valid @RequestBody UpdateProfileRequest request) {
     if ((request.username() == null || request.username().isBlank())
         && (request.displayName() == null || request.displayName().isBlank())) {
@@ -131,17 +135,16 @@ public class UserProfileController {
         request.username(),
         request.displayName());
 
-    Map<String, String> response = new HashMap<>();
-    response.put("message", "Profile updated");
-    response.put("userId", updated.getId().toString());
-    response.put("username", updated.getUsername());
-    response.put("displayName", updated.getDisplayName());
-    response.put("email", updated.getEmail());
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(new UpdateProfileResponse(
+        "Profile updated",
+        updated.getId(),
+        updated.getUsername(),
+        updated.getDisplayName(),
+        updated.getEmail()));
   }
 
   @PatchMapping("/me/email")
-  public ResponseEntity<Map<String, String>> updateEmail(
+  public ResponseEntity<UpdateEmailResponse> updateEmail(
       @Valid @RequestBody UpdateEmailRequest request,
       HttpServletRequest httpRequest) {
     AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
@@ -163,15 +166,14 @@ public class UserProfileController {
       throw ex;
     }
 
-    Map<String, String> response = new HashMap<>();
-    response.put("message", "Email updated");
-    response.put("userId", updated.getId().toString());
-    response.put("email", updated.getEmail());
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(new UpdateEmailResponse(
+        "Email updated",
+        updated.getId(),
+        updated.getEmail()));
   }
 
   @PatchMapping("/me/phone")
-  public ResponseEntity<Map<String, String>> updatePhone(
+  public ResponseEntity<UpdatePhoneResponse> updatePhone(
       @Valid @RequestBody UpdatePhoneRequest request) {
     AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
@@ -181,15 +183,14 @@ public class UserProfileController {
         principal.email(),
         request.phone());
 
-    Map<String, String> response = new HashMap<>();
-    response.put("message", "Phone updated");
-    response.put("userId", updated.getId().toString());
-    response.put("phone", updated.getPhone());
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(new UpdatePhoneResponse(
+        "Phone updated",
+        updated.getId(),
+        updated.getPhone()));
   }
 
   @DeleteMapping("/me")
-  public ResponseEntity<Map<String, String>> deleteMe(
+  public ResponseEntity<DeleteAccountResponse> deleteMe(
       @Valid @RequestBody DeleteAccountRequest request,
       HttpServletRequest httpRequest) {
     if (!"DELETE".equalsIgnoreCase(request.confirmation().trim())) {
@@ -202,10 +203,9 @@ public class UserProfileController {
     UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
     authSessionService.logout(extractBearerToken(httpRequest));
 
-    Map<String, String> response = new HashMap<>();
-    response.put("message", "Account deleted");
-    response.put("userId", deactivated.getId().toString());
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(new DeleteAccountResponse(
+        "Account deleted",
+        deactivated.getId()));
   }
 
   private void normalizeIntegrationDefaults(UserProfile user) {
