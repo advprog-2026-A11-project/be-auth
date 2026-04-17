@@ -32,6 +32,18 @@ jobs:
           chmod +x ./gradlew
           ./gradlew clean bootJar -x test
 
+      - name: Prepare app directory on EC2
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            mkdir -p ~/app/build/libs
+            rm -f ~/app/*.jar ~/app/build/libs/*.jar
+
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634
         with:
@@ -79,13 +91,25 @@ jobs:
               set +a
             fi
 
-            nohup java -jar "$JAR_FILE" > app.log 2>&1 &
+            export SERVER_ADDRESS="${SERVER_ADDRESS:-0.0.0.0}"
+            export SERVER_PORT="${SERVER_PORT:-8081}"
+
+            if command -v setsid >/dev/null 2>&1; then
+              setsid java -jar "$JAR_FILE" \
+                --server.address="$SERVER_ADDRESS" \
+                --server.port="$SERVER_PORT" > app.log 2>&1 < /dev/null &
+            else
+              nohup java -jar "$JAR_FILE" \
+                --server.address="$SERVER_ADDRESS" \
+                --server.port="$SERVER_PORT" > app.log 2>&1 < /dev/null &
+            fi
             echo $! > app.pid
 
             # Health check on EC2 localhost.
             for i in {1..30}; do
-              if curl --silent --fail "http://127.0.0.1:8081/actuator/health" >/dev/null; then
+              if curl --silent --fail "http://127.0.0.1:${SERVER_PORT}/actuator/health" >/dev/null; then
                 echo "App is healthy"
+                echo "Deployed $(basename "$JAR_FILE") with pid $(cat app.pid)"
                 exit 0
               fi
               sleep 2
