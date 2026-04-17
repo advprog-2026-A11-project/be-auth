@@ -21,10 +21,4 @@ public class CurrentUserProvider {
 
     return Optional.empty();
   }
-
-  public String requireCurrentUserId() {
-    return getCurrentUser()
-        .map(AuthenticatedUserPrincipal::sub)
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
-  }
 }

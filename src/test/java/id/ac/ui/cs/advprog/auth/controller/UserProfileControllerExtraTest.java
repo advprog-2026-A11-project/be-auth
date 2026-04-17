@@ -5,7 +5,9 @@ import static org.mockito.Mockito.*;
 
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
@@ -123,8 +125,8 @@ class UserProfileControllerExtraTest {
 
     var response = controller.updateMe(request);
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("Profile updated", response.getBody().get("message"));
-    assertEquals(profileId.toString(), response.getBody().get("userId"));
+    assertEquals("Profile updated", response.getBody().message());
+    assertEquals(profileId, response.getBody().userId());
   }
 
   @Test
@@ -147,7 +149,7 @@ class UserProfileControllerExtraTest {
 
     var response = controller.updateMe(request);
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("new-user", response.getBody().get("username"));
+    assertEquals("new-user", response.getBody().username());
   }
 
   @Test
@@ -170,7 +172,7 @@ class UserProfileControllerExtraTest {
 
     var response = controller.updateMe(request);
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("New User", response.getBody().get("displayName"));
+    assertEquals("New User", response.getBody().displayName());
   }
 
   @Test
@@ -193,7 +195,7 @@ class UserProfileControllerExtraTest {
 
     var response = controller.updateMe(request);
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("new-user", response.getBody().get("username"));
+    assertEquals("new-user", response.getBody().username());
   }
 
   @Test
@@ -216,7 +218,7 @@ class UserProfileControllerExtraTest {
 
     var response = controller.updateMe(request);
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("New User", response.getBody().get("displayName"));
+    assertEquals("New User", response.getBody().displayName());
   }
 
   @Test
@@ -262,8 +264,8 @@ class UserProfileControllerExtraTest {
 
     var response = controller.deleteMe(request, httpRequest);
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("Account deleted", response.getBody().get("message"));
-    assertEquals(profileId.toString(), response.getBody().get("userId"));
+    assertEquals("Account deleted", response.getBody().message());
+    assertEquals(profileId, response.getBody().userId());
     verify(authSessionService).logout("token-delete-789");
   }
 
@@ -357,12 +359,11 @@ class UserProfileControllerExtraTest {
     when(service.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
         .thenReturn(updated);
 
-    ResponseEntity<java.util.Map<String, String>> response =
-        controller.updateEmail(request, httpRequest);
+    ResponseEntity<UpdateEmailResponse> response = controller.updateEmail(request, httpRequest);
 
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("Email updated", response.getBody().get("message"));
-    assertEquals("new@example.com", response.getBody().get("email"));
+    assertEquals("Email updated", response.getBody().message());
+    assertEquals("new@example.com", response.getBody().email());
     verify(authSessionService).changeEmail("access-email-123", "new@example.com");
     verify(service).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
     verify(service, never()).updateCurrentUserEmail(
@@ -433,11 +434,11 @@ class UserProfileControllerExtraTest {
     when(service.updateCurrentUserPhone("sub-123", "user@example.com", "+628123456789"))
         .thenReturn(updated);
 
-    ResponseEntity<java.util.Map<String, String>> response = controller.updatePhone(request);
+    ResponseEntity<UpdatePhoneResponse> response = controller.updatePhone(request);
 
     assertEquals(200, response.getStatusCodeValue());
-    assertEquals("Phone updated", response.getBody().get("message"));
-    assertEquals("+628123456789", response.getBody().get("phone"));
+    assertEquals("Phone updated", response.getBody().message());
+    assertEquals("+628123456789", response.getBody().phone());
     verify(authSessionService, never()).changeEmail(anyString(), anyString());
   }
 }
