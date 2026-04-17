@@ -94,6 +94,18 @@ jobs:
             export SERVER_ADDRESS="${SERVER_ADDRESS:-0.0.0.0}"
             export SERVER_PORT="${SERVER_PORT:-8081}"
 
+            EXISTING_PIDS=""
+            if command -v lsof >/dev/null 2>&1; then
+              EXISTING_PIDS="$(lsof -ti tcp:"$SERVER_PORT" -sTCP:LISTEN 2>/dev/null || true)"
+            elif command -v ss >/dev/null 2>&1; then
+              EXISTING_PIDS="$(ss -ltnp 2>/dev/null | awk -v port=":$SERVER_PORT" '$4 ~ port {print $NF}' | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u)"
+            fi
+
+            if [ -n "$EXISTING_PIDS" ]; then
+              echo "$EXISTING_PIDS" | xargs -r kill || true
+              sleep 2
+            fi
+
             if command -v setsid >/dev/null 2>&1; then
               setsid java -jar "$JAR_FILE" \
                 --server.address="$SERVER_ADDRESS" \
