@@ -73,9 +73,9 @@ class AuthControllerTest {
   void meMissingHeaderReturnsUnauthorized() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
-    assertTrue(resp.getBody().containsKey("error"));
+    assertTrue(((Map<?, ?>) resp.getBody()).containsKey("error"));
   }
 
   @Test
@@ -83,10 +83,10 @@ class AuthControllerTest {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn("Basic abc");
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(401, resp.getStatusCodeValue());
-    assertEquals("Missing Bearer token", resp.getBody().get("error"));
+    assertEquals("Missing Bearer token", ((Map<?, ?>) resp.getBody()).get("error"));
   }
 
   @Test
@@ -95,7 +95,7 @@ class AuthControllerTest {
     when(req.getHeader("Authorization")).thenReturn("Bearer bad");
     when(jwtService.validateAccessToken("bad"))
         .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
   }
 

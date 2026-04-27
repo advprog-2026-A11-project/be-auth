@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthMeResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
@@ -72,7 +73,7 @@ public class AuthController {
   }
 
   @GetMapping("/me")
-  public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) {
+  public ResponseEntity<?> me(HttpServletRequest request) {
     String authHeader = request.getHeader("Authorization");
     if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
       return unauthorized("Missing Bearer token");
@@ -84,32 +85,13 @@ public class AuthController {
       String sub = claims.getSubject();
       String email = claims.getClaimAsString(EMAIL_CLAIM);
 
-      Map<String, Object> payload = new HashMap<>();
-      payload.put("sub", sub);
-      payload.put("aud", claims.getAudience());
-      payload.put("iss", claims.getIssuer());
-      payload.put("exp", claims.getExpiresAt());
-
       Optional<UserProfile> profile = resolveProfileSafely(sub, email);
-
-      if (profile.isPresent()) {
-        UserProfile user = profile.get();
-        Map<String, Object> profilePayload = new HashMap<>();
-        profilePayload.put("id", user.getId());
-        profilePayload.put("username", user.getUsername());
-        profilePayload.put(EMAIL_CLAIM, user.getEmail());
-        profilePayload.put("phone", user.getPhone());
-        profilePayload.put("displayName", user.getDisplayName());
-        profilePayload.put("role", RoleMapper.canonicalize(user.getRole()));
-        profilePayload.put("authProvider", user.getAuthProvider());
-        profilePayload.put("googleSub", user.getGoogleSub());
-        profilePayload.put("isActive", user.isActive());
-        payload.put("profile", profilePayload);
-      } else {
-        payload.put("profile", null);
-      }
-
-      return ResponseEntity.ok(payload);
+      return ResponseEntity.ok(AuthMeResponse.of(
+          sub,
+          claims.getAudience(),
+          claims.getIssuer(),
+          claims.getExpiresAt(),
+          profile.orElse(null)));
     } catch (SupabaseJwtService.InvalidTokenException ex) {
       return unauthorized(ex.getMessage());
     }
