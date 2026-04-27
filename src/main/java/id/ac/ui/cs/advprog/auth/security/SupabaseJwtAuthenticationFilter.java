@@ -31,14 +31,17 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final TokenRevocationService tokenRevocationService;
   private final UserProfileService userProfileService;
+  private final CurrentUserProvider currentUserProvider;
   private final ObjectMapper objectMapper;
 
   public SupabaseJwtAuthenticationFilter(
       TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
+      CurrentUserProvider currentUserProvider,
       ObjectMapper objectMapper) {
     this.tokenRevocationService = tokenRevocationService;
     this.userProfileService = userProfileService;
+    this.currentUserProvider = currentUserProvider;
     this.objectMapper = objectMapper;
   }
 
@@ -107,7 +110,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
-    Optional<Jwt> currentJwt = SecurityContextJwtAccessor.getCurrentJwt();
+    Optional<Jwt> currentJwt = currentUserProvider.getCurrentJwt();
     if (currentJwt.isEmpty()) {
       filterChain.doFilter(request, response);
       return;

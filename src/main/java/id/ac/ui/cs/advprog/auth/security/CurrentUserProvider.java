@@ -17,6 +17,23 @@ public class CurrentUserProvider {
   private static final String NO_AUTHENTICATED_USER_MESSAGE =
       "No authenticated user in security context";
 
+  public Optional<Jwt> getCurrentJwt() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null) {
+      return Optional.empty();
+    }
+
+    if (authentication.getPrincipal() instanceof Jwt jwt) {
+      return Optional.of(jwt);
+    }
+
+    if (authentication.getCredentials() instanceof Jwt jwt) {
+      return Optional.of(jwt);
+    }
+
+    return Optional.empty();
+  }
+
   public Optional<AuthenticatedUserPrincipal> getCurrentUser() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null) {
@@ -27,7 +44,9 @@ public class CurrentUserProvider {
     if (principal instanceof AuthenticatedUserPrincipal authenticatedUserPrincipal) {
       return Optional.of(authenticatedUserPrincipal);
     }
-    if (principal instanceof Jwt jwt) {
+    Optional<Jwt> currentJwt = getCurrentJwt();
+    if (currentJwt.isPresent()) {
+      Jwt jwt = currentJwt.get();
       return Optional.of(new AuthenticatedUserPrincipal(
           jwt.getSubject(),
           jwt.getClaimAsString("email"),

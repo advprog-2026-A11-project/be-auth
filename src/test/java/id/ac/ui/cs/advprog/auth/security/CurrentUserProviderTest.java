@@ -2,11 +2,14 @@ package id.ac.ui.cs.advprog.auth.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,7 +19,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 class CurrentUserProviderTest {
 
-  private final CurrentUserProvider currentUserProvider = new CurrentUserProvider();
+  private final CurrentUserProvider provider = new CurrentUserProvider();
 
   @AfterEach
   void tearDown() {
@@ -24,59 +27,94 @@ class CurrentUserProviderTest {
   }
 
   @Test
-  void getCurrentUserReturnsEmptyWhenAuthenticationMissing() {
-    assertTrue(currentUserProvider.getCurrentUser().isEmpty());
+  void getCurrentJwtReturnsEmptyWithoutAuthentication() {
+    assertTrue(provider.getCurrentJwt().isEmpty());
+    assertTrue(provider.getCurrentUser().isEmpty());
   }
 
   @Test
-  void getCurrentUserReadsAuthenticatedUserPrincipal() {
+  void getCurrentUserReturnsPrincipalWhenAlreadyResolved() {
+    AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "ADMIN");
     SecurityContextHolder.getContext().setAuthentication(
-        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "ADMIN"),
-            null,
-            List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        new UsernamePasswordAuthenticationToken(principal, null, List.of()));
 
-    var currentUser = currentUserProvider.getCurrentUser();
+    Optional<AuthenticatedUserPrincipal> currentUser = provider.getCurrentUser();
 
     assertTrue(currentUser.isPresent());
-    assertEquals("sub-123", currentUser.get().sub());
-    assertEquals("user@example.com", currentUser.get().email());
-    assertEquals("ADMIN", currentUser.get().role());
+    assertEquals(principal, currentUser.get());
   }
 
   @Test
-  void getCurrentUserReadsJwtAuthenticationToken() {
-    Jwt jwt = new Jwt(
-        "token-value",
-        Instant.now(),
-        Instant.now().plusSeconds(600),
-        Map.of("alg", "none"),
-        Map.of(
-            "sub", "jwt-sub-123",
-            "email", "jwt@example.com",
-            "role", "authenticated"));
-
+  void getCurrentUserBuildsPrincipalFromJwtClaimsAndAuthorities() {
+    Jwt jwt = jwt("token-1", "sub-234", "jwt@example.com", "authenticated");
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(
             jwt,
             null,
             List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
 
-    var currentUser = currentUserProvider.getCurrentUser();
+    Optional<AuthenticatedUserPrincipal> currentUser = provider.getCurrentUser();
 
     assertTrue(currentUser.isPresent());
-    assertEquals("jwt-sub-123", currentUser.get().sub());
+    assertEquals("sub-234", currentUser.get().sub());
     assertEquals("jwt@example.com", currentUser.get().email());
+    assertEquals("ADMIN", currentUser.get().role());
+    assertTrue(provider.getCurrentJwt().isPresent());
+  }
+
+  @Test
+  void getCurrentUserFallsBackToJwtCredentialsWhenPrincipalIsNotJwt() {
+    Jwt jwt = jwt("token-2", "sub-345", "cred@example.com", "authenticated");
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            "principal-name",
+            jwt,
+            List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
+
+    Optional<AuthenticatedUserPrincipal> currentUser = provider.getCurrentUser();
+
+    assertTrue(currentUser.isPresent());
+    assertEquals("sub-345", currentUser.get().sub());
+    assertEquals("cred@example.com", currentUser.get().email());
+    assertEquals("STUDENT", currentUser.get().role());
+    assertTrue(provider.getCurrentJwt().isPresent());
+  }
+
+  @Test
+  void getCurrentUserFallsBackToClaimRoleWhenAuthorityIsMissing() {
+    Jwt jwt = jwt("token-3", "sub-456", "claim@example.com", "admin");
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(jwt, null, List.of()));
+
+    Optional<AuthenticatedUserPrincipal> currentUser = provider.getCurrentUser();
+
+    assertTrue(currentUser.isPresent());
     assertEquals("ADMIN", currentUser.get().role());
   }
 
   @Test
-  void getCurrentUserIgnoresUnsupportedPrincipalType() {
-    SecurityContextHolder.getContext().setAuthentication(
-        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-            "plain-string-principal",
-            null));
+  void requireCurrentUserThrowsWhenAuthenticationMissing() {
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        provider::requireCurrentUser);
 
-    assertFalse(currentUserProvider.getCurrentUser().isPresent());
+    assertEquals("No authenticated user in security context", ex.getMessage());
+    assertFalse(provider.getCurrentJwt().isPresent());
+  }
+
+  private Jwt jwt(String tokenValue, String sub, String email, String role) {
+    Instant now = Instant.now();
+    return new Jwt(
+        tokenValue,
+        now,
+        now.plusSeconds(3600),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", sub,
+            "email", email,
+            "role", role,
+            "aud", List.of("authenticated"),
+            "iss", "https://supabase.test/auth/v1"));
   }
 }

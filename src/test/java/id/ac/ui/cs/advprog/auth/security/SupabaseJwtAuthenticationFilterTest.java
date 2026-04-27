@@ -51,6 +51,7 @@ class SupabaseJwtAuthenticationFilterTest {
     filter = new SupabaseJwtAuthenticationFilter(
         tokenRevocationService,
         userProfileService,
+        new CurrentUserProvider(),
         new ObjectMapper());
     SecurityContextHolder.clearContext();
   }

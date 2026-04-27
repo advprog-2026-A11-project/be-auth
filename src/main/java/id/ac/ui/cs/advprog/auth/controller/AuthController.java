@@ -16,7 +16,6 @@ import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.security.SecurityContextJwtAccessor;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
@@ -68,7 +67,7 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<?> me(HttpServletRequest request) {
-    Optional<Jwt> currentJwt = SecurityContextJwtAccessor.getCurrentJwt();
+    Optional<Jwt> currentJwt = currentUserProvider.getCurrentJwt();
     if (currentJwt.isEmpty()) {
       return unauthorized("Missing Bearer token");
     }

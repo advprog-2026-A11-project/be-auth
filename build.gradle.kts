@@ -43,7 +43,6 @@ val coverageExclusions = listOf(
     "**/service/AuthLoginService*",
     "**/service/SupabaseGoogleSsoService*",
     "**/service/SupabaseAuthClient*",
-    "**/service/GoogleSsoService*",
     "**/service/UserProfileService*"
 )
 

@@ -56,7 +56,6 @@ class AuthControllerTest {
   @Mock
   private AuthSessionService authSessionService;
 
-  @Mock
   private CurrentUserProvider currentUserProvider;
 
   private AuthController controller;
@@ -69,6 +68,7 @@ class AuthControllerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+    currentUserProvider = spy(new CurrentUserProvider());
     controller = new AuthController(
         authLoginService,
         authSessionService,

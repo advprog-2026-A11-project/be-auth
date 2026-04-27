@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.auth.security.UnauthorizedResponseWriter;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
@@ -25,10 +26,12 @@ public class SecurityConfig {
   public SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter(
       TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
+      CurrentUserProvider currentUserProvider,
       ObjectMapper objectMapper) {
     return new SupabaseJwtAuthenticationFilter(
         tokenRevocationService,
         userProfileService,
+        currentUserProvider,
         objectMapper);
   }
 
