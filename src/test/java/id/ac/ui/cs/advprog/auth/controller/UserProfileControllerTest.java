@@ -85,6 +85,14 @@ class UserProfileControllerTest {
   }
 
   @Test
+  void updateDisplayNameNullRequestReturnsBadRequest() {
+    UUID id = UUID.randomUUID();
+    ResponseEntity<?> resp = controller.updateDisplayName(id, null);
+    assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+    assertEquals("displayName is required", ((ErrorResponse) resp.getBody()).error());
+  }
+
+  @Test
   void updateDisplayNameSuccessReturnsOk() {
     UUID id = UUID.randomUUID();
     UserProfile u = new UserProfile();
@@ -134,5 +142,24 @@ class UserProfileControllerTest {
     ResponseEntity<Void> resp = controller.delete(id);
     assertEquals(HttpStatus.NO_CONTENT, resp.getStatusCode());
     verify(service).deactivateById(id);
+  }
+
+  @Test
+  void activateReturnsUpdatedProfile() {
+    UUID id = UUID.randomUUID();
+    UserProfile active = new UserProfile();
+    active.setId(id);
+    active.setUsername("active-user");
+    active.setEmail("active@example.com");
+    active.setRole("ADMIN");
+    active.setActive(true);
+    when(service.activateById(id)).thenReturn(active);
+
+    ResponseEntity<UserProfileResponse> response = controller.activate(id);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals("active-user", response.getBody().username());
+    assertTrue(response.getBody().isActive());
   }
 }

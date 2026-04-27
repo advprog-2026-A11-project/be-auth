@@ -107,6 +107,27 @@ class UserProfileControllerExtraTest {
   }
 
   @Test
+  void normalizeIntegrationDefaultsCanonicalizesRoleAndPreservesExplicitFields() {
+    UserProfileRequest request = new UserProfileRequest();
+    request.setUsername("  spaced-user  ");
+    request.setDisplayName("Display Name");
+    request.setRole("authenticated");
+    request.setEmail("kept@example.com");
+    request.setActive(true);
+
+    when(service.create(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    ResponseEntity<UserProfileResponse> response = controller.create(request);
+
+    assertEquals(201, response.getStatusCodeValue());
+    assertNotNull(response.getBody());
+    assertEquals("spaced-user", response.getBody().username());
+    assertEquals("Display Name", response.getBody().displayName());
+    assertEquals("STUDENT", response.getBody().role());
+    assertEquals("kept@example.com", response.getBody().email());
+  }
+
+  @Test
   void updateMeSuccess() {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", "New User");
     final AuthenticatedUserPrincipal principal =
