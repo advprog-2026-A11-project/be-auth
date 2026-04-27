@@ -12,6 +12,7 @@ import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.exception.ConflictException;
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
@@ -238,12 +239,12 @@ class UserProfileControllerExtraTest {
   }
 
   @Test
-  void updateMeWithoutCurrentUserThrowsIllegalStateException() {
+  void updateMeWithoutCurrentUserThrowsUnauthorizedException() {
     UpdateProfileRequest request = new UpdateProfileRequest("new-user", null);
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
 
-    IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> controller.updateMe(request));
+    UnauthorizedException ex =
+        assertThrows(UnauthorizedException.class, () -> controller.updateMe(request));
     assertEquals("No authenticated user in security context", ex.getMessage());
   }
 
@@ -281,13 +282,38 @@ class UserProfileControllerExtraTest {
   }
 
   @Test
-  void deleteMeWithoutCurrentUserThrowsIllegalStateException() {
+  void deleteMeWithoutCurrentUserThrowsUnauthorizedException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
 
-    IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> controller.deleteMe(request, httpRequest));
+    UnauthorizedException ex =
+        assertThrows(UnauthorizedException.class, () -> controller.deleteMe(request, httpRequest));
+    assertEquals("No authenticated user in security context", ex.getMessage());
+  }
+
+  @Test
+  void updateEmailWithoutCurrentUserThrowsUnauthorizedException() {
+    UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> controller.updateEmail(request, httpRequest));
+
+    assertEquals("No authenticated user in security context", ex.getMessage());
+  }
+
+  @Test
+  void updatePhoneWithoutCurrentUserThrowsUnauthorizedException() {
+    UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
+    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> controller.updatePhone(request));
+
     assertEquals("No authenticated user in security context", ex.getMessage());
   }
 
