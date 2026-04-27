@@ -3,7 +3,6 @@ package id.ac.ui.cs.advprog.auth.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.RoleMapper;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.FilterChain;
@@ -22,6 +21,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,17 +35,14 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String DEACTIVATED_ACCOUNT_MESSAGE =
       "Your account has been deactivated. Please contact an administrator.";
 
-  private final SupabaseJwtService supabaseJwtService;
   private final TokenRevocationService tokenRevocationService;
   private final UserProfileService userProfileService;
   private final ObjectMapper objectMapper;
 
   public SupabaseJwtAuthenticationFilter(
-      SupabaseJwtService supabaseJwtService,
       TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
       ObjectMapper objectMapper) {
-    this.supabaseJwtService = supabaseJwtService;
     this.tokenRevocationService = tokenRevocationService;
     this.userProfileService = userProfileService;
     this.objectMapper = objectMapper;
@@ -102,35 +99,35 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
-    try {
-      if (tokenRevocationService.isRevoked(token)) {
-        SecurityContextHolder.clearContext();
-        writeUnauthorized(response, request, "Session has been revoked");
-        return;
-      }
-
-      Jwt jwt = supabaseJwtService.validateAccessToken(token);
-      String sub = jwt.getSubject();
-      String email = jwt.getClaimAsString("email");
-      Optional<UserProfile> profile = resolveProfile(sub, email);
-      if (profile.isPresent() && !profile.get().isActive()) {
-        SecurityContextHolder.clearContext();
-        writeUnauthorized(response, request, DEACTIVATED_ACCOUNT_MESSAGE);
-        return;
-      }
-      String role = resolveRole(profile, jwt.getClaimAsString("role"));
-      List<GrantedAuthority> authorities = buildAuthorities(role);
-
-      AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(sub, email, role);
-      UsernamePasswordAuthenticationToken authenticationToken =
-          new UsernamePasswordAuthenticationToken(principal, null, authorities);
-
-      SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-      filterChain.doFilter(request, response);
-    } catch (SupabaseJwtService.InvalidTokenException ex) {
+    if (tokenRevocationService.isRevoked(token)) {
       SecurityContextHolder.clearContext();
-      writeUnauthorized(response, request, ex.getMessage());
+      writeUnauthorized(response, request, "Session has been revoked");
+      return;
     }
+
+    Optional<Jwt> currentJwt = resolveCurrentJwt();
+    if (currentJwt.isEmpty()) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    Jwt jwt = currentJwt.get();
+    String sub = jwt.getSubject();
+    String email = jwt.getClaimAsString("email");
+    Optional<UserProfile> profile = resolveProfile(sub, email);
+    if (profile.isPresent() && !profile.get().isActive()) {
+      SecurityContextHolder.clearContext();
+      writeUnauthorized(response, request, DEACTIVATED_ACCOUNT_MESSAGE);
+      return;
+    }
+
+    String role = resolveRole(profile, jwt.getClaimAsString("role"));
+    List<GrantedAuthority> authorities = buildAuthorities(role);
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(jwt, token, authorities);
+
+    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+    filterChain.doFilter(request, response);
   }
 
   private List<GrantedAuthority> buildAuthorities(String role) {
@@ -156,6 +153,23 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       profile = userProfileService.findByEmail(email);
     }
     return profile;
+  }
+
+  private Optional<Jwt> resolveCurrentJwt() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null) {
+      return Optional.empty();
+    }
+
+    if (authentication.getPrincipal() instanceof Jwt jwt) {
+      return Optional.of(jwt);
+    }
+
+    if (authentication.getCredentials() instanceof Jwt jwt) {
+      return Optional.of(jwt);
+    }
+
+    return Optional.empty();
   }
 
   private void writeUnauthorized(

@@ -18,8 +18,6 @@ import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -28,9 +26,10 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,7 +49,6 @@ public class AuthController {
   private final AuthLoginService authLoginService;
   private final AuthSessionService authSessionService;
   private final GoogleSsoService googleSsoService;
-  private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
   private final CurrentUserProvider currentUserProvider;
   private final boolean passwordAuthEnabled;
@@ -59,14 +57,12 @@ public class AuthController {
       AuthLoginService authLoginService,
       AuthSessionService authSessionService,
       GoogleSsoService googleSsoService,
-      SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService,
       CurrentUserProvider currentUserProvider,
       @Value("${auth.password.enabled:true}") boolean passwordAuthEnabled) {
     this.authLoginService = authLoginService;
     this.authSessionService = authSessionService;
     this.googleSsoService = googleSsoService;
-    this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
     this.currentUserProvider = currentUserProvider;
     this.passwordAuthEnabled = passwordAuthEnabled;
@@ -74,27 +70,22 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<?> me(HttpServletRequest request) {
-    String authHeader = request.getHeader("Authorization");
-    if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
+    Optional<Jwt> currentJwt = resolveCurrentJwt();
+    if (currentJwt.isEmpty()) {
       return unauthorized("Missing Bearer token");
     }
 
-    String token = authHeader.substring(7);
-    try {
-      Jwt claims = supabaseJwtService.validateAccessToken(token);
-      String sub = claims.getSubject();
-      String email = claims.getClaimAsString(EMAIL_CLAIM);
+    Jwt claims = currentJwt.get();
+    String sub = claims.getSubject();
+    String email = claims.getClaimAsString(EMAIL_CLAIM);
 
-      Optional<UserProfile> profile = resolveProfileSafely(sub, email);
-      return ResponseEntity.ok(AuthMeResponse.of(
-          sub,
-          claims.getAudience(),
-          claims.getIssuer(),
-          claims.getExpiresAt(),
-          profile.orElse(null)));
-    } catch (SupabaseJwtService.InvalidTokenException ex) {
-      return unauthorized(ex.getMessage());
-    }
+    Optional<UserProfile> profile = resolveProfileSafely(sub, email);
+    return ResponseEntity.ok(AuthMeResponse.of(
+        sub,
+        claims.getAudience(),
+        claims.getIssuer(),
+        claims.getExpiresAt(),
+        profile.orElse(null)));
   }
 
   @PostMapping("/login")
@@ -180,6 +171,23 @@ public class AuthController {
     } catch (DataAccessException ex) {
       return Optional.empty();
     }
+  }
+
+  private Optional<Jwt> resolveCurrentJwt() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null) {
+      return Optional.empty();
+    }
+
+    if (authentication.getPrincipal() instanceof Jwt jwt) {
+      return Optional.of(jwt);
+    }
+
+    if (authentication.getCredentials() instanceof Jwt jwt) {
+      return Optional.of(jwt);
+    }
+
+    return Optional.empty();
   }
 
   private void ensurePasswordAuthEnabled() {

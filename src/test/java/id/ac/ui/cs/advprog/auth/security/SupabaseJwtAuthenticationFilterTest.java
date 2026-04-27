@@ -49,7 +49,6 @@ class SupabaseJwtAuthenticationFilterTest {
   void setUp() {
     MockitoAnnotations.openMocks(this);
     filter = new SupabaseJwtAuthenticationFilter(
-        supabaseJwtService,
         tokenRevocationService,
         userProfileService,
         new ObjectMapper());
@@ -148,14 +147,11 @@ class SupabaseJwtAuthenticationFilterTest {
     request.addHeader("Authorization", "Bearer bad-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
     FilterChain chain = mock(FilterChain.class);
-    when(supabaseJwtService.validateAccessToken("bad-token"))
-        .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
 
     filter.doFilterInternal(request, response, chain);
 
-    assertEquals(401, response.getStatus());
-    assertTrue(response.getContentAsString().contains("bad token"));
-    verify(chain, never()).doFilter(request, response);
+    verify(chain).doFilter(request, response);
+    verify(supabaseJwtService, never()).validateAccessToken(anyString());
   }
 
   @Test
@@ -181,14 +177,14 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt("valid-inactive", "sub-inactive", "inactive@example.com", "USER");
+    authenticateJwt("valid-inactive", "sub-inactive", "inactive@example.com", "USER");
     UserProfile inactive = new UserProfile();
     inactive.setSupabaseUserId("sub-inactive");
     inactive.setEmail("inactive@example.com");
     inactive.setRole("USER");
     inactive.setActive(false);
 
-    when(supabaseJwtService.validateAccessToken("valid-inactive")).thenReturn(jwt);
+    when(tokenRevocationService.isRevoked("valid-inactive")).thenReturn(false);
     when(userProfileService.findBySupabaseUserId("sub-inactive")).thenReturn(Optional.of(inactive));
 
     filter.doFilterInternal(request, response, chain);
@@ -238,8 +234,8 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt("valid-user", "sub-user", "user@example.com", "authenticated");
-    when(supabaseJwtService.validateAccessToken("valid-user")).thenReturn(jwt);
+    authenticateJwt("valid-user", "sub-user", "user@example.com", "authenticated");
+    when(tokenRevocationService.isRevoked("valid-user")).thenReturn(false);
     when(userProfileService.findBySupabaseUserId("sub-user")).thenReturn(Optional.empty());
     when(userProfileService.findByEmail("user@example.com")).thenReturn(Optional.empty());
 
@@ -260,14 +256,14 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt("valid-admin", "sub-admin", "admin@example.com", "USER");
+    authenticateJwt("valid-admin", "sub-admin", "admin@example.com", "USER");
     UserProfile admin = new UserProfile();
     admin.setSupabaseUserId("sub-admin");
     admin.setEmail("admin@example.com");
     admin.setRole("ADMIN");
     admin.setActive(true);
 
-    when(supabaseJwtService.validateAccessToken("valid-admin")).thenReturn(jwt);
+    when(tokenRevocationService.isRevoked("valid-admin")).thenReturn(false);
     when(userProfileService.findBySupabaseUserId("sub-admin")).thenReturn(Optional.of(admin));
 
     filter.doFilterInternal(request, response, chain);
@@ -284,14 +280,14 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt("valid-email", " ", "fallback@example.com", "USER");
+    authenticateJwt("valid-email", " ", "fallback@example.com", "USER");
     UserProfile user = new UserProfile();
     user.setSupabaseUserId("sub-fallback");
     user.setEmail("fallback@example.com");
     user.setRole("USER");
     user.setActive(true);
 
-    when(supabaseJwtService.validateAccessToken("valid-email")).thenReturn(jwt);
+    when(tokenRevocationService.isRevoked("valid-email")).thenReturn(false);
     when(userProfileService.findByEmail("fallback@example.com")).thenReturn(Optional.of(user));
 
     filter.doFilterInternal(request, response, chain);
@@ -309,8 +305,8 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt("valid-blank-role", " ", " ", " ");
-    when(supabaseJwtService.validateAccessToken("valid-blank-role")).thenReturn(jwt);
+    authenticateJwt("valid-blank-role", " ", " ", " ");
+    when(tokenRevocationService.isRevoked("valid-blank-role")).thenReturn(false);
 
     filter.doFilterInternal(request, response, chain);
 
@@ -330,7 +326,7 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt(
+    authenticateJwt(
         "valid-blank-profile-role",
         "sub-role-fallback",
         "role@example.com",
@@ -341,7 +337,7 @@ class SupabaseJwtAuthenticationFilterTest {
     user.setRole(" ");
     user.setActive(true);
 
-    when(supabaseJwtService.validateAccessToken("valid-blank-profile-role")).thenReturn(jwt);
+    when(tokenRevocationService.isRevoked("valid-blank-profile-role")).thenReturn(false);
     when(userProfileService.findBySupabaseUserId("sub-role-fallback"))
         .thenReturn(Optional.of(user));
 
@@ -367,5 +363,13 @@ class SupabaseJwtAuthenticationFilterTest {
             "role", role,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
+  }
+
+  private void authenticateJwt(String tokenValue, String sub, String email, String role) {
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            jwt(tokenValue, sub, email, role),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
   }
 }

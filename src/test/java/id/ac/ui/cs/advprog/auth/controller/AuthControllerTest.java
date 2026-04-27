@@ -72,7 +72,6 @@ class AuthControllerTest {
         authLoginService,
         authSessionService,
         googleSsoService,
-        jwtService,
         profileService,
         currentUserProvider,
         true);
@@ -102,8 +101,6 @@ class AuthControllerTest {
   void meInvalidTokenReturnsUnauthorized() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn("Bearer bad");
-    when(jwtService.validateAccessToken("bad"))
-        .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
     ResponseEntity<?> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
   }
@@ -148,18 +145,8 @@ class AuthControllerTest {
   @Test
   void meReturnsProfileWhenPresent() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("a@b");
-    when(jwt.getSubject()).thenReturn("sub");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-
-    when(jwtService.validateAccessToken("tkn")).thenReturn(jwt);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    authenticateJwt("sub", "a@b", "authenticated");
 
     UserProfile user = new UserProfile();
     user.setId(UUID.randomUUID());
@@ -187,16 +174,8 @@ class AuthControllerTest {
   @Test
   void meUsesSupabaseUserIdProfileWithoutEmailFallback() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-sub");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("sub@example.com");
-    when(jwt.getSubject()).thenReturn("sub-123");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-sub")).thenReturn(jwt);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    authenticateJwt("sub-123", "sub@example.com", "authenticated");
 
     UserProfile user = new UserProfile();
     user.setSupabaseUserId("sub-123");
@@ -214,18 +193,8 @@ class AuthControllerTest {
   @Test
   void meReturnsNullProfileWhenAbsent() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn2");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("x@y");
-    when(jwt.getSubject()).thenReturn("sub");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-
-    when(jwtService.validateAccessToken("tkn2")).thenReturn(jwt);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    authenticateJwt("sub", "x@y", "authenticated");
     when(profileService.findByEmail("x@y")).thenReturn(Optional.empty());
 
     ResponseEntity<?> resp = controller.me(req);
@@ -282,7 +251,6 @@ class AuthControllerTest {
         authLoginService,
         authSessionService,
         googleSsoService,
-        jwtService,
         profileService,
         currentUserProvider,
         false);
@@ -296,16 +264,8 @@ class AuthControllerTest {
   @Test
   void meFallsBackToEmailLookupWhenSubIsBlank() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-email-only");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("fallback@example.com");
-    when(jwt.getSubject()).thenReturn(" ");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-email-only")).thenReturn(jwt);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    authenticateJwt(" ", "fallback@example.com", "authenticated");
 
     UserProfile user = new UserProfile();
     user.setEmail("fallback@example.com");
@@ -323,16 +283,8 @@ class AuthControllerTest {
   @Test
   void meSkipsProfileLookupWhenSubjectAndEmailAreBlank() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-no-profile");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn(" ");
-    when(jwt.getSubject()).thenReturn(" ");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-no-profile")).thenReturn(jwt);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    authenticateJwt(" ", " ", "authenticated");
 
     ResponseEntity<?> resp = controller.me(req);
 
@@ -346,16 +298,8 @@ class AuthControllerTest {
   @Test
   void meReturnsNullProfileWhenProfileLookupThrowsDataAccessException() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-err");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("error@example.com");
-    when(jwt.getSubject()).thenReturn("sub-error");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-err")).thenReturn(jwt);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    authenticateJwt("sub-error", "error@example.com", "authenticated");
     when(profileService.findBySupabaseUserId("sub-error"))
         .thenThrow(new DataAccessResourceFailureException("db down"));
 
@@ -477,5 +421,25 @@ class AuthControllerTest {
   private Object invokeRecordAccessor(Object target, String accessorName) throws Exception {
     Method method = target.getClass().getMethod(accessorName);
     return method.invoke(target);
+  }
+
+  private void authenticateJwt(String sub, String email, String role) {
+    Jwt jwt = new Jwt(
+        "security-context-token",
+        Instant.now(),
+        Instant.now().plusSeconds(600),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", sub,
+            "email", email,
+            "role", role,
+            "aud", List.of("authenticated"),
+            "iss", "https://supabase.test/auth/v1"));
+
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            jwt,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
   }
 }

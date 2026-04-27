@@ -37,6 +37,8 @@ public class SupabaseJwtService {
       Jwt jwt = getOrCreateDecoder().decode(accessToken);
       validateClaims(jwt);
       return jwt;
+    } catch (InvalidTokenException e) {
+      throw e;
     } catch (JwtException e) {
       throw new InvalidTokenException("Invalid Supabase access token", e);
     }
@@ -113,7 +115,7 @@ public class SupabaseJwtService {
     return value;
   }
 
-  public static class InvalidTokenException extends RuntimeException {
+  public static class InvalidTokenException extends JwtException {
     public InvalidTokenException(String message) {
       super(message);
     }
