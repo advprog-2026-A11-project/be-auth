@@ -1,7 +1,5 @@
 package id.ac.ui.cs.advprog.auth.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -37,8 +35,6 @@ public class UserProfile {
 
   private String role;
 
-  @JsonProperty("isActive")
-  @JsonAlias("active")
   @Column(name = "is_active", nullable = false)
   private boolean active = true;
 
