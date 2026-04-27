@@ -19,6 +19,7 @@ import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -127,14 +128,14 @@ class AuthControllerTest {
 
     when(profileService.findByEmail("a@b")).thenReturn(Optional.of(user));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
-    assertNotNull(resp.getBody().get("profile"));
-    @SuppressWarnings("unchecked")
-    Map<String, Object> profilePayload = (Map<String, Object>) resp.getBody().get("profile");
-    assertEquals("+628123456789", profilePayload.get("phone"));
-    assertEquals("PASSWORD", profilePayload.get("authProvider"));
-    assertEquals("google-sub-1", profilePayload.get("googleSub"));
+    assertAuthMeResponseType(resp);
+    Object profilePayload = invokeRecordAccessor(resp.getBody(), "profile");
+    assertNotNull(profilePayload);
+    assertEquals("+628123456789", invokeRecordAccessor(profilePayload, "phone"));
+    assertEquals("PASSWORD", invokeRecordAccessor(profilePayload, "authProvider"));
+    assertEquals("google-sub-1", invokeRecordAccessor(profilePayload, "googleSub"));
   }
 
   @Test
@@ -156,9 +157,10 @@ class AuthControllerTest {
     user.setEmail("sub@example.com");
     when(profileService.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(user));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(200, resp.getStatusCodeValue());
+    assertAuthMeResponseType(resp);
     verify(profileService).findBySupabaseUserId("sub-123");
     verify(profileService, never()).findByEmail("sub@example.com");
   }
@@ -180,9 +182,10 @@ class AuthControllerTest {
     when(jwtService.validateAccessToken("tkn2")).thenReturn(jwt);
     when(profileService.findByEmail("x@y")).thenReturn(Optional.empty());
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
-    assertNull(resp.getBody().get("profile"));
+    assertAuthMeResponseType(resp);
+    assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
   }
 
   @Test
@@ -263,9 +266,10 @@ class AuthControllerTest {
     user.setUsername("fallback-user");
     when(profileService.findByEmail("fallback@example.com")).thenReturn(Optional.of(user));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(200, resp.getStatusCodeValue());
+    assertAuthMeResponseType(resp);
     verify(profileService, never()).findBySupabaseUserId(anyString());
     verify(profileService).findByEmail("fallback@example.com");
   }
@@ -284,10 +288,11 @@ class AuthControllerTest {
     when(jwt.getExpiresAt()).thenReturn(Instant.now());
     when(jwtService.validateAccessToken("tkn-no-profile")).thenReturn(jwt);
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(200, resp.getStatusCodeValue());
-    assertNull(resp.getBody().get("profile"));
+    assertAuthMeResponseType(resp);
+    assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
     verify(profileService, never()).findBySupabaseUserId(anyString());
     verify(profileService, never()).findByEmail(anyString());
   }
@@ -308,10 +313,11 @@ class AuthControllerTest {
     when(profileService.findBySupabaseUserId("sub-error"))
         .thenThrow(new DataAccessResourceFailureException("db down"));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(200, resp.getStatusCodeValue());
-    assertNull(resp.getBody().get("profile"));
+    assertAuthMeResponseType(resp);
+    assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
   }
 
   @Test
@@ -415,5 +421,15 @@ class AuthControllerTest {
 
     assertEquals(401, ex.getStatusCode().value());
     assertEquals("Bearer token is empty", ex.getReason());
+  }
+
+  private void assertAuthMeResponseType(ResponseEntity<?> response) {
+    assertNotNull(response.getBody());
+    assertEquals("AuthMeResponse", response.getBody().getClass().getSimpleName());
+  }
+
+  private Object invokeRecordAccessor(Object target, String accessorName) throws Exception {
+    Method method = target.getClass().getMethod(accessorName);
+    return method.invoke(target);
   }
 }
