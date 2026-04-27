@@ -238,10 +238,6 @@ public class UserProfileService {
     }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
   }
 
-  public void deleteById(UUID id) {
-    deactivateById(id);
-  }
-
   private UserProfile findCurrentUserOrThrow(String supabaseUserId, String email) {
     if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
       throw new IllegalArgumentException("Authenticated user identity is required");

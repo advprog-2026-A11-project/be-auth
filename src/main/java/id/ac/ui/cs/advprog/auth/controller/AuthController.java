@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.MessageResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
+import id.ac.ui.cs.advprog.auth.dto.common.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
@@ -15,21 +16,18 @@ import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
+import id.ac.ui.cs.advprog.auth.security.SecurityContextJwtAccessor;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,7 +68,7 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<?> me(HttpServletRequest request) {
-    Optional<Jwt> currentJwt = resolveCurrentJwt();
+    Optional<Jwt> currentJwt = SecurityContextJwtAccessor.getCurrentJwt();
     if (currentJwt.isEmpty()) {
       return unauthorized("Missing Bearer token");
     }
@@ -152,10 +150,8 @@ public class AuthController {
     return ResponseEntity.ok(googleSsoService.handleCallback(request));
   }
 
-  private ResponseEntity<Map<String, Object>> unauthorized(String message) {
-    Map<String, Object> response = new HashMap<>();
-    response.put("error", message);
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+  private ResponseEntity<ErrorResponse> unauthorized(String message) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(message));
   }
 
   private Optional<UserProfile> resolveProfileSafely(String sub, String email) {
@@ -171,23 +167,6 @@ public class AuthController {
     } catch (DataAccessException ex) {
       return Optional.empty();
     }
-  }
-
-  private Optional<Jwt> resolveCurrentJwt() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication == null) {
-      return Optional.empty();
-    }
-
-    if (authentication.getPrincipal() instanceof Jwt jwt) {
-      return Optional.of(jwt);
-    }
-
-    if (authentication.getCredentials() instanceof Jwt jwt) {
-      return Optional.of(jwt);
-    }
-
-    return Optional.empty();
   }
 
   private void ensurePasswordAuthEnabled() {

@@ -11,8 +11,6 @@ import static org.mockito.Mockito.when;
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -87,14 +85,7 @@ class AuthSessionServiceTest {
   }
 
   @Test
-  void changeEmailDelegatesToIdentityProvider() {
-    service.changeEmail("access-token", "new@example.com");
-
-    verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
-  }
-
-  @Test
-  void changeEmailOrchestrationUpdatesLocalProfileThenIdentityProvider() throws Exception {
+  void changeEmailOrchestrationUpdatesLocalProfileThenIdentityProvider() {
     UserProfile updated = new UserProfile();
     updated.setId(UUID.randomUUID());
     updated.setSupabaseUserId("sub-123");
@@ -103,7 +94,7 @@ class AuthSessionServiceTest {
     when(userProfileService.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
         .thenReturn(updated);
 
-    invokeCoordinatedChangeEmail(
+    service.changeEmail(
         "access-token",
         "sub-123",
         "old@example.com",
@@ -118,8 +109,7 @@ class AuthSessionServiceTest {
   }
 
   @Test
-  void changeEmailOrchestrationRollsBackLocalProfileWhenIdentityProviderFails()
-      throws Exception {
+  void changeEmailOrchestrationRollsBackLocalProfileWhenIdentityProviderFails() {
     UserProfile updated = new UserProfile();
     updated.setId(UUID.randomUUID());
     updated.setSupabaseUserId("sub-123");
@@ -133,7 +123,7 @@ class AuthSessionServiceTest {
 
     IllegalStateException ex = assertThrows(
         IllegalStateException.class,
-        () -> invokeCoordinatedChangeEmail(
+        () -> service.changeEmail(
             "access-token",
             "sub-123",
             "old@example.com",
@@ -262,26 +252,5 @@ class AuthSessionServiceTest {
     service.revokeCurrentAccessToken("access-token");
 
     verify(tokenRevocationService).revoke("access-token", jwt.getExpiresAt());
-  }
-
-  private void invokeCoordinatedChangeEmail(
-      String accessToken,
-      String supabaseUserId,
-      String currentEmail,
-      String newEmail) throws Exception {
-    try {
-      Method method = AuthSessionService.class.getMethod(
-          "changeEmail",
-          String.class,
-          String.class,
-          String.class,
-          String.class);
-      method.invoke(service, accessToken, supabaseUserId, currentEmail, newEmail);
-    } catch (InvocationTargetException ex) {
-      if (ex.getCause() instanceof Exception cause) {
-        throw cause;
-      }
-      throw ex;
-    }
   }
 }

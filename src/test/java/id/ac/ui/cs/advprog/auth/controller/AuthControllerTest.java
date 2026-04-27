@@ -10,6 +10,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
+import id.ac.ui.cs.advprog.auth.dto.common.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
@@ -83,7 +84,7 @@ class AuthControllerTest {
     when(req.getHeader("Authorization")).thenReturn(null);
     ResponseEntity<?> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
-    assertTrue(((Map<?, ?>) resp.getBody()).containsKey("error"));
+    assertEquals("Missing Bearer token", ((ErrorResponse) resp.getBody()).error());
   }
 
   @Test
@@ -94,7 +95,7 @@ class AuthControllerTest {
     ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(401, resp.getStatusCodeValue());
-    assertEquals("Missing Bearer token", ((Map<?, ?>) resp.getBody()).get("error"));
+    assertEquals("Missing Bearer token", ((ErrorResponse) resp.getBody()).error());
   }
 
   @Test

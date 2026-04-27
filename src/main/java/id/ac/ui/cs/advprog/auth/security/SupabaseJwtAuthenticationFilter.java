@@ -10,18 +10,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -89,23 +83,31 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     if (!authHeader.startsWith(BEARER_PREFIX)) {
-      writeUnauthorized(response, request, "Authorization header must use Bearer token");
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          "Authorization header must use Bearer token");
       return;
     }
 
     String token = authHeader.substring(BEARER_PREFIX.length()).trim();
     if (!StringUtils.hasText(token)) {
-      writeUnauthorized(response, request, "Bearer token is empty");
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          "Bearer token is empty");
       return;
     }
 
     if (tokenRevocationService.isRevoked(token)) {
       SecurityContextHolder.clearContext();
-      writeUnauthorized(response, request, "Session has been revoked");
+      UnauthorizedResponseWriter.write(objectMapper, request, response, "Session has been revoked");
       return;
     }
 
-    Optional<Jwt> currentJwt = resolveCurrentJwt();
+    Optional<Jwt> currentJwt = SecurityContextJwtAccessor.getCurrentJwt();
     if (currentJwt.isEmpty()) {
       filterChain.doFilter(request, response);
       return;
@@ -117,7 +119,11 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     Optional<UserProfile> profile = resolveProfile(sub, email);
     if (profile.isPresent() && !profile.get().isActive()) {
       SecurityContextHolder.clearContext();
-      writeUnauthorized(response, request, DEACTIVATED_ACCOUNT_MESSAGE);
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          DEACTIVATED_ACCOUNT_MESSAGE);
       return;
     }
 
@@ -153,39 +159,5 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       profile = userProfileService.findByEmail(email);
     }
     return profile;
-  }
-
-  private Optional<Jwt> resolveCurrentJwt() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication == null) {
-      return Optional.empty();
-    }
-
-    if (authentication.getPrincipal() instanceof Jwt jwt) {
-      return Optional.of(jwt);
-    }
-
-    if (authentication.getCredentials() instanceof Jwt jwt) {
-      return Optional.of(jwt);
-    }
-
-    return Optional.empty();
-  }
-
-  private void writeUnauthorized(
-      HttpServletResponse response,
-      HttpServletRequest request,
-      String message) throws IOException {
-    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("timestamp", Instant.now().toString());
-    payload.put("status", HttpStatus.UNAUTHORIZED.value());
-    payload.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
-    payload.put("message", message);
-    payload.put("path", request.getRequestURI());
-
-    response.getWriter().write(objectMapper.writeValueAsString(payload));
   }
 }

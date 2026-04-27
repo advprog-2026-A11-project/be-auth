@@ -2,23 +2,16 @@ package id.ac.ui.cs.advprog.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
+import id.ac.ui.cs.advprog.auth.security.UnauthorizedResponseWriter;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-import jakarta.servlet.http.HttpServletRequest;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
@@ -52,8 +45,11 @@ public class SecurityConfig {
 
   @Bean
   public AuthenticationEntryPoint authenticationEntryPoint(ObjectMapper objectMapper) {
-    return (request, response, authException) ->
-        writeUnauthorized(objectMapper, request, response, authException);
+    return (request, response, authException) -> UnauthorizedResponseWriter.write(
+        objectMapper,
+        request,
+        response,
+        authException.getMessage());
   }
 
   @Bean
@@ -96,23 +92,5 @@ public class SecurityConfig {
             BearerTokenAuthenticationFilter.class);
 
     return http.build();
-  }
-
-  private void writeUnauthorized(
-      ObjectMapper objectMapper,
-      HttpServletRequest request,
-      jakarta.servlet.http.HttpServletResponse response,
-      AuthenticationException authException) throws IOException {
-    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("timestamp", Instant.now().toString());
-    payload.put("status", HttpStatus.UNAUTHORIZED.value());
-    payload.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
-    payload.put("message", authException.getMessage());
-    payload.put("path", request.getRequestURI());
-
-    response.getWriter().write(objectMapper.writeValueAsString(payload));
   }
 }

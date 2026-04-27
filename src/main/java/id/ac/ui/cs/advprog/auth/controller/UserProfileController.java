@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
+import id.ac.ui.cs.advprog.auth.dto.common.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateDisplayNameRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
@@ -19,15 +21,11 @@ import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -77,19 +75,18 @@ public class UserProfileController {
   }
 
   @PutMapping("/{id}/displayName")
-  public ResponseEntity<Object> updateDisplayName(
+  public ResponseEntity<?> updateDisplayName(
       @PathVariable UUID id,
-      @RequestBody Map<String, String> body) {
-    String name = body.get("displayName");
-    if (name == null) {
-      Map<String, String> err = new HashMap<>();
-      err.put("error", "displayName is required");
-      return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+      @RequestBody UpdateDisplayNameRequest request) {
+    if (request == null || request.displayName() == null) {
+      return new ResponseEntity<>(
+          new ErrorResponse("displayName is required"),
+          HttpStatus.BAD_REQUEST);
     }
 
-    return service.updateDisplayName(id, name)
+    return service.updateDisplayName(id, request.displayName())
         .map(UserProfileResponse::from)
-        .map(u -> ResponseEntity.ok((Object) u))
+        .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 

@@ -4,14 +4,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import id.ac.ui.cs.advprog.auth.dto.common.ErrorResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UpdateDisplayNameRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,30 +79,25 @@ class UserProfileControllerTest {
   @Test
   void updateDisplayNameMissingReturnsBadRequest() {
     UUID id = UUID.randomUUID();
-    Map<String, String> body = new HashMap<>();
-    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
+    ResponseEntity<?> resp = controller.updateDisplayName(id, new UpdateDisplayNameRequest(null));
     assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+    assertEquals("displayName is required", ((ErrorResponse) resp.getBody()).error());
   }
 
   @Test
   void updateDisplayNameSuccessReturnsOk() {
     UUID id = UUID.randomUUID();
-    Map<String, String> body = new HashMap<>();
-    body.put("displayName", "bob");
     UserProfile u = new UserProfile();
     when(service.updateDisplayName(id, "bob")).thenReturn(Optional.of(u));
-    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
+    ResponseEntity<?> resp = controller.updateDisplayName(id, new UpdateDisplayNameRequest("bob"));
     assertEquals(HttpStatus.OK, resp.getStatusCode());
   }
 
   @Test
   void updateDisplayNameNotFoundReturnsNotFound() {
     UUID id = UUID.randomUUID();
-    Map<String, String> body = new HashMap<>();
-    body.put("displayName", "bob");
-
     when(service.updateDisplayName(id, "bob")).thenReturn(Optional.empty());
-    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
+    ResponseEntity<?> resp = controller.updateDisplayName(id, new UpdateDisplayNameRequest("bob"));
     assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
   }
 

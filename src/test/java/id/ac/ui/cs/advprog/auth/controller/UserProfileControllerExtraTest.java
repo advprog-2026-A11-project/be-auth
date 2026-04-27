@@ -455,6 +455,10 @@ class UserProfileControllerExtraTest {
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Phone updated", response.getBody().message());
     assertEquals("+628123456789", response.getBody().phone());
-    verify(authSessionService, never()).changeEmail(anyString(), anyString());
+    verify(authSessionService, never()).changeEmail(
+        anyString(),
+        anyString(),
+        anyString(),
+        anyString());
   }
 }
