@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
-import id.ac.ui.cs.advprog.auth.dto.auth.AdminPingResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.AdminPingResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;

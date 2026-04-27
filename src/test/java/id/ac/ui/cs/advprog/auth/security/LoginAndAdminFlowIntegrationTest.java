@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;

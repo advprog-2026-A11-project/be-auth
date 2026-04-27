@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
-import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoCallbackResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
 import org.junit.jupiter.api.Test;

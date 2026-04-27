@@ -1,17 +1,17 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
-import id.ac.ui.cs.advprog.auth.dto.common.ErrorResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateDisplayNameRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileResponse;
+import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateDisplayNameRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdatePhoneRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.DeleteAccountResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateEmailResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdatePhoneResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;

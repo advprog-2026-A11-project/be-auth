@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import id.ac.ui.cs.advprog.auth.dto.common.ErrorResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateDisplayNameRequest;
+import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateDisplayNameRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;

@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.auth.service;
 
-import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.oauth2.jwt.Jwt;
