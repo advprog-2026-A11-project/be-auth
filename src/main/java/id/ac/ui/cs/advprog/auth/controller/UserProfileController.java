@@ -199,11 +199,7 @@ public class UserProfileController {
       user.setDisplayName("");
     }
 
-    if (user.getRole() == null || user.getRole().isBlank()) {
-      user.setRole("STUDENT");
-    } else {
-      user.setRole(Role.canonicalize(user.getRole()));
-    }
+    user.setRole(Role.canonicalize(user.getRole()));
 
     if (user.getEmail() == null || user.getEmail().isBlank()) {
       user.setEmail(username + "@local.test");

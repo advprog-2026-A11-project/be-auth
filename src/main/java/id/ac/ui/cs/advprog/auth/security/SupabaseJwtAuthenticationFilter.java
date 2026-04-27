@@ -146,7 +146,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
-    if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
+    if (profile.isPresent()) {
       return Role.canonicalize(profile.get().getRole());
     }
 
