@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.auth.security;
 
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import java.util.Collection;
 import java.util.Optional;
@@ -12,6 +13,9 @@ import org.springframework.util.StringUtils;
 
 @Component
 public class CurrentUserProvider {
+
+  private static final String NO_AUTHENTICATED_USER_MESSAGE =
+      "No authenticated user in security context";
 
   public Optional<AuthenticatedUserPrincipal> getCurrentUser() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -31,6 +35,11 @@ public class CurrentUserProvider {
     }
 
     return Optional.empty();
+  }
+
+  public AuthenticatedUserPrincipal requireCurrentUser() {
+    return getCurrentUser().orElseThrow(
+        () -> new UnauthorizedException(NO_AUTHENTICATED_USER_MESSAGE));
   }
 
   private String resolveRole(

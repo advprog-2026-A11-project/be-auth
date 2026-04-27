@@ -41,7 +41,7 @@ class AdminControllerTest {
     UUID userId = UUID.randomUUID();
     profile.setId(userId);
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(userProfileService.findBySupabaseUserId("sub-admin-1")).thenReturn(Optional.of(profile));
 
     var response = controller.ping();
@@ -53,7 +53,8 @@ class AdminControllerTest {
 
   @Test
   void pingWithoutCurrentUserThrowsUnauthorizedException() {
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+    when(currentUserProvider.requireCurrentUser())
+        .thenThrow(new UnauthorizedException("No authenticated user in security context"));
 
     UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> controller.ping());
 
@@ -65,7 +66,7 @@ class AdminControllerTest {
     AuthenticatedUserPrincipal principal =
         new AuthenticatedUserPrincipal("sub-admin-1", "admin@example.com", "ADMIN");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(userProfileService.findBySupabaseUserId("sub-admin-1")).thenReturn(Optional.empty());
 
     UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> controller.ping());

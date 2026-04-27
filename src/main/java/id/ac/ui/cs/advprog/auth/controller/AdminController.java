@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AdminPingResponse;
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import org.springframework.http.ResponseEntity;
@@ -24,10 +25,9 @@ public class AdminController {
 
   @GetMapping("/ping")
   public ResponseEntity<AdminPingResponse> ping() {
-    var currentUser = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    var currentUser = currentUserProvider.requireCurrentUser();
     var profile = userProfileService.findBySupabaseUserId(currentUser.sub())
-        .orElseThrow(() -> new IllegalStateException("Authenticated user profile not found"));
+        .orElseThrow(() -> new UnauthorizedException("Authenticated user profile not found"));
     return ResponseEntity.ok(new AdminPingResponse("Admin access granted", profile.getId()));
   }
 }

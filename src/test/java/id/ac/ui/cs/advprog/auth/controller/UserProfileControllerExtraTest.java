@@ -120,7 +120,7 @@ class UserProfileControllerExtraTest {
     updated.setDisplayName("New User");
     updated.setEmail("user@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", "New User"))
         .thenReturn(updated);
 
@@ -144,7 +144,7 @@ class UserProfileControllerExtraTest {
     updated.setDisplayName("Current Name");
     updated.setEmail("user@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", " "))
         .thenReturn(updated);
 
@@ -167,7 +167,7 @@ class UserProfileControllerExtraTest {
     updated.setDisplayName("New User");
     updated.setEmail("user@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(service.updateCurrentUserProfile("sub-123", "user@example.com", " ", "New User"))
         .thenReturn(updated);
 
@@ -190,7 +190,7 @@ class UserProfileControllerExtraTest {
     updated.setDisplayName("Current Name");
     updated.setEmail("user@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", null))
         .thenReturn(updated);
 
@@ -213,7 +213,7 @@ class UserProfileControllerExtraTest {
     updated.setDisplayName("New User");
     updated.setEmail("user@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(service.updateCurrentUserProfile("sub-123", "user@example.com", null, "New User"))
         .thenReturn(updated);
 
@@ -241,7 +241,8 @@ class UserProfileControllerExtraTest {
   @Test
   void updateMeWithoutCurrentUserThrowsUnauthorizedException() {
     UpdateProfileRequest request = new UpdateProfileRequest("new-user", null);
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+    when(currentUserProvider.requireCurrentUser())
+        .thenThrow(new UnauthorizedException("No authenticated user in security context"));
 
     UnauthorizedException ex =
         assertThrows(UnauthorizedException.class, () -> controller.updateMe(request));
@@ -259,7 +260,7 @@ class UserProfileControllerExtraTest {
     deactivated.setId(profileId);
     deactivated.setSupabaseUserId("sub-789");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer token-delete-789");
     when(service.deactivateCurrentUser("sub-789", "user2@example.com")).thenReturn(deactivated);
 
@@ -285,7 +286,8 @@ class UserProfileControllerExtraTest {
   void deleteMeWithoutCurrentUserThrowsUnauthorizedException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+    when(currentUserProvider.requireCurrentUser())
+        .thenThrow(new UnauthorizedException("No authenticated user in security context"));
 
     UnauthorizedException ex =
         assertThrows(UnauthorizedException.class, () -> controller.deleteMe(request, httpRequest));
@@ -296,7 +298,8 @@ class UserProfileControllerExtraTest {
   void updateEmailWithoutCurrentUserThrowsUnauthorizedException() {
     UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+    when(currentUserProvider.requireCurrentUser())
+        .thenThrow(new UnauthorizedException("No authenticated user in security context"));
 
     UnauthorizedException ex = assertThrows(
         UnauthorizedException.class,
@@ -308,7 +311,8 @@ class UserProfileControllerExtraTest {
   @Test
   void updatePhoneWithoutCurrentUserThrowsUnauthorizedException() {
     UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.empty());
+    when(currentUserProvider.requireCurrentUser())
+        .thenThrow(new UnauthorizedException("No authenticated user in security context"));
 
     UnauthorizedException ex = assertThrows(
         UnauthorizedException.class,
@@ -321,9 +325,8 @@ class UserProfileControllerExtraTest {
   void deleteMeWithoutBearerTokenThrowsIllegalArgumentException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
-    when(currentUserProvider.getCurrentUser())
-        .thenReturn(Optional.of(
-            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(currentUserProvider.requireCurrentUser())
+        .thenReturn(new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER"));
     when(httpRequest.getHeader("Authorization")).thenReturn(null);
 
     IllegalArgumentException ex =
@@ -338,9 +341,8 @@ class UserProfileControllerExtraTest {
   void deleteMeWithNonBearerTokenThrowsIllegalArgumentException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
-    when(currentUserProvider.getCurrentUser())
-        .thenReturn(Optional.of(
-            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(currentUserProvider.requireCurrentUser())
+        .thenReturn(new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER"));
     when(httpRequest.getHeader("Authorization")).thenReturn("Basic token");
 
     IllegalArgumentException ex =
@@ -355,9 +357,8 @@ class UserProfileControllerExtraTest {
   void deleteMeWithEmptyBearerTokenThrowsIllegalArgumentException() {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
-    when(currentUserProvider.getCurrentUser())
-        .thenReturn(Optional.of(
-            new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER")));
+    when(currentUserProvider.requireCurrentUser())
+        .thenReturn(new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER"));
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer   ");
 
     IllegalArgumentException ex =
@@ -380,7 +381,7 @@ class UserProfileControllerExtraTest {
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     when(authSessionService.changeEmail(
         "access-email-123",
@@ -409,7 +410,7 @@ class UserProfileControllerExtraTest {
         new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     when(authSessionService.changeEmail(
         "access-email-123",
@@ -442,7 +443,7 @@ class UserProfileControllerExtraTest {
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     doThrow(new IllegalStateException("Identity provider unavailable"))
         .when(authSessionService)
@@ -472,7 +473,7 @@ class UserProfileControllerExtraTest {
     updated.setSupabaseUserId("sub-123");
     updated.setPhone("+628123456789");
 
-    when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(service.updateCurrentUserPhone("sub-123", "user@example.com", "+628123456789"))
         .thenReturn(updated);
 

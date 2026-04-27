@@ -122,8 +122,7 @@ public class UserProfileController {
           "At least one field must be provided: username or displayName");
     }
 
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile updated = service.updateCurrentUserProfile(
         principal.sub(),
@@ -143,8 +142,7 @@ public class UserProfileController {
   public ResponseEntity<UpdateEmailResponse> updateEmail(
       @Valid @RequestBody UpdateEmailRequest request,
       HttpServletRequest httpRequest) {
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     String accessToken = BearerTokenExtractor.extractOrBadRequest(httpRequest);
     UserProfile updated = authSessionService.changeEmail(
@@ -162,8 +160,7 @@ public class UserProfileController {
   @PatchMapping("/me/phone")
   public ResponseEntity<UpdatePhoneResponse> updatePhone(
       @Valid @RequestBody UpdatePhoneRequest request) {
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile updated = service.updateCurrentUserPhone(
         principal.sub(),
@@ -184,8 +181,7 @@ public class UserProfileController {
       throw new IllegalArgumentException("confirmation must be DELETE");
     }
 
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
     authSessionService.logout(BearerTokenExtractor.extractOrBadRequest(httpRequest));
