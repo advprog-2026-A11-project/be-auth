@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.auth.dto.user;
 
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -21,7 +21,7 @@ public record UserProfileResponse(
         user.getUsername(),
         user.getEmail(),
         user.getDisplayName(),
-        RoleMapper.canonicalize(user.getRole()),
+        Role.canonicalize(user.getRole()),
         user.isActive(),
         user.getCreatedAt(),
         user.getUpdatedAt());

@@ -33,7 +33,8 @@ public class UserProfile {
 
   private String displayName;
 
-  private String role;
+  @Enumerated(EnumType.STRING)
+  private Role role = Role.STUDENT;
 
   @Column(name = "is_active", nullable = false)
   private boolean active = true;
@@ -56,7 +57,7 @@ public class UserProfile {
     this.username = username;
     this.email = email;
     this.displayName = displayName;
-    this.role = role;
+    this.role = Role.from(role);
     this.active = isActive;
   }
 
@@ -71,7 +72,7 @@ public class UserProfile {
     this.email = email;
     this.supabaseUserId = supabaseUserId;
     this.displayName = displayName;
-    this.role = role;
+    this.role = Role.from(role);
     this.active = isActive;
   }
 
@@ -140,11 +141,19 @@ public class UserProfile {
   }
 
   public String getRole() {
-    return role;
+    return role == null ? Role.STUDENT.name() : role.name();
   }
 
   public void setRole(String role) {
-    this.role = role;
+    this.role = Role.from(role);
+  }
+
+  public Role getRoleEnum() {
+    return role == null ? Role.STUDENT : role;
+  }
+
+  public void setRole(Role role) {
+    this.role = role == null ? Role.STUDENT : role;
   }
 
   public boolean isActive() {

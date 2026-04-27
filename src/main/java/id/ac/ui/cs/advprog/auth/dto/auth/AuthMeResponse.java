@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.auth.dto.auth;
 
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import java.time.Instant;
 import java.util.List;
 
@@ -33,7 +33,7 @@ public record AuthMeResponse(
             user.getEmail(),
             user.getPhone(),
             user.getDisplayName(),
-            RoleMapper.canonicalize(user.getRole()),
+            Role.canonicalize(user.getRole()),
             user.getAuthProvider(),
             user.getGoogleSub(),
             user.isActive()));

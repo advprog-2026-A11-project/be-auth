@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.auth.service;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -43,7 +44,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           profile.getId().toString(),
-          RoleMapper.canonicalize(profile.getRole()),
+          Role.canonicalize(profile.getRole()),
           "Login successful");
     } catch (DataAccessException ex) {
       return new LoginResponse(
@@ -52,7 +53,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           null,
-          RoleMapper.canonicalize(result.role()),
+          Role.canonicalize(result.role()),
           "Login successful. Profile sync pending (database unavailable)");
     }
   }
@@ -92,7 +93,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           profile.getId().toString(),
-          RoleMapper.canonicalize(profile.getRole()),
+          Role.canonicalize(profile.getRole()),
           message);
     } catch (DataAccessException ex) {
       String fallbackMessage = StringUtils.hasText(result.accessToken())
@@ -105,7 +106,7 @@ public class AuthLoginService {
           "Bearer",
           result.expiresIn(),
           null,
-          RoleMapper.canonicalize(result.role()),
+          Role.canonicalize(result.role()),
           fallbackMessage);
     }
   }

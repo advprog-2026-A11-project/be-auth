@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import java.util.Collection;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
@@ -48,10 +48,10 @@ public class CurrentUserProvider {
     for (GrantedAuthority authority : authorities) {
       String authorityValue = authority.getAuthority();
       if (StringUtils.hasText(authorityValue) && authorityValue.startsWith("ROLE_")) {
-        return RoleMapper.canonicalize(authorityValue.substring("ROLE_".length()));
+        return Role.canonicalize(authorityValue.substring("ROLE_".length()));
       }
     }
 
-    return RoleMapper.canonicalize(claimedRole);
+    return Role.canonicalize(claimedRole);
   }
 }

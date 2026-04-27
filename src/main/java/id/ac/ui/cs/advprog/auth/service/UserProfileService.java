@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.service;
 
 import id.ac.ui.cs.advprog.auth.exception.ConflictException;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.List;
@@ -99,7 +100,7 @@ public class UserProfileService {
     if (bySub.isPresent()) {
       UserProfile existing = bySub.get();
       existing.setEmail(normalizedEmail);
-      existing.setRole(RoleMapper.canonicalize(existing.getRole()));
+      existing.setRole(Role.canonicalize(existing.getRole()));
       applyIdentityEnrichment(existing, authProvider, googleSub, displayName);
       return repository.save(existing);
     }
@@ -112,7 +113,7 @@ public class UserProfileService {
         throw new ConflictException("Identity conflict for email");
       }
       existing.setSupabaseUserId(supabaseUserId);
-      existing.setRole(RoleMapper.canonicalize(existing.getRole()));
+      existing.setRole(Role.canonicalize(existing.getRole()));
       applyIdentityEnrichment(existing, authProvider, googleSub, displayName);
       return repository.save(existing);
     }
@@ -122,7 +123,7 @@ public class UserProfileService {
     created.setEmail(normalizedEmail);
     created.setUsername(generateUniqueUsername(normalizedEmail, supabaseUserId));
     created.setDisplayName(resolveDisplayName(normalizedEmail, displayName));
-    created.setRole(RoleMapper.canonicalize(incomingRole));
+    created.setRole(Role.canonicalize(incomingRole));
     created.setAuthProvider(resolveAuthProvider(authProvider));
     created.setGoogleSub(normalizeOptionalValue(googleSub));
     created.setActive(true);
@@ -229,16 +230,20 @@ public class UserProfileService {
       String supabaseUserId = StringUtils.hasText(incoming.getSupabaseUserId())
           ? incoming.getSupabaseUserId().trim()
           : existing.getSupabaseUserId();
-      SupabaseAuthClient.IdentityUser identity =
-          supabaseAuthClient.getUserById(requireSupabaseUserId(supabaseUserId));
+      if (StringUtils.hasText(supabaseUserId)) {
+        SupabaseAuthClient.IdentityUser identity =
+            supabaseAuthClient.getUserById(requireSupabaseUserId(supabaseUserId));
 
-      existing.setSupabaseUserId(identity.supabaseUserId());
-      existing.setEmail(normalizeEmailOrThrow(identity.email()));
-      applyIdentityEnrichment(
-          existing,
-          identity.authProvider(),
-          identity.googleSub(),
-          identity.displayName());
+        existing.setSupabaseUserId(identity.supabaseUserId());
+        existing.setEmail(normalizeEmailOrThrow(identity.email()));
+        applyIdentityEnrichment(
+            existing,
+            identity.authProvider(),
+            identity.googleSub(),
+            identity.displayName());
+      } else {
+        applyLocalAdminEmail(existing, incoming);
+      }
       applyAdminManagedFields(existing, incoming);
 
       return repository.save(existing);
@@ -350,12 +355,25 @@ public class UserProfileService {
     }
 
     if (StringUtils.hasText(incoming.getRole())) {
-      target.setRole(RoleMapper.canonicalize(incoming.getRole()));
+      target.setRole(Role.canonicalize(incoming.getRole()));
     } else if (!StringUtils.hasText(target.getRole())) {
       target.setRole("STUDENT");
     }
 
     target.setActive(incoming.isActive());
+  }
+
+  private void applyLocalAdminEmail(UserProfile target, UserProfile incoming) {
+    if (!StringUtils.hasText(incoming.getEmail())) {
+      return;
+    }
+
+    String normalizedEmail = normalizeEmailOrThrow(incoming.getEmail());
+    if (!normalizedEmail.equals(target.getEmail()) && repository.existsByEmail(normalizedEmail)) {
+      throw new ConflictException("Email already taken");
+    }
+
+    target.setEmail(normalizedEmail);
   }
 
   private void applyIdentityEnrichment(

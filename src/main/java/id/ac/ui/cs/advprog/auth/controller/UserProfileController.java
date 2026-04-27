@@ -12,12 +12,12 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.DeleteAccountResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateEmailResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdatePhoneResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateProfileResponse;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -202,7 +202,7 @@ public class UserProfileController {
     if (user.getRole() == null || user.getRole().isBlank()) {
       user.setRole("STUDENT");
     } else {
-      user.setRole(RoleMapper.canonicalize(user.getRole()));
+      user.setRole(Role.canonicalize(user.getRole()));
     }
 
     if (user.getEmail() == null || user.getEmail().isBlank()) {

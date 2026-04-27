@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
 import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.FilterChain;
@@ -144,10 +144,10 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
   private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
     if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
-      return RoleMapper.canonicalize(profile.get().getRole());
+      return Role.canonicalize(profile.get().getRole());
     }
 
-    return RoleMapper.canonicalize(tokenRole);
+    return Role.canonicalize(tokenRole);
   }
 
   private Optional<UserProfile> resolveProfile(String sub, String email) {

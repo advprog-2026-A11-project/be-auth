@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.service;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -40,7 +41,7 @@ public class AuthSessionService {
           "Bearer",
           result.expiresIn(),
           profile.getId().toString(),
-          RoleMapper.canonicalize(profile.getRole()),
+          Role.canonicalize(profile.getRole()),
           "Session refreshed");
     } catch (DataAccessException ex) {
       return new LoginResponse(
@@ -49,7 +50,7 @@ public class AuthSessionService {
           "Bearer",
           result.expiresIn(),
           null,
-          RoleMapper.canonicalize(result.role()),
+          Role.canonicalize(result.role()),
           "Session refreshed. Profile sync pending (database unavailable)");
     }
   }
