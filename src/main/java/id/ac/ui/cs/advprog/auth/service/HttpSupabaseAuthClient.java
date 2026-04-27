@@ -36,6 +36,53 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
 
   @Override
   @SuppressWarnings("unchecked")
+  public SupabaseAuthClient.IdentityUser getUserById(String supabaseUserId) {
+    ensureAdminConfig();
+
+    String userUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/admin/users/" + supabaseUserId;
+
+    try {
+      Map<String, Object> responseBody = restClient.get()
+          .uri(userUrl)
+          .header("apikey", supabaseServiceRoleKey)
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseServiceRoleKey)
+          .accept(MediaType.APPLICATION_JSON)
+          .retrieve()
+          .body(Map.class);
+
+      if (responseBody == null) {
+        throw new IllegalStateException("User lookup failed: empty response from identity provider");
+      }
+
+      String resolvedSupabaseUserId = stringValue(responseBody.get("id"));
+      String resolvedEmail = stringValue(responseBody.get("email"));
+      String resolvedRole = readRole(responseBody);
+      String authProvider = readAuthProvider(responseBody);
+      String googleSub = readGoogleSub(responseBody);
+      String displayName = readDisplayName(responseBody);
+
+      if (!StringUtils.hasText(resolvedSupabaseUserId) || !StringUtils.hasText(resolvedEmail)) {
+        throw new IllegalStateException("User lookup failed: invalid identity payload");
+      }
+
+      return new SupabaseAuthClient.IdentityUser(
+          resolvedSupabaseUserId,
+          resolvedEmail,
+          resolvedRole,
+          authProvider,
+          googleSub,
+          displayName);
+    } catch (HttpStatusCodeException ex) {
+      if (ex.getStatusCode().is4xxClientError()) {
+        String detail = extractSupabaseErrorMessage(ex.getResponseBodyAsString());
+        throw new IllegalArgumentException(detail);
+      }
+      throw new IllegalStateException("Identity provider error while loading user", ex);
+    }
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
   public LoginResult loginWithPassword(String email, String password) {
     ensureConfig();
 
@@ -329,6 +376,13 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     }
   }
 
+  private void ensureAdminConfig() {
+    ensureConfig();
+    if (!StringUtils.hasText(supabaseServiceRoleKey)) {
+      throw new IllegalStateException("supabase.service-role-key must be configured");
+    }
+  }
+
   private String trimTrailingSlash(String value) {
     if (!StringUtils.hasText(value)) {
       return value;
@@ -390,6 +444,60 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   private boolean isEmailRateLimit(String detail) {
     return StringUtils.hasText(detail)
         && detail.toLowerCase().contains("email rate limit exceeded");
+  }
+
+  @SuppressWarnings("unchecked")
+  private String readAuthProvider(Map<String, Object> userObject) {
+    Object appMetadataObj = userObject.get("app_metadata");
+    if (appMetadataObj instanceof Map<?, ?> metadataMap) {
+      String provider = stringValue(((Map<String, Object>) metadataMap).get("provider"));
+      if (StringUtils.hasText(provider)) {
+        return provider;
+      }
+    }
+
+    Object identitiesObj = userObject.get("identities");
+    if (identitiesObj instanceof Iterable<?> identities) {
+      for (Object identityObj : identities) {
+        if (identityObj instanceof Map<?, ?> identityMap) {
+          String provider = stringValue(identityMap.get("provider"));
+          if (StringUtils.hasText(provider)) {
+            return provider;
+          }
+        }
+      }
+    }
+
+    return "";
+  }
+
+  private String readGoogleSub(Map<String, Object> userObject) {
+    Object identitiesObj = userObject.get("identities");
+    if (identitiesObj instanceof Iterable<?> identities) {
+      for (Object identityObj : identities) {
+        if (identityObj instanceof Map<?, ?> identityMap) {
+          String provider = stringValue(identityMap.get("provider"));
+          if ("google".equalsIgnoreCase(provider)) {
+            return stringValue(identityMap.get("id"));
+          }
+        }
+      }
+    }
+    return "";
+  }
+
+  private String readDisplayName(Map<String, Object> userObject) {
+    Object userMetadataObj = userObject.get("user_metadata");
+    if (userMetadataObj instanceof Map<?, ?> userMetadata) {
+      String displayName = firstNonBlank(
+          userMetadata.get("display_name"),
+          userMetadata.get("full_name"),
+          userMetadata.get("name"));
+      if (StringUtils.hasText(displayName)) {
+        return displayName;
+      }
+    }
+    return "";
   }
 
   @SuppressWarnings("unchecked")

@@ -21,6 +21,9 @@ class UserProfileServiceTest {
   @Mock
   private UserProfileRepository repository;
 
+  @Mock
+  private SupabaseAuthClient supabaseAuthClient;
+
   @InjectMocks
   private UserProfileService service;
 
@@ -31,11 +34,23 @@ class UserProfileServiceTest {
 
   @Test
   void createDelegatesToRepository() {
-    UserProfile user = new UserProfile("u", "e", "d", "USER", true);
-    when(repository.save(any())).thenReturn(user);
+    UserProfile user = new UserProfile("u", "drift@example.com", "sub-123", "d", "USER", true);
+    when(supabaseAuthClient.getUserById("sub-123")).thenReturn(new SupabaseAuthClient.IdentityUser(
+        "sub-123",
+        "provider@example.com",
+        "authenticated",
+        "password",
+        null,
+        "Provider Name"));
+    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.empty());
+    when(repository.findByEmail("provider@example.com")).thenReturn(Optional.empty());
+    when(repository.existsByUsername("provider")).thenReturn(false);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
     UserProfile created = service.create(user);
-    assertSame(user, created);
-    verify(repository).save(user);
+    assertEquals("provider@example.com", created.getEmail());
+    assertEquals("u", created.getUsername());
+    verify(repository, atLeastOnce()).save(any());
   }
 
   @Test
@@ -132,5 +147,44 @@ class UserProfileServiceTest {
     assertEquals("Custom Name", updated.getDisplayName());
     assertEquals("GOOGLE", updated.getAuthProvider());
     assertEquals("google-sub-123", updated.getGoogleSub());
+  }
+
+  @Test
+  void updateUsesSupabaseIdentityAsEmailSourceOfTruth() {
+    UUID id = UUID.randomUUID();
+    UserProfile existing = new UserProfile();
+    existing.setId(id);
+    existing.setSupabaseUserId("sub-123");
+    existing.setEmail("old@example.com");
+    existing.setUsername("old-user");
+    existing.setDisplayName("Old Name");
+    existing.setRole("STUDENT");
+    existing.setActive(true);
+
+    UserProfile incoming = new UserProfile();
+    incoming.setUsername("new-user");
+    incoming.setEmail("drift@example.com");
+    incoming.setDisplayName("New Name");
+    incoming.setRole("ADMIN");
+    incoming.setActive(false);
+
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
+    when(supabaseAuthClient.getUserById("sub-123")).thenReturn(new SupabaseAuthClient.IdentityUser(
+        "sub-123",
+        "provider@example.com",
+        "authenticated",
+        "password",
+        null,
+        "Provider Name"));
+    when(repository.existsByUsername("new-user")).thenReturn(false);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    Optional<UserProfile> updated = service.update(id, incoming);
+
+    assertTrue(updated.isPresent());
+    assertEquals("provider@example.com", updated.get().getEmail());
+    assertEquals("new-user", updated.get().getUsername());
+    assertEquals("ADMIN", updated.get().getRole());
+    assertFalse(updated.get().isActive());
   }
 }

@@ -13,14 +13,29 @@ import org.springframework.util.StringUtils;
 public class UserProfileService {
 
   private final UserProfileRepository repository;
+  private final SupabaseAuthClient supabaseAuthClient;
 
-  public UserProfileService(UserProfileRepository repository) {
+  public UserProfileService(
+      UserProfileRepository repository,
+      SupabaseAuthClient supabaseAuthClient) {
     this.repository = repository;
+    this.supabaseAuthClient = supabaseAuthClient;
   }
 
   public UserProfile create(UserProfile user) {
-    user.setRole(RoleMapper.canonicalize(user.getRole()));
-    return repository.save(user);
+    SupabaseAuthClient.IdentityUser identity =
+        supabaseAuthClient.getUserById(requireSupabaseUserId(user.getSupabaseUserId()));
+
+    UserProfile synced = upsertFromIdentity(
+        identity.supabaseUserId(),
+        identity.email(),
+        identity.role(),
+        identity.authProvider(),
+        identity.googleSub(),
+        identity.displayName());
+
+    applyAdminManagedFields(synced, user);
+    return repository.save(synced);
   }
 
   public List<UserProfile> findAll() {
@@ -211,14 +226,20 @@ public class UserProfileService {
 
   public Optional<UserProfile> update(UUID id, UserProfile incoming) {
     return repository.findById(id).map(existing -> {
-      existing.setUsername(incoming.getUsername());
-      existing.setDisplayName(incoming.getDisplayName());
-      existing.setRole(RoleMapper.canonicalize(incoming.getRole()));
-      existing.setActive(incoming.isActive());
+      String supabaseUserId = StringUtils.hasText(incoming.getSupabaseUserId())
+          ? incoming.getSupabaseUserId().trim()
+          : existing.getSupabaseUserId();
+      SupabaseAuthClient.IdentityUser identity =
+          supabaseAuthClient.getUserById(requireSupabaseUserId(supabaseUserId));
 
-      if (incoming.getEmail() != null && !incoming.getEmail().isBlank()) {
-        existing.setEmail(incoming.getEmail());
-      }
+      existing.setSupabaseUserId(identity.supabaseUserId());
+      existing.setEmail(normalizeEmailOrThrow(identity.email()));
+      applyIdentityEnrichment(
+          existing,
+          identity.authProvider(),
+          identity.googleSub(),
+          identity.displayName());
+      applyAdminManagedFields(existing, incoming);
 
       return repository.save(existing);
     });
@@ -314,6 +335,29 @@ public class UserProfileService {
     return atIndex > 0 ? email.substring(0, atIndex) : email;
   }
 
+  private void applyAdminManagedFields(UserProfile target, UserProfile incoming) {
+    if (StringUtils.hasText(incoming.getUsername())) {
+      String normalizedUsername = incoming.getUsername().trim();
+      if (!normalizedUsername.equals(target.getUsername())
+          && repository.existsByUsername(normalizedUsername)) {
+        throw new ConflictException("Username already taken");
+      }
+      target.setUsername(normalizedUsername);
+    }
+
+    if (incoming.getDisplayName() != null) {
+      target.setDisplayName(incoming.getDisplayName().trim());
+    }
+
+    if (StringUtils.hasText(incoming.getRole())) {
+      target.setRole(RoleMapper.canonicalize(incoming.getRole()));
+    } else if (!StringUtils.hasText(target.getRole())) {
+      target.setRole("STUDENT");
+    }
+
+    target.setActive(incoming.isActive());
+  }
+
   private void applyIdentityEnrichment(
       UserProfile user,
       String authProvider,
@@ -344,6 +388,13 @@ public class UserProfileService {
 
   private String normalizeOptionalValue(String value) {
     return StringUtils.hasText(value) ? value.trim() : null;
+  }
+
+  private String requireSupabaseUserId(String supabaseUserId) {
+    if (!StringUtils.hasText(supabaseUserId)) {
+      throw new IllegalArgumentException("supabaseUserId is required");
+    }
+    return supabaseUserId.trim();
   }
 
 }
