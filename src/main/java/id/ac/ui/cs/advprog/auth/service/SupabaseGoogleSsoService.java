@@ -27,7 +27,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-public class SupabaseGoogleSsoService implements GoogleSsoService {
+public class SupabaseGoogleSsoService {
 
   private static final String DEACTIVATED_ACCOUNT_MESSAGE =
       "Your account has been deactivated. Please contact an administrator.";
@@ -61,12 +61,10 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     this.restClient = RestClient.builder().build();
   }
 
-  @Override
   public SsoUrlResponse createSsoUrl() {
     return createSsoUrl(null);
   }
 
-  @Override
   public SsoUrlResponse createSsoUrl(String redirectTo) {
     ensureConfig();
     cleanupExpiredStates();
@@ -92,7 +90,6 @@ public class SupabaseGoogleSsoService implements GoogleSsoService {
     return new SsoUrlResponse("google", authorizeUrl, "Google SSO URL generated");
   }
 
-  @Override
   @SuppressWarnings("unchecked")
   public SsoCallbackResponse handleCallback(SsoCallbackRequest request) {
     ensureConfig();

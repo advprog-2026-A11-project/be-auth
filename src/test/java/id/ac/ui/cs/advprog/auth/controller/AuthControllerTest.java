@@ -16,7 +16,7 @@ import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,7 +48,7 @@ class AuthControllerTest {
   private AuthLoginService authLoginService;
 
   @Mock
-  private GoogleSsoService googleSsoService;
+  private SupabaseGoogleSsoService googleSsoService;
 
   @Mock
   private UserProfileService profileService;

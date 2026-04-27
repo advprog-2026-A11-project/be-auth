@@ -19,7 +19,7 @@ import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.security.SecurityContextJwtAccessor;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -46,7 +46,7 @@ public class AuthController {
 
   private final AuthLoginService authLoginService;
   private final AuthSessionService authSessionService;
-  private final GoogleSsoService googleSsoService;
+  private final SupabaseGoogleSsoService googleSsoService;
   private final UserProfileService userProfileService;
   private final CurrentUserProvider currentUserProvider;
   private final boolean passwordAuthEnabled;
@@ -54,7 +54,7 @@ public class AuthController {
   public AuthController(
       AuthLoginService authLoginService,
       AuthSessionService authSessionService,
-      GoogleSsoService googleSsoService,
+      SupabaseGoogleSsoService googleSsoService,
       UserProfileService userProfileService,
       CurrentUserProvider currentUserProvider,
       @Value("${auth.password.enabled:true}") boolean passwordAuthEnabled) {
