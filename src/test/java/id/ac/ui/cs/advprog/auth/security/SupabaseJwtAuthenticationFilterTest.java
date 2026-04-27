@@ -26,8 +26,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 class SupabaseJwtAuthenticationFilterTest {
@@ -195,6 +197,38 @@ class SupabaseJwtAuthenticationFilterTest {
     assertTrue(response.getContentAsString()
         .contains("Your account has been deactivated. Please contact an administrator."));
     verify(chain, never()).doFilter(request, response);
+  }
+
+  @Test
+  void doFilterInternalUsesExistingJwtAuthenticationWithoutRevalidatingToken() throws Exception {
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    request.addHeader("Authorization", "Bearer existing-jwt-token");
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
+
+    final Jwt jwt = jwt("existing-jwt-token", "ctx-sub-2", "ctx2@example.com", "authenticated");
+    UserProfile admin = new UserProfile();
+    admin.setSupabaseUserId("ctx-sub-2");
+    admin.setEmail("ctx2@example.com");
+    admin.setRole("ADMIN");
+    admin.setActive(true);
+
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            jwt,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
+
+    when(tokenRevocationService.isRevoked("existing-jwt-token")).thenReturn(false);
+    when(userProfileService.findBySupabaseUserId("ctx-sub-2")).thenReturn(Optional.of(admin));
+
+    filter.doFilterInternal(request, response, chain);
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    assertTrue(auth != null);
+    assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
+    verify(chain).doFilter(request, response);
+    verify(supabaseJwtService, never()).validateAccessToken(anyString());
   }
 
   @Test

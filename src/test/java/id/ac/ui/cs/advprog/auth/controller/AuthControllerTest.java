@@ -25,12 +25,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -55,6 +59,11 @@ class AuthControllerTest {
   private CurrentUserProvider currentUserProvider;
 
   private AuthController controller;
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
   @BeforeEach
   void setUp() {
@@ -97,6 +106,43 @@ class AuthControllerTest {
         .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
     ResponseEntity<?> resp = controller.me(req);
     assertEquals(401, resp.getStatusCodeValue());
+  }
+
+  @Test
+  void meUsesAuthenticatedJwtFromSecurityContextWhenHeaderMissing() throws Exception {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn(null);
+
+    Jwt jwt = new Jwt(
+        "security-context-token",
+        Instant.now(),
+        Instant.now().plusSeconds(600),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", "ctx-sub-1",
+            "email", "ctx@example.com",
+            "role", "authenticated",
+            "aud", List.of("authenticated"),
+            "iss", "https://supabase.test/auth/v1"));
+
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            jwt,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+
+    UserProfile user = new UserProfile();
+    user.setSupabaseUserId("ctx-sub-1");
+    user.setEmail("ctx@example.com");
+    user.setRole("ADMIN");
+    when(profileService.findBySupabaseUserId("ctx-sub-1")).thenReturn(Optional.of(user));
+
+    ResponseEntity<?> resp = controller.me(req);
+
+    assertEquals(200, resp.getStatusCodeValue());
+    assertAuthMeResponseType(resp);
+    assertEquals("ctx-sub-1", invokeRecordAccessor(resp.getBody(), "sub"));
+    verify(jwtService, never()).validateAccessToken(anyString());
   }
 
   @Test
