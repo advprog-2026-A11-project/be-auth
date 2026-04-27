@@ -13,6 +13,7 @@ import id.ac.ui.cs.advprog.auth.dto.auth.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
@@ -45,7 +46,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthController {
 
   private static final String EMAIL_CLAIM = "email";
-  private static final String BEARER_PREFIX = "Bearer ";
 
   private final AuthLoginService authLoginService;
   private final AuthSessionService authSessionService;
@@ -124,7 +124,7 @@ public class AuthController {
 
   @PostMapping("/logout")
   public ResponseEntity<LogoutResponse> logout(HttpServletRequest request) {
-    authSessionService.logout(extractBearerToken(request));
+    authSessionService.logout(BearerTokenExtractor.extractOrUnauthorized(request));
     return ResponseEntity.ok(new LogoutResponse("Logout successful"));
   }
 
@@ -138,7 +138,7 @@ public class AuthController {
             "No authenticated user in security context"));
 
     authSessionService.changePassword(
-        extractBearerToken(httpRequest),
+        BearerTokenExtractor.extractOrUnauthorized(httpRequest),
         principal.email(),
         request.currentPassword(),
         request.newPassword());
@@ -188,18 +188,5 @@ public class AuthController {
           HttpStatus.FORBIDDEN,
           "Password auth is disabled. Use Google SSO.");
     }
-  }
-
-  private String extractBearerToken(HttpServletRequest request) {
-    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-    if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing Bearer token");
-    }
-
-    String token = authHeader.substring(BEARER_PREFIX.length()).trim();
-    if (!StringUtils.hasText(token)) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bearer token is empty");
-    }
-    return token;
   }
 }

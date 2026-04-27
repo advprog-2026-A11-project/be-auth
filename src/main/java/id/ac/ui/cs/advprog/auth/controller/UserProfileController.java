@@ -12,6 +12,7 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
 import id.ac.ui.cs.advprog.auth.service.RoleMapper;
@@ -40,8 +41,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/users")
 public class UserProfileController {
-
-  private static final String BEARER_PREFIX = "Bearer ";
 
   private final UserProfileService service;
   private final AuthSessionService authSessionService;
@@ -150,7 +149,7 @@ public class UserProfileController {
     AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
 
-    String accessToken = extractBearerToken(httpRequest);
+    String accessToken = BearerTokenExtractor.extractOrBadRequest(httpRequest);
     UserProfile updated = authSessionService.changeEmail(
         accessToken,
         principal.sub(),
@@ -192,7 +191,7 @@ public class UserProfileController {
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
 
     UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
-    authSessionService.logout(extractBearerToken(httpRequest));
+    authSessionService.logout(BearerTokenExtractor.extractOrBadRequest(httpRequest));
 
     return ResponseEntity.ok(new DeleteAccountResponse(
         "Account deleted",
@@ -229,18 +228,5 @@ public class UserProfileController {
       user.setActive(request.getActive());
     }
     return user;
-  }
-
-  private String extractBearerToken(HttpServletRequest request) {
-    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-    if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
-      throw new IllegalArgumentException("Missing Bearer token");
-    }
-
-    String token = authHeader.substring(BEARER_PREFIX.length()).trim();
-    if (!StringUtils.hasText(token)) {
-      throw new IllegalArgumentException("Bearer token is empty");
-    }
-    return token;
   }
 }
