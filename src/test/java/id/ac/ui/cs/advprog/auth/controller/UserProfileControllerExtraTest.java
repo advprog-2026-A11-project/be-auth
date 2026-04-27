@@ -356,7 +356,11 @@ class UserProfileControllerExtraTest {
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
-    when(service.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+    when(authSessionService.changeEmail(
+        "access-email-123",
+        "sub-123",
+        "old@example.com",
+        "new@example.com"))
         .thenReturn(updated);
 
     ResponseEntity<UpdateEmailResponse> response = controller.updateEmail(request, httpRequest);
@@ -364,10 +368,12 @@ class UserProfileControllerExtraTest {
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Email updated", response.getBody().message());
     assertEquals("new@example.com", response.getBody().email());
-    verify(authSessionService).changeEmail("access-email-123", "new@example.com");
-    verify(service).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
-    verify(service, never()).updateCurrentUserEmail(
-        "sub-123", "new@example.com", "old@example.com");
+    verify(authSessionService).changeEmail(
+        "access-email-123",
+        "sub-123",
+        "old@example.com",
+        "new@example.com");
+    verify(service, never()).updateCurrentUserEmail(anyString(), anyString(), anyString());
   }
 
   @Test
@@ -379,7 +385,11 @@ class UserProfileControllerExtraTest {
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
-    when(service.updateCurrentUserEmail("sub-123", "old@example.com", "taken@example.com"))
+    when(authSessionService.changeEmail(
+        "access-email-123",
+        "sub-123",
+        "old@example.com",
+        "taken@example.com"))
         .thenThrow(new ConflictException("Email already taken"));
 
     ConflictException ex = assertThrows(
@@ -387,7 +397,11 @@ class UserProfileControllerExtraTest {
         () -> controller.updateEmail(request, httpRequest));
 
     assertEquals("Email already taken", ex.getMessage());
-    verify(authSessionService, never()).changeEmail(anyString(), anyString());
+    verify(authSessionService).changeEmail(
+        "access-email-123",
+        "sub-123",
+        "old@example.com",
+        "taken@example.com");
   }
 
   @Test
@@ -404,19 +418,21 @@ class UserProfileControllerExtraTest {
 
     when(currentUserProvider.getCurrentUser()).thenReturn(Optional.of(principal));
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
-    when(service.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
-        .thenReturn(updated);
     doThrow(new IllegalStateException("Identity provider unavailable"))
         .when(authSessionService)
-        .changeEmail("access-email-123", "new@example.com");
+        .changeEmail("access-email-123", "sub-123", "old@example.com", "new@example.com");
 
     IllegalStateException ex = assertThrows(
         IllegalStateException.class,
         () -> controller.updateEmail(request, httpRequest));
 
     assertEquals("Identity provider unavailable", ex.getMessage());
-    verify(service).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
-    verify(service).updateCurrentUserEmail("sub-123", "new@example.com", "old@example.com");
+    verify(authSessionService).changeEmail(
+        "access-email-123",
+        "sub-123",
+        "old@example.com",
+        "new@example.com");
+    verify(service, never()).updateCurrentUserEmail(anyString(), anyString(), anyString());
   }
 
   @Test

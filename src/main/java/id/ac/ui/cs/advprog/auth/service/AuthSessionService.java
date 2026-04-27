@@ -73,6 +73,28 @@ public class AuthSessionService {
     supabaseAuthClient.updateEmail(accessToken, newEmail);
   }
 
+  public UserProfile changeEmail(
+      String accessToken,
+      String supabaseUserId,
+      String currentEmail,
+      String newEmail) {
+    UserProfile updated = userProfileService.updateCurrentUserEmail(
+        supabaseUserId,
+        currentEmail,
+        newEmail);
+
+    try {
+      supabaseAuthClient.updateEmail(accessToken, newEmail);
+      return updated;
+    } catch (RuntimeException ex) {
+      userProfileService.updateCurrentUserEmail(
+          supabaseUserId,
+          updated.getEmail(),
+          currentEmail);
+      throw ex;
+    }
+  }
+
   public void changePassword(
       String accessToken,
       String email,

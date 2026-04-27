@@ -151,20 +151,11 @@ public class UserProfileController {
         .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
 
     String accessToken = extractBearerToken(httpRequest);
-    UserProfile updated = service.updateCurrentUserEmail(
+    UserProfile updated = authSessionService.changeEmail(
+        accessToken,
         principal.sub(),
         principal.email(),
         request.email());
-
-    try {
-      authSessionService.changeEmail(accessToken, request.email());
-    } catch (RuntimeException ex) {
-      service.updateCurrentUserEmail(
-          principal.sub(),
-          updated.getEmail(),
-          principal.email());
-      throw ex;
-    }
 
     return ResponseEntity.ok(new UpdateEmailResponse(
         "Email updated",
