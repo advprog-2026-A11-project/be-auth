@@ -4,12 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -88,6 +91,57 @@ class AuthSessionServiceTest {
     service.changeEmail("access-token", "new@example.com");
 
     verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
+  }
+
+  @Test
+  void changeEmailOrchestrationUpdatesLocalProfileThenIdentityProvider() throws Exception {
+    UserProfile updated = new UserProfile();
+    updated.setId(UUID.randomUUID());
+    updated.setSupabaseUserId("sub-123");
+    updated.setEmail("new@example.com");
+
+    when(userProfileService.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+        .thenReturn(updated);
+
+    invokeCoordinatedChangeEmail(
+        "access-token",
+        "sub-123",
+        "old@example.com",
+        "new@example.com");
+
+    verify(userProfileService).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
+    verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
+    verify(userProfileService, never()).updateCurrentUserEmail(
+        "sub-123",
+        "new@example.com",
+        "old@example.com");
+  }
+
+  @Test
+  void changeEmailOrchestrationRollsBackLocalProfileWhenIdentityProviderFails()
+      throws Exception {
+    UserProfile updated = new UserProfile();
+    updated.setId(UUID.randomUUID());
+    updated.setSupabaseUserId("sub-123");
+    updated.setEmail("new@example.com");
+
+    when(userProfileService.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+        .thenReturn(updated);
+    doThrow(new IllegalStateException("Identity provider unavailable"))
+        .when(supabaseAuthClient)
+        .updateEmail("access-token", "new@example.com");
+
+    IllegalStateException ex = assertThrows(
+        IllegalStateException.class,
+        () -> invokeCoordinatedChangeEmail(
+            "access-token",
+            "sub-123",
+            "old@example.com",
+            "new@example.com"));
+
+    assertEquals("Identity provider unavailable", ex.getMessage());
+    verify(userProfileService).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
+    verify(userProfileService).updateCurrentUserEmail("sub-123", "new@example.com", "old@example.com");
   }
 
   @Test
@@ -208,5 +262,26 @@ class AuthSessionServiceTest {
     service.revokeCurrentAccessToken("access-token");
 
     verify(tokenRevocationService).revoke("access-token", jwt.getExpiresAt());
+  }
+
+  private void invokeCoordinatedChangeEmail(
+      String accessToken,
+      String supabaseUserId,
+      String currentEmail,
+      String newEmail) throws Exception {
+    try {
+      Method method = AuthSessionService.class.getMethod(
+          "changeEmail",
+          String.class,
+          String.class,
+          String.class,
+          String.class);
+      method.invoke(service, accessToken, supabaseUserId, currentEmail, newEmail);
+    } catch (InvocationTargetException ex) {
+      if (ex.getCause() instanceof Exception cause) {
+        throw cause;
+      }
+      throw ex;
+    }
   }
 }
