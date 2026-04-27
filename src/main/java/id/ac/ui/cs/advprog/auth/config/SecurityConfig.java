@@ -5,22 +5,15 @@ import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
 import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -39,11 +32,15 @@ public class SecurityConfig {
   }
 
   @Bean
+  public JwtDecoder jwtDecoder(SupabaseJwtService supabaseJwtService) {
+    return supabaseJwtService::validateAccessToken;
+  }
+
+  @Bean
   @SuppressWarnings("java:S4502")
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
-      SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter,
-      ObjectMapper objectMapper) throws Exception {
+      SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter) throws Exception {
     http
         // This service uses stateless Bearer tokens for /api/** endpoints.
         // NOSONAR
@@ -68,30 +65,11 @@ public class SecurityConfig {
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll())
-        .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
-            writeUnauthorized(response, request, objectMapper, "Unauthorized")))
-        .addFilterBefore(
+        .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+        .addFilterAfter(
             supabaseJwtAuthenticationFilter,
-            UsernamePasswordAuthenticationFilter.class);
+            BearerTokenAuthenticationFilter.class);
 
     return http.build();
-  }
-
-  private void writeUnauthorized(
-      HttpServletResponse response,
-      HttpServletRequest request,
-      ObjectMapper objectMapper,
-      String message) throws IOException {
-    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("timestamp", Instant.now().toString());
-    payload.put("status", HttpStatus.UNAUTHORIZED.value());
-    payload.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
-    payload.put("message", message);
-    payload.put("path", request.getRequestURI());
-
-    response.getWriter().write(objectMapper.writeValueAsString(payload));
   }
 }
