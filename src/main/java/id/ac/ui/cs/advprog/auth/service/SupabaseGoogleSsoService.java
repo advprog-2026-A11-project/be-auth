@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.auth.service;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
@@ -101,13 +102,13 @@ public class SupabaseGoogleSsoService {
     }
 
     String tokenUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/token?grant_type=pkce";
-    Map<String, String> payload = Map.of(
-        "auth_code", request.code(),
-        "code_verifier", flowState.codeVerifier(),
-        "redirect_to", flowState.redirectUrl());
+    TokenExchangeRequest payload = new TokenExchangeRequest(
+        request.code(),
+        flowState.codeVerifier(),
+        flowState.redirectUrl());
 
     try {
-      Map<String, Object> tokenResponse = restClient.post()
+      TokenExchangeResponse tokenResponse = restClient.post()
           .uri(tokenUrl)
           .header("apikey", supabaseApiKey)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
@@ -115,13 +116,13 @@ public class SupabaseGoogleSsoService {
           .accept(MediaType.APPLICATION_JSON)
           .body(payload)
           .retrieve()
-          .body(Map.class);
+          .body(TokenExchangeResponse.class);
 
       if (tokenResponse == null) {
         throw new UnauthorizedException("Invalid SSO callback response");
       }
 
-      String accessToken = asString(tokenResponse.get("access_token"));
+      String accessToken = asString(tokenResponse.accessToken());
       if (!StringUtils.hasText(accessToken)) {
         throw new UnauthorizedException("Missing access token from SSO callback");
       }
@@ -137,7 +138,7 @@ public class SupabaseGoogleSsoService {
       }
 
       ensureIdentityIsActive(accessToken, sub, email);
-      String refreshToken = asString(tokenResponse.get("refresh_token"));
+      String refreshToken = asString(tokenResponse.refreshToken());
 
       boolean linked = isExistingIdentity(sub, email);
       UserProfile profile = userProfileService.upsertFromIdentity(
@@ -271,5 +272,16 @@ public class SupabaseGoogleSsoService {
   }
 
   private record PkceFlowState(String codeVerifier, Instant expiresAt, String redirectUrl) {
+  }
+
+  private record TokenExchangeRequest(
+      @JsonProperty("auth_code") String authCode,
+      @JsonProperty("code_verifier") String codeVerifier,
+      @JsonProperty("redirect_to") String redirectTo) {
+  }
+
+  private record TokenExchangeResponse(
+      @JsonProperty("access_token") String accessToken,
+      @JsonProperty("refresh_token") String refreshToken) {
   }
 }
