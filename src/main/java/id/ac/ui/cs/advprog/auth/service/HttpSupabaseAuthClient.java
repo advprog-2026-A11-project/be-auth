@@ -1,11 +1,10 @@
 package id.ac.ui.cs.advprog.auth.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -35,27 +34,26 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public SupabaseAuthClient.IdentityUser getUserById(String supabaseUserId) {
     ensureAdminConfig();
 
     String userUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/admin/users/" + supabaseUserId;
 
     try {
-      Map<String, Object> responseBody = restClient.get()
+      IdentityPayload responseBody = restClient.get()
           .uri(userUrl)
           .header("apikey", supabaseServiceRoleKey)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseServiceRoleKey)
           .accept(MediaType.APPLICATION_JSON)
           .retrieve()
-          .body(Map.class);
+          .body(IdentityPayload.class);
 
       if (responseBody == null) {
         throw new IllegalStateException("User lookup failed: empty response from identity provider");
       }
 
-      String resolvedSupabaseUserId = stringValue(responseBody.get("id"));
-      String resolvedEmail = stringValue(responseBody.get("email"));
+      String resolvedSupabaseUserId = responseBody.id();
+      String resolvedEmail = responseBody.email();
       String resolvedRole = readRole(responseBody);
       String authProvider = readAuthProvider(responseBody);
       String googleSub = readGoogleSub(responseBody);
@@ -82,17 +80,14 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public LoginResult loginWithPassword(String email, String password) {
     ensureConfig();
 
     String tokenUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/token?grant_type=password";
-    Map<String, String> requestPayload = Map.of(
-        "email", email,
-        "password", password);
+    PasswordLoginRequest requestPayload = new PasswordLoginRequest(email, password);
 
     try {
-      Map<String, Object> responseBody = restClient.post()
+      TokenPayload responseBody = restClient.post()
           .uri(tokenUrl)
           .header("apikey", supabaseApiKey)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
@@ -100,22 +95,22 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
           .retrieve()
-          .body(Map.class);
+          .body(TokenPayload.class);
 
       if (responseBody == null) {
         throw new UnauthorizedException("Login failed: empty response from identity provider");
       }
 
-      Map<String, Object> userObject = (Map<String, Object>) responseBody.get("user");
+      IdentityPayload userObject = responseBody.user();
       if (userObject == null) {
         throw new UnauthorizedException("Login failed: user information missing in response");
       }
 
-      String accessToken = stringValue(responseBody.get("access_token"));
-      String refreshToken = stringValue(responseBody.get("refresh_token"));
-      Long expiresIn = longValue(responseBody.get("expires_in"));
-      String supabaseUserId = stringValue(userObject.get("id"));
-      String normalizedEmail = stringValue(userObject.get("email"));
+      String accessToken = responseBody.accessToken();
+      String refreshToken = responseBody.refreshToken();
+      Long expiresIn = responseBody.expiresIn();
+      String supabaseUserId = userObject.id();
+      String normalizedEmail = userObject.email();
       String role = readRole(userObject);
 
       if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(supabaseUserId)) {
@@ -140,15 +135,14 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public LoginResult refreshSession(String refreshToken) {
     ensureConfig();
 
     String tokenUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/token?grant_type=refresh_token";
-    Map<String, String> requestPayload = Map.of("refresh_token", refreshToken);
+    RefreshTokenRequest requestPayload = new RefreshTokenRequest(refreshToken);
 
     try {
-      Map<String, Object> responseBody = restClient.post()
+      TokenPayload responseBody = restClient.post()
           .uri(tokenUrl)
           .header("apikey", supabaseApiKey)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
@@ -156,22 +150,22 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
           .retrieve()
-          .body(Map.class);
+          .body(TokenPayload.class);
 
       if (responseBody == null) {
         throw new UnauthorizedException("Refresh failed: empty response from identity provider");
       }
 
-      Map<String, Object> userObject = (Map<String, Object>) responseBody.get("user");
+      IdentityPayload userObject = responseBody.user();
       if (userObject == null) {
         throw new UnauthorizedException("Refresh failed: user information missing in response");
       }
 
-      String accessToken = stringValue(responseBody.get("access_token"));
-      String newRefreshToken = stringValue(responseBody.get("refresh_token"));
-      Long expiresIn = longValue(responseBody.get("expires_in"));
-      String supabaseUserId = stringValue(userObject.get("id"));
-      String normalizedEmail = stringValue(userObject.get("email"));
+      String accessToken = responseBody.accessToken();
+      String newRefreshToken = responseBody.refreshToken();
+      Long expiresIn = responseBody.expiresIn();
+      String supabaseUserId = userObject.id();
+      String normalizedEmail = userObject.email();
       String role = readRole(userObject);
 
       if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(supabaseUserId)) {
@@ -223,7 +217,7 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     ensureConfig();
 
     String userUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/user";
-    Map<String, String> requestPayload = Map.of("email", newEmail);
+    EmailUpdateRequest requestPayload = new EmailUpdateRequest(newEmail);
 
     try {
       restClient.put()
@@ -249,7 +243,7 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     ensureConfig();
 
     String userUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/user";
-    Map<String, String> requestPayload = Map.of("password", newPassword);
+    PasswordUpdateRequest requestPayload = new PasswordUpdateRequest(newPassword);
 
     try {
       restClient.put()
@@ -271,7 +265,6 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public LoginResult registerWithPassword(
       String email,
       String password,
@@ -283,22 +276,13 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     }
 
     String registerUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/signup";
-    Map<String, Object> requestPayload = new HashMap<>();
-    requestPayload.put("email", email);
-    requestPayload.put("password", password);
-    Map<String, String> metadata = new HashMap<>();
-    if (StringUtils.hasText(username)) {
-      metadata.put("username", username.trim());
-    }
-    if (StringUtils.hasText(displayName)) {
-      metadata.put("display_name", displayName.trim());
-    }
-    if (!metadata.isEmpty()) {
-      requestPayload.put("data", metadata);
-    }
+    SignupRequest requestPayload = new SignupRequest(
+        email,
+        password,
+        buildUserMetadata(username, displayName));
 
     try {
-      Map<String, Object> responseBody = restClient.post()
+      TokenPayload responseBody = restClient.post()
           .uri(registerUrl)
           .header("apikey", supabaseApiKey)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
@@ -306,24 +290,24 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
           .retrieve()
-          .body(Map.class);
+          .body(TokenPayload.class);
 
       if (responseBody == null) {
         throw new IllegalStateException(
             "Registration failed: empty response from identity provider");
       }
 
-      Map<String, Object> userObject = (Map<String, Object>) responseBody.get("user");
+      IdentityPayload userObject = responseBody.user();
       if (userObject == null) {
         throw new IllegalStateException(
             "Registration failed: user information missing in response");
       }
 
-      String accessToken = stringValue(responseBody.get("access_token"));
-      String refreshToken = stringValue(responseBody.get("refresh_token"));
-      Long expiresIn = longValue(responseBody.get("expires_in"));
-      String supabaseUserId = stringValue(userObject.get("id"));
-      String normalizedEmail = stringValue(userObject.get("email"));
+      String accessToken = responseBody.accessToken();
+      String refreshToken = responseBody.refreshToken();
+      Long expiresIn = responseBody.expiresIn();
+      String supabaseUserId = userObject.id();
+      String normalizedEmail = userObject.email();
       String role = readRole(userObject);
 
       if (!StringUtils.hasText(supabaseUserId)) {
@@ -358,13 +342,14 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private String readRole(Map<String, Object> userObject) {
-    Object appMetadataObj = userObject.get("app_metadata");
-    if (appMetadataObj instanceof Map<?, ?> metadataMap) {
-      return stringValue(((Map<String, Object>) metadataMap).get("role"));
+  private UserMetadataPayload buildUserMetadata(String username, String displayName) {
+    if (!StringUtils.hasText(username) && !StringUtils.hasText(displayName)) {
+      return null;
     }
-    return "";
+
+    return new UserMetadataPayload(
+        normalizeOptional(username),
+        normalizeOptional(displayName));
   }
 
   private void ensureConfig() {
@@ -390,38 +375,18 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
   }
 
-  private String stringValue(Object value) {
-    return value == null ? "" : String.valueOf(value);
-  }
-
-  private Long longValue(Object value) {
-    if (value instanceof Number number) {
-      return number.longValue();
-    }
-    if (value == null) {
-      return null;
-    }
-    try {
-      return Long.parseLong(String.valueOf(value));
-    } catch (NumberFormatException ex) {
-      return null;
-    }
-  }
-
   private String extractSupabaseErrorMessage(String body) {
     if (!StringUtils.hasText(body)) {
       return "Invalid registration payload";
     }
 
     try {
-      Map<String, Object> parsed = objectMapper.readValue(
-          body,
-          new TypeReference<Map<String, Object>>() {});
+      ErrorPayload parsed = objectMapper.readValue(body, ErrorPayload.class);
       String message = firstNonBlank(
-          parsed.get("msg"),
-          parsed.get("message"),
-          parsed.get("error_description"),
-          parsed.get("error"));
+          parsed.msg(),
+          parsed.message(),
+          parsed.errorDescription(),
+          parsed.error());
       return StringUtils.hasText(message) ? message : "Invalid registration payload";
     } catch (Exception ignored) {
       return body.length() > 200 ? body.substring(0, 200) : body;
@@ -446,24 +411,25 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
         && detail.toLowerCase().contains("email rate limit exceeded");
   }
 
-  @SuppressWarnings("unchecked")
-  private String readAuthProvider(Map<String, Object> userObject) {
-    Object appMetadataObj = userObject.get("app_metadata");
-    if (appMetadataObj instanceof Map<?, ?> metadataMap) {
-      String provider = stringValue(((Map<String, Object>) metadataMap).get("provider"));
-      if (StringUtils.hasText(provider)) {
-        return provider;
-      }
+  private String readRole(IdentityPayload userObject) {
+    AppMetadataPayload metadata = userObject.appMetadata();
+    if (metadata != null && StringUtils.hasText(metadata.role())) {
+      return metadata.role();
     }
 
-    Object identitiesObj = userObject.get("identities");
-    if (identitiesObj instanceof Iterable<?> identities) {
-      for (Object identityObj : identities) {
-        if (identityObj instanceof Map<?, ?> identityMap) {
-          String provider = stringValue(identityMap.get("provider"));
-          if (StringUtils.hasText(provider)) {
-            return provider;
-          }
+    return "";
+  }
+
+  private String readAuthProvider(IdentityPayload userObject) {
+    AppMetadataPayload metadata = userObject.appMetadata();
+    if (metadata != null && StringUtils.hasText(metadata.provider())) {
+      return metadata.provider();
+    }
+
+    if (userObject.identities() != null) {
+      for (IdentityProviderPayload identity : userObject.identities()) {
+        if (identity != null && StringUtils.hasText(identity.provider())) {
+          return identity.provider();
         }
       }
     }
@@ -471,60 +437,51 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     return "";
   }
 
-  private String readGoogleSub(Map<String, Object> userObject) {
-    Object identitiesObj = userObject.get("identities");
-    if (identitiesObj instanceof Iterable<?> identities) {
-      for (Object identityObj : identities) {
-        if (identityObj instanceof Map<?, ?> identityMap) {
-          String provider = stringValue(identityMap.get("provider"));
-          if ("google".equalsIgnoreCase(provider)) {
-            return stringValue(identityMap.get("id"));
-          }
+  private String readGoogleSub(IdentityPayload userObject) {
+    if (userObject.identities() != null) {
+      for (IdentityProviderPayload identity : userObject.identities()) {
+        if (identity != null
+            && "google".equalsIgnoreCase(identity.provider())
+            && StringUtils.hasText(identity.id())) {
+          return identity.id();
         }
       }
     }
+
     return "";
   }
 
-  private String readDisplayName(Map<String, Object> userObject) {
-    Object userMetadataObj = userObject.get("user_metadata");
-    if (userMetadataObj instanceof Map<?, ?> userMetadata) {
-      String displayName = firstNonBlank(
-          userMetadata.get("display_name"),
-          userMetadata.get("full_name"),
-          userMetadata.get("name"));
-      if (StringUtils.hasText(displayName)) {
-        return displayName;
-      }
+  private String readDisplayName(IdentityPayload userObject) {
+    UserMetadataPayload userMetadata = userObject.userMetadata();
+    if (userMetadata == null) {
+      return "";
     }
+
+    String displayName = firstNonBlank(
+        userMetadata.displayName(),
+        userMetadata.fullName(),
+        userMetadata.name());
+    if (StringUtils.hasText(displayName)) {
+      return displayName;
+    }
+
     return "";
   }
 
-  @SuppressWarnings("unchecked")
   private LoginResult registerViaAdminApi(
       String email,
       String password,
       String username,
       String displayName) {
     String adminUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/admin/users";
-    Map<String, Object> requestPayload = new HashMap<>();
-    requestPayload.put("email", email);
-    requestPayload.put("password", password);
-    requestPayload.put("email_confirm", true);
-
-    Map<String, String> metadata = new HashMap<>();
-    if (StringUtils.hasText(username)) {
-      metadata.put("username", username.trim());
-    }
-    if (StringUtils.hasText(displayName)) {
-      metadata.put("display_name", displayName.trim());
-    }
-    if (!metadata.isEmpty()) {
-      requestPayload.put("user_metadata", metadata);
-    }
+    AdminCreateUserRequest requestPayload = new AdminCreateUserRequest(
+        email,
+        password,
+        true,
+        buildUserMetadata(username, displayName));
 
     try {
-      Map<String, Object> responseBody = restClient.post()
+      IdentityPayload responseBody = restClient.post()
           .uri(adminUrl)
           .header("apikey", supabaseServiceRoleKey)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseServiceRoleKey)
@@ -532,13 +489,13 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
           .retrieve()
-          .body(Map.class);
+          .body(IdentityPayload.class);
 
       if (responseBody == null) {
         throw new IllegalStateException("Registration failed via admin API");
       }
 
-      String createdEmail = stringValue(responseBody.get("email"));
+      String createdEmail = responseBody.email();
       if (!StringUtils.hasText(createdEmail)) {
         throw new IllegalStateException("Registration failed via admin API");
       }
@@ -552,5 +509,72 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
       }
       throw new IllegalArgumentException(detail);
     }
+  }
+
+  private String normalizeOptional(String value) {
+    return StringUtils.hasText(value) ? value.trim() : null;
+  }
+
+  private record PasswordLoginRequest(String email, String password) {
+  }
+
+  private record RefreshTokenRequest(@JsonProperty("refresh_token") String refreshToken) {
+  }
+
+  private record EmailUpdateRequest(String email) {
+  }
+
+  private record PasswordUpdateRequest(String password) {
+  }
+
+  private record SignupRequest(
+      String email,
+      String password,
+      @JsonProperty("data") UserMetadataPayload data) {
+  }
+
+  private record AdminCreateUserRequest(
+      String email,
+      String password,
+      @JsonProperty("email_confirm") boolean emailConfirm,
+      @JsonProperty("user_metadata") UserMetadataPayload userMetadata) {
+  }
+
+  private record TokenPayload(
+      @JsonProperty("access_token") String accessToken,
+      @JsonProperty("refresh_token") String refreshToken,
+      @JsonProperty("expires_in") Long expiresIn,
+      IdentityPayload user) {
+  }
+
+  private record IdentityPayload(
+      String id,
+      String email,
+      @JsonProperty("app_metadata") AppMetadataPayload appMetadata,
+      List<IdentityProviderPayload> identities,
+      @JsonProperty("user_metadata") UserMetadataPayload userMetadata) {
+  }
+
+  private record AppMetadataPayload(String role, String provider) {
+  }
+
+  private record IdentityProviderPayload(String provider, String id) {
+  }
+
+  private record UserMetadataPayload(
+      String username,
+      @JsonProperty("display_name") String displayName,
+      @JsonProperty("full_name") String fullName,
+      String name) {
+    private UserMetadataPayload(String username, String displayName) {
+      this(username, displayName, null, null);
+    }
+  }
+
+  private record ErrorPayload(
+      String msg,
+      String message,
+      @JsonProperty("error_description") String errorDescription,
+      String error) {
   }
 }
