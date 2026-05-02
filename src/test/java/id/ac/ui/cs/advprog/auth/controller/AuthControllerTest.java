@@ -192,6 +192,32 @@ class AuthControllerTest {
   }
 
   @Test
+  void mePrefersPublicUserIdClaimWhenPresent() throws Exception {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Authorization")).thenReturn(null);
+    UUID publicUserId = UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11");
+    authenticateJwtWithPublicUserId(
+        "sub-123",
+        "sub@example.com",
+        "authenticated",
+        publicUserId.toString());
+
+    UserProfile user = new UserProfile();
+    user.setId(publicUserId);
+    user.setSupabaseUserId("sub-123");
+    user.setEmail("sub@example.com");
+    when(profileService.findById(publicUserId)).thenReturn(Optional.of(user));
+
+    ResponseEntity<?> resp = controller.me(req);
+
+    assertEquals(200, resp.getStatusCodeValue());
+    assertAuthMeResponseType(resp);
+    verify(profileService).findById(publicUserId);
+    verify(profileService, never()).findBySupabaseUserId(anyString());
+    verify(profileService, never()).findByEmail(anyString());
+  }
+
+  @Test
   void meReturnsNullProfileWhenAbsent() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
@@ -425,17 +451,30 @@ class AuthControllerTest {
   }
 
   private void authenticateJwt(String sub, String email, String role) {
+    authenticateJwtWithPublicUserId(sub, email, role, null);
+  }
+
+  private void authenticateJwtWithPublicUserId(
+      String sub,
+      String email,
+      String role,
+      String publicUserId) {
+    Map<String, Object> claims = new java.util.LinkedHashMap<>();
+    claims.put("sub", sub);
+    claims.put("email", email);
+    claims.put("role", role);
+    claims.put("aud", List.of("authenticated"));
+    claims.put("iss", "https://supabase.test/auth/v1");
+    if (publicUserId != null) {
+      claims.put("yomu_user_id", publicUserId);
+    }
+
     Jwt jwt = new Jwt(
         "security-context-token",
         Instant.now(),
         Instant.now().plusSeconds(600),
         Map.of("alg", "none"),
-        Map.of(
-            "sub", sub,
-            "email", email,
-            "role", role,
-            "aud", List.of("authenticated"),
-            "iss", "https://supabase.test/auth/v1"));
+        claims);
 
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(

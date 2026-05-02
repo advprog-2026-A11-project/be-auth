@@ -60,6 +60,7 @@ class CurrentUserProviderTest {
     assertEquals("sub-234", currentUser.get().sub());
     assertEquals("jwt@example.com", currentUser.get().email());
     assertEquals("ADMIN", currentUser.get().role());
+    assertEquals("c1f84e7b-bb84-412d-81bb-4449df141f11", currentUser.get().publicUserId());
     assertTrue(provider.getCurrentJwt().isPresent());
   }
 
@@ -114,6 +115,7 @@ class CurrentUserProviderTest {
             "sub", sub,
             "email", email,
             "role", role,
+            "yomu_user_id", "c1f84e7b-bb84-412d-81bb-4449df141f11",
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
   }
