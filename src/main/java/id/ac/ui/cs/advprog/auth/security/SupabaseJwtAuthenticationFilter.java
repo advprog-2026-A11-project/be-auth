@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -119,7 +120,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     Jwt jwt = currentJwt.get();
     String sub = jwt.getSubject();
     String email = jwt.getClaimAsString("email");
-    Optional<UserProfile> profile = resolveProfile(sub, email);
+    Optional<UserProfile> profile = resolveProfile(currentUserProvider.getCurrentUser(), sub, email);
     if (profile.isPresent() && !profile.get().isActive()) {
       SecurityContextHolder.clearContext();
       UnauthorizedResponseWriter.write(
@@ -153,14 +154,34 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     return Role.canonicalize(tokenRole);
   }
 
-  private Optional<UserProfile> resolveProfile(String sub, String email) {
-    Optional<UserProfile> profile = Optional.empty();
+  private Optional<UserProfile> resolveProfile(
+      Optional<AuthenticatedUserPrincipal> currentUser,
+      String sub,
+      String email) {
+    Optional<UserProfile> profile = currentUser
+        .map(AuthenticatedUserPrincipal::publicUserId)
+        .filter(StringUtils::hasText)
+        .flatMap(this::findProfileByPublicUserId);
+
+    if (profile.isPresent()) {
+      return profile;
+    }
+
+    Optional<UserProfile> fallbackProfile = Optional.empty();
     if (StringUtils.hasText(sub)) {
-      profile = userProfileService.findBySupabaseUserId(sub);
+      fallbackProfile = userProfileService.findBySupabaseUserId(sub);
     }
-    if (profile.isEmpty() && StringUtils.hasText(email)) {
-      profile = userProfileService.findByEmail(email);
+    if (fallbackProfile.isEmpty() && StringUtils.hasText(email)) {
+      fallbackProfile = userProfileService.findByEmail(email);
     }
-    return profile;
+    return fallbackProfile;
+  }
+
+  private Optional<UserProfile> findProfileByPublicUserId(String publicUserId) {
+    try {
+      return userProfileService.findById(UUID.fromString(publicUserId.trim()));
+    } catch (IllegalArgumentException ex) {
+      return Optional.empty();
+    }
   }
 }
