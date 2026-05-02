@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -299,6 +300,41 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   @Test
+  void doFilterInternalPrefersPublicUserIdClaimWhenPresent() throws Exception {
+    final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
+    request.addHeader("Authorization", "Bearer valid-public-user-id");
+    final MockHttpServletResponse response = new MockHttpServletResponse();
+    final FilterChain chain = mock(FilterChain.class);
+    final UUID publicUserId = UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11");
+
+    authenticateJwtWithPublicUserId(
+        "valid-public-user-id",
+        " ",
+        " ",
+        "USER",
+        publicUserId.toString());
+    UserProfile user = new UserProfile();
+    user.setId(publicUserId);
+    user.setSupabaseUserId("sub-public");
+    user.setEmail("public@example.com");
+    user.setRole("ADMIN");
+    user.setActive(true);
+
+    when(tokenRevocationService.isRevoked("valid-public-user-id")).thenReturn(false);
+    when(userProfileService.findById(publicUserId)).thenReturn(Optional.of(user));
+
+    filter.doFilterInternal(request, response, chain);
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    assertTrue(auth != null);
+    assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
+    verify(userProfileService).findById(publicUserId);
+    verify(userProfileService, never()).findBySupabaseUserId(anyString());
+    verify(userProfileService, never()).findByEmail(anyString());
+    verify(chain).doFilter(request, response);
+  }
+
+  @Test
   void doFilterInternalDefaultsToStudentAuthorityWhenRoleAndIdentityAreBlank()
       throws Exception {
     final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
@@ -352,24 +388,42 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   private Jwt jwt(String tokenValue, String sub, String email, String role) {
+    return jwt(tokenValue, sub, email, role, null);
+  }
+
+  private Jwt jwt(String tokenValue, String sub, String email, String role, String publicUserId) {
+    Map<String, Object> claims = new java.util.LinkedHashMap<>();
+    claims.put("sub", sub);
+    claims.put("email", email);
+    claims.put("role", role);
+    claims.put("aud", List.of("authenticated"));
+    claims.put("iss", "https://supabase.test/auth/v1");
+    if (publicUserId != null) {
+      claims.put("yomu_user_id", publicUserId);
+    }
+
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
         now,
         now.plusSeconds(3600),
         Map.of("alg", "none"),
-        Map.of(
-            "sub", sub,
-            "email", email,
-            "role", role,
-            "aud", List.of("authenticated"),
-            "iss", "https://supabase.test/auth/v1"));
+        claims);
   }
 
   private void authenticateJwt(String tokenValue, String sub, String email, String role) {
+    authenticateJwtWithPublicUserId(tokenValue, sub, email, role, null);
+  }
+
+  private void authenticateJwtWithPublicUserId(
+      String tokenValue,
+      String sub,
+      String email,
+      String role,
+      String publicUserId) {
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(
-            jwt(tokenValue, sub, email, role),
+            jwt(tokenValue, sub, email, role, publicUserId),
             null,
             List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
   }
