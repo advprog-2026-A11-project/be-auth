@@ -323,18 +323,18 @@ class AuthControllerTest {
   }
 
   @Test
-  void meReturnsNullProfileWhenProfileLookupThrowsDataAccessException() throws Exception {
+  void mePropagatesDataAccessExceptionWhenProfileLookupFails() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
     authenticateJwt("sub-error", "error@example.com", "authenticated");
     when(profileService.findBySupabaseUserId("sub-error"))
         .thenThrow(new DataAccessResourceFailureException("db down"));
 
-    ResponseEntity<?> resp = controller.me(req);
+    DataAccessResourceFailureException ex = assertThrows(
+        DataAccessResourceFailureException.class,
+        () -> controller.me(req));
 
-    assertEquals(200, resp.getStatusCodeValue());
-    assertAuthMeResponseType(resp);
-    assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
+    assertEquals("db down", ex.getMessage());
   }
 
   @Test

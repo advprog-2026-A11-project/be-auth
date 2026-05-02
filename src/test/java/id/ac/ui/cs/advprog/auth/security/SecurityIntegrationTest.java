@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.MockMvc;
@@ -89,6 +90,22 @@ class SecurityIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.sub").value("supabase-user-1"))
         .andExpect(jsonPath("$.profile.role").value("STUDENT"));
+  }
+
+  @Test
+  void meReturnsServiceUnavailableWhenProfileLookupFails() throws Exception {
+    when(supabaseJwtService.validateAccessToken("db-error-token"))
+        .thenReturn(jwt("db-error-token", "supabase-user-err", "err@example.com"));
+    when(userProfileService.findBySupabaseUserId("supabase-user-err"))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    mockMvc.perform(get("/api/auth/me")
+            .header("Authorization", "Bearer db-error-token"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.status").value(503))
+        .andExpect(
+            jsonPath("$.message").value(
+                "Database unavailable. Check Supabase DB host/connection."));
   }
 
   @Test
