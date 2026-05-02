@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.auth.exception.ApiErrorResponse;
 import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
@@ -10,11 +11,16 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -119,7 +125,13 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     Jwt jwt = currentJwt.get();
     String sub = jwt.getSubject();
     String email = jwt.getClaimAsString("email");
-    Optional<UserProfile> profile = resolveProfile(currentUserProvider.getCurrentUser(), sub, email);
+    Optional<UserProfile> profile;
+    try {
+      profile = resolveProfile(currentUserProvider.getCurrentUser(), sub, email);
+    } catch (DataAccessException ex) {
+      writeServiceUnavailable(request, response);
+      return;
+    }
     if (profile.isPresent() && !profile.get().isActive()) {
       SecurityContextHolder.clearContext();
       UnauthorizedResponseWriter.write(
@@ -174,6 +186,22 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       fallbackProfile = userProfileService.findByEmail(email);
     }
     return fallbackProfile;
+  }
+
+  private void writeServiceUnavailable(
+      HttpServletRequest request,
+      HttpServletResponse response) throws IOException {
+    response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+    ApiErrorResponse payload = new ApiErrorResponse(
+        Instant.now(),
+        HttpStatus.SERVICE_UNAVAILABLE.value(),
+        HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+        "Database unavailable. Check Supabase DB host/connection.",
+        request.getRequestURI(),
+        Map.of());
+    response.getWriter().write(objectMapper.writeValueAsString(payload));
   }
 
 }

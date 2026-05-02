@@ -24,7 +24,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -76,7 +75,7 @@ public class AuthController {
     String sub = claims.getSubject();
     String email = claims.getClaimAsString(EMAIL_CLAIM);
 
-    Optional<UserProfile> profile = resolveProfileSafely(sub, email);
+    Optional<UserProfile> profile = resolveProfile(sub, email);
     return ResponseEntity.ok(AuthMeResponse.of(
         sub,
         claims.getAudience(),
@@ -153,17 +152,13 @@ public class AuthController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(message));
   }
 
-  private Optional<UserProfile> resolveProfileSafely(String sub, String email) {
-    try {
-      Optional<UserProfile> profile = resolveProfileByPublicUserId();
-      if (profile.isPresent()) {
-        return profile;
-      }
-
-      return resolveProfileByIdentity(sub, email);
-    } catch (DataAccessException ex) {
-      return Optional.empty();
+  private Optional<UserProfile> resolveProfile(String sub, String email) {
+    Optional<UserProfile> profile = resolveProfileByPublicUserId();
+    if (profile.isPresent()) {
+      return profile;
     }
+
+    return resolveProfileByIdentity(sub, email);
   }
 
   private Optional<UserProfile> resolveProfileByPublicUserId() {
