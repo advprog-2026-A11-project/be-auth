@@ -22,6 +22,7 @@ import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -155,17 +156,41 @@ public class AuthController {
 
   private Optional<UserProfile> resolveProfileSafely(String sub, String email) {
     try {
-      Optional<UserProfile> profile = Optional.empty();
-      if (StringUtils.hasText(sub)) {
-        profile = userProfileService.findBySupabaseUserId(sub);
+      Optional<UserProfile> profile = resolveProfileByPublicUserId();
+      if (profile.isPresent()) {
+        return profile;
       }
-      if (profile.isEmpty() && StringUtils.hasText(email)) {
-        profile = userProfileService.findByEmail(email);
-      }
-      return profile;
+
+      return resolveProfileByIdentity(sub, email);
     } catch (DataAccessException ex) {
       return Optional.empty();
     }
+  }
+
+  private Optional<UserProfile> resolveProfileByPublicUserId() {
+    return currentUserProvider.getCurrentUser()
+        .map(AuthenticatedUserPrincipal::publicUserId)
+        .filter(StringUtils::hasText)
+        .flatMap(this::findProfileByPublicUserId);
+  }
+
+  private Optional<UserProfile> findProfileByPublicUserId(String publicUserId) {
+    try {
+      return userProfileService.findById(UUID.fromString(publicUserId.trim()));
+    } catch (IllegalArgumentException ex) {
+      return Optional.empty();
+    }
+  }
+
+  private Optional<UserProfile> resolveProfileByIdentity(String sub, String email) {
+    Optional<UserProfile> profile = Optional.empty();
+    if (StringUtils.hasText(sub)) {
+      profile = userProfileService.findBySupabaseUserId(sub);
+    }
+    if (profile.isEmpty() && StringUtils.hasText(email)) {
+      profile = userProfileService.findByEmail(email);
+    }
+    return profile;
   }
 
   private void ensurePasswordAuthEnabled() {

@@ -50,7 +50,8 @@ public class CurrentUserProvider {
       return Optional.of(new AuthenticatedUserPrincipal(
           jwt.getSubject(),
           jwt.getClaimAsString("email"),
-          resolveRole(authentication.getAuthorities(), jwt.getClaimAsString("role"))));
+          resolveRole(authentication.getAuthorities(), jwt.getClaimAsString("role")),
+          resolvePublicUserId(jwt)));
     }
 
     return Optional.empty();
@@ -72,5 +73,14 @@ public class CurrentUserProvider {
     }
 
     return Role.canonicalize(claimedRole);
+  }
+
+  private String resolvePublicUserId(Jwt jwt) {
+    String publicUserId = jwt.getClaimAsString("yomu_user_id");
+    if (StringUtils.hasText(publicUserId)) {
+      return publicUserId;
+    }
+
+    return jwt.getClaimAsString("user_id");
   }
 }
