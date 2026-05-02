@@ -47,6 +47,18 @@ public class UserProfileService {
     return repository.findById(id);
   }
 
+  public Optional<UserProfile> findByPublicUserId(String publicUserId) {
+    if (!StringUtils.hasText(publicUserId)) {
+      return Optional.empty();
+    }
+
+    try {
+      return repository.findById(UUID.fromString(publicUserId.trim()));
+    } catch (IllegalArgumentException ex) {
+      return Optional.empty();
+    }
+  }
+
   public Optional<UserProfile> findByEmail(String email) {
     if (!StringUtils.hasText(email)) {
       return Optional.empty();

@@ -321,14 +321,15 @@ class SupabaseJwtAuthenticationFilterTest {
     user.setActive(true);
 
     when(tokenRevocationService.isRevoked("valid-public-user-id")).thenReturn(false);
-    when(userProfileService.findById(publicUserId)).thenReturn(Optional.of(user));
+    when(userProfileService.findByPublicUserId(publicUserId.toString()))
+        .thenReturn(Optional.of(user));
 
     filter.doFilterInternal(request, response, chain);
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     assertTrue(auth != null);
     assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
-    verify(userProfileService).findById(publicUserId);
+    verify(userProfileService).findByPublicUserId(publicUserId.toString());
     verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
     verify(chain).doFilter(request, response);

@@ -206,13 +206,13 @@ class AuthControllerTest {
     user.setId(publicUserId);
     user.setSupabaseUserId("sub-123");
     user.setEmail("sub@example.com");
-    when(profileService.findById(publicUserId)).thenReturn(Optional.of(user));
+    when(profileService.findByPublicUserId(publicUserId.toString())).thenReturn(Optional.of(user));
 
     ResponseEntity<?> resp = controller.me(req);
 
     assertEquals(200, resp.getStatusCodeValue());
     assertAuthMeResponseType(resp);
-    verify(profileService).findById(publicUserId);
+    verify(profileService).findByPublicUserId(publicUserId.toString());
     verify(profileService, never()).findBySupabaseUserId(anyString());
     verify(profileService, never()).findByEmail(anyString());
   }

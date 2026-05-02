@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -161,7 +160,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     Optional<UserProfile> profile = currentUser
         .map(AuthenticatedUserPrincipal::publicUserId)
         .filter(StringUtils::hasText)
-        .flatMap(this::findProfileByPublicUserId);
+        .flatMap(userProfileService::findByPublicUserId);
 
     if (profile.isPresent()) {
       return profile;
@@ -177,11 +176,4 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     return fallbackProfile;
   }
 
-  private Optional<UserProfile> findProfileByPublicUserId(String publicUserId) {
-    try {
-      return userProfileService.findById(UUID.fromString(publicUserId.trim()));
-    } catch (IllegalArgumentException ex) {
-      return Optional.empty();
-    }
-  }
 }

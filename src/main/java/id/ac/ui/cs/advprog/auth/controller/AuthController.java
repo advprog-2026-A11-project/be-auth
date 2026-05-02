@@ -22,7 +22,6 @@ import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -171,15 +170,7 @@ public class AuthController {
     return currentUserProvider.getCurrentUser()
         .map(AuthenticatedUserPrincipal::publicUserId)
         .filter(StringUtils::hasText)
-        .flatMap(this::findProfileByPublicUserId);
-  }
-
-  private Optional<UserProfile> findProfileByPublicUserId(String publicUserId) {
-    try {
-      return userProfileService.findById(UUID.fromString(publicUserId.trim()));
-    } catch (IllegalArgumentException ex) {
-      return Optional.empty();
-    }
+        .flatMap(userProfileService::findByPublicUserId);
   }
 
   private Optional<UserProfile> resolveProfileByIdentity(String sub, String email) {
