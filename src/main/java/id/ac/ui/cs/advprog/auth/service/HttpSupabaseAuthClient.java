@@ -326,9 +326,6 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
       if (ex.getStatusCode().is4xxClientError()) {
         String detail = extractSupabaseErrorMessage(ex.getResponseBodyAsString());
         if (isEmailRateLimit(detail)) {
-          if (StringUtils.hasText(supabaseServiceRoleKey)) {
-            return registerViaAdminApi(email, password, username, displayName);
-          }
           throw new IllegalArgumentException(
               "email rate limit exceeded. Set SUPABASE_SERVICE_ROLE_KEY "
                   + "or disable email confirmation in Supabase for dev");
