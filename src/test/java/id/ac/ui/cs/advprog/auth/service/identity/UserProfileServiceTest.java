@@ -77,18 +77,6 @@ class UserProfileServiceTest {
   }
 
   @Test
-  void updateDisplayNameSaves() {
-    UUID id = UUID.randomUUID();
-    UserProfile existing = new UserProfile();
-    existing.setDisplayName("old");
-    when(repository.findById(id)).thenReturn(Optional.of(existing));
-    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-    Optional<UserProfile> updated = service.updateDisplayName(id, "new");
-    assertTrue(updated.isPresent());
-    assertEquals("new", updated.get().getDisplayName());
-  }
-
-  @Test
   void deactivateByIdMarksExistingUserInactive() {
     UUID id = UUID.randomUUID();
     UserProfile existing = new UserProfile();

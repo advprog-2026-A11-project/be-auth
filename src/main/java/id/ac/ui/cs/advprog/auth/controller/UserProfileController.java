@@ -1,8 +1,6 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
-import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.DeleteAccountRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateDisplayNameRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateEmailRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateProfileRequest;
@@ -69,22 +67,6 @@ public class UserProfileController {
   @GetMapping("/{id}")
   public ResponseEntity<UserProfileResponse> getById(@PathVariable UUID id) {
     return service.findById(id)
-        .map(UserProfileResponse::from)
-        .map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.notFound().build());
-  }
-
-  @PutMapping("/{id}/displayName")
-  public ResponseEntity<?> updateDisplayName(
-      @PathVariable UUID id,
-      @RequestBody UpdateDisplayNameRequest request) {
-    if (request == null || request.displayName() == null) {
-      return new ResponseEntity<>(
-          new ErrorResponse("displayName is required"),
-          HttpStatus.BAD_REQUEST);
-    }
-
-    return service.updateDisplayName(id, request.displayName())
         .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());

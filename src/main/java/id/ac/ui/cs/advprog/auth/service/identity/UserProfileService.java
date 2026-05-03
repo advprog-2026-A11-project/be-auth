@@ -140,13 +140,6 @@ public class UserProfileService {
             "Phone already taken")));
   }
 
-  public Optional<UserProfile> updateDisplayName(UUID id, String newDisplayName) {
-    return repository.findById(id).map(u -> {
-      u.setDisplayName(newDisplayName);
-      return repository.save(u);
-    });
-  }
-
   public Optional<UserProfile> update(UUID id, UserProfile incoming) {
     return repository.findById(id).map(existing -> {
       identitySyncService.syncAdminUpdate(existing, incoming);

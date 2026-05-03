@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateDisplayNameRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
@@ -74,39 +72,6 @@ class UserProfileControllerTest {
     assertEquals("Alice", body.displayName());
     assertEquals("ADMIN", body.role());
     assertFalse(body.isActive());
-  }
-
-  @Test
-  void updateDisplayNameMissingReturnsBadRequest() {
-    UUID id = UUID.randomUUID();
-    ResponseEntity<?> resp = controller.updateDisplayName(id, new UpdateDisplayNameRequest(null));
-    assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
-    assertEquals("displayName is required", ((ErrorResponse) resp.getBody()).error());
-  }
-
-  @Test
-  void updateDisplayNameNullRequestReturnsBadRequest() {
-    UUID id = UUID.randomUUID();
-    ResponseEntity<?> resp = controller.updateDisplayName(id, null);
-    assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
-    assertEquals("displayName is required", ((ErrorResponse) resp.getBody()).error());
-  }
-
-  @Test
-  void updateDisplayNameSuccessReturnsOk() {
-    UUID id = UUID.randomUUID();
-    UserProfile u = new UserProfile();
-    when(service.updateDisplayName(id, "bob")).thenReturn(Optional.of(u));
-    ResponseEntity<?> resp = controller.updateDisplayName(id, new UpdateDisplayNameRequest("bob"));
-    assertEquals(HttpStatus.OK, resp.getStatusCode());
-  }
-
-  @Test
-  void updateDisplayNameNotFoundReturnsNotFound() {
-    UUID id = UUID.randomUUID();
-    when(service.updateDisplayName(id, "bob")).thenReturn(Optional.empty());
-    ResponseEntity<?> resp = controller.updateDisplayName(id, new UpdateDisplayNameRequest("bob"));
-    assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
   }
 
   @Test

@@ -15,9 +15,6 @@ public final class UserRequests {
       String confirmation) {
   }
 
-  public record UpdateDisplayNameRequest(String displayName) {
-  }
-
   public record UpdateEmailRequest(
       @NotBlank(message = "email is required")
       @Email(message = "email must be valid")
