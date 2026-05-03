@@ -147,20 +147,7 @@ public class UserProfileService {
       String email,
       String username,
       String displayName) {
-    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
-      throw new IllegalArgumentException("Authenticated user identity is required");
-    }
-
-    Optional<UserProfile> existingOptional = StringUtils.hasText(supabaseUserId)
-        ? repository.findBySupabaseUserId(supabaseUserId)
-        : Optional.empty();
-
-    if (existingOptional.isEmpty() && StringUtils.hasText(email)) {
-      existingOptional = repository.findByEmail(email.trim().toLowerCase());
-    }
-
-    UserProfile existing = existingOptional
-        .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+    UserProfile existing = findCurrentUserOrThrow(supabaseUserId, email);
 
     if (StringUtils.hasText(username)) {
       String normalizedUsername = username.trim();
@@ -179,20 +166,7 @@ public class UserProfileService {
   }
 
   public UserProfile deactivateCurrentUser(String supabaseUserId, String email) {
-    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
-      throw new IllegalArgumentException("Authenticated user identity is required");
-    }
-
-    Optional<UserProfile> existingOptional = StringUtils.hasText(supabaseUserId)
-        ? repository.findBySupabaseUserId(supabaseUserId)
-        : Optional.empty();
-
-    if (existingOptional.isEmpty() && StringUtils.hasText(email)) {
-      existingOptional = repository.findByEmail(email.trim().toLowerCase());
-    }
-
-    UserProfile existing = existingOptional
-        .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+    UserProfile existing = findCurrentUserOrThrow(supabaseUserId, email);
 
     existing.setActive(false);
     return repository.save(existing);
@@ -277,20 +251,24 @@ public class UserProfileService {
   }
 
   private UserProfile findCurrentUserOrThrow(String supabaseUserId, String email) {
+    return findCurrentUser(supabaseUserId, email).orElseThrow(
+        () -> new IllegalArgumentException("User profile not found"));
+  }
+
+  private Optional<UserProfile> findCurrentUser(String supabaseUserId, String email) {
     if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
       throw new IllegalArgumentException("Authenticated user identity is required");
     }
 
-    Optional<UserProfile> existingOptional = StringUtils.hasText(supabaseUserId)
+    Optional<UserProfile> existing = StringUtils.hasText(supabaseUserId)
         ? repository.findBySupabaseUserId(supabaseUserId)
         : Optional.empty();
 
-    if (existingOptional.isEmpty() && StringUtils.hasText(email)) {
-      existingOptional = repository.findByEmail(email.trim().toLowerCase());
+    if (existing.isEmpty() && StringUtils.hasText(email)) {
+      existing = repository.findByEmail(email.trim().toLowerCase());
     }
 
-    return existingOptional.orElseThrow(
-        () -> new IllegalArgumentException("User profile not found"));
+    return existing;
   }
 
   private String normalizeEmailOrThrow(String email) {
