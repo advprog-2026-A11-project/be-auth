@@ -278,7 +278,6 @@ class AuthControllerTest {
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("https://sso", response.getBody().authorizationUrl());
     verify(googleSsoService).createSsoUrl("http://localhost:3000/callback");
-    verify(googleSsoService, never()).createSsoUrl();
   }
 
   @Test

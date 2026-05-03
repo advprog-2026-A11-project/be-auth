@@ -30,7 +30,7 @@ class GoogleSsoIntegrationTest {
 
   @Test
   void googleSsoUrlReturnsOk() throws Exception {
-    when(googleSsoService.createSsoUrl())
+    when(googleSsoService.createSsoUrl(null))
         .thenReturn(new SsoUrlResponse(
             "google",
             "https://supabase.test/auth/v1/authorize?provider=google",

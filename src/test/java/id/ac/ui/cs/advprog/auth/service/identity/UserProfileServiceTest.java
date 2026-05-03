@@ -25,15 +25,13 @@ class UserProfileServiceTest {
   private SupabaseAuthClient supabaseAuthClient;
 
   private UserProfileService service;
-  private UserProfileIdentitySyncService identitySyncService;
-  private CurrentUserProfileLookupService currentUserProfileLookupService;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    identitySyncService = new UserProfileIdentitySyncService(repository, supabaseAuthClient);
-    currentUserProfileLookupService = new CurrentUserProfileLookupService(repository);
-    service = new UserProfileService(repository, identitySyncService, currentUserProfileLookupService);
+    service = new UserProfileService(
+        repository,
+        new UserProfileIdentitySyncService(repository, supabaseAuthClient));
   }
 
   @Test

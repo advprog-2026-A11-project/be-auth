@@ -30,8 +30,7 @@ class UserProfileServiceUpdateTest {
     MockitoAnnotations.openMocks(this);
     service = new UserProfileService(
         repository,
-        new UserProfileIdentitySyncService(repository, supabaseAuthClient),
-        new CurrentUserProfileLookupService(repository));
+        new UserProfileIdentitySyncService(repository, supabaseAuthClient));
   }
 
   @Test

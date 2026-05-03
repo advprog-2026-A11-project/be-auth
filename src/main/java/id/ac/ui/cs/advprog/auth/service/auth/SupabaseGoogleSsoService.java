@@ -63,10 +63,6 @@ public class SupabaseGoogleSsoService {
     this.restClient = RestClient.builder().build();
   }
 
-  public SsoUrlResponse createSsoUrl() {
-    return createSsoUrl(null);
-  }
-
   public SsoUrlResponse createSsoUrl(String redirectTo) {
     ensureConfig();
 

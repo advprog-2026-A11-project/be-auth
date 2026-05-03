@@ -15,15 +15,12 @@ public class UserProfileService {
 
   private final UserProfileRepository repository;
   private final UserProfileIdentitySyncService identitySyncService;
-  private final CurrentUserProfileLookupService currentUserProfileLookupService;
 
   public UserProfileService(
       UserProfileRepository repository,
-      UserProfileIdentitySyncService identitySyncService,
-      CurrentUserProfileLookupService currentUserProfileLookupService) {
+      UserProfileIdentitySyncService identitySyncService) {
     this.repository = repository;
     this.identitySyncService = identitySyncService;
-    this.currentUserProfileLookupService = currentUserProfileLookupService;
   }
 
   public UserProfile create(UserProfile user) {
@@ -114,7 +111,7 @@ public class UserProfileService {
       String publicUserId,
       String username,
       String displayName) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
+    UserProfile existing = requireCurrentUserProfile(publicUserId);
     applySelfManagedFields(existing, username, displayName);
     return repository.save(existing);
   }
@@ -130,7 +127,7 @@ public class UserProfileService {
   }
 
   public UserProfile deactivateCurrentUser(String publicUserId) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
+    UserProfile existing = requireCurrentUserProfile(publicUserId);
 
     existing.setActive(false);
     return repository.save(existing);
@@ -139,7 +136,7 @@ public class UserProfileService {
   public UserProfile updateCurrentUserEmail(
       String publicUserId,
       String newEmail) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
+    UserProfile existing = requireCurrentUserProfile(publicUserId);
     String normalizedEmail = normalizeEmailOrThrow(newEmail);
 
     if (!normalizedEmail.equals(existing.getEmail())
@@ -154,7 +151,7 @@ public class UserProfileService {
   public UserProfile updateCurrentUserPhone(
       String publicUserId,
       String newPhone) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
+    UserProfile existing = requireCurrentUserProfile(publicUserId);
     String normalizedPhone = normalizePhoneOrThrow(newPhone);
 
     if (!normalizedPhone.equals(existing.getPhone())
@@ -242,6 +239,22 @@ public class UserProfileService {
       existing = repository.findByEmail(email.trim().toLowerCase());
     }
     return existing.orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+  }
+
+  private UserProfile requireCurrentUserProfile(String publicUserId) {
+    if (!StringUtils.hasText(publicUserId)) {
+      throw new IllegalArgumentException("Authenticated public user id is required");
+    }
+
+    try {
+      return repository.findById(UUID.fromString(publicUserId.trim()))
+          .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+    } catch (IllegalArgumentException ex) {
+      if ("User profile not found".equals(ex.getMessage())) {
+        throw ex;
+      }
+      throw new IllegalArgumentException("Authenticated public user id is invalid", ex);
+    }
   }
 
   private void applySelfManagedFields(

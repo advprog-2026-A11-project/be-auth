@@ -137,9 +137,6 @@ public class AuthController {
   @GetMapping("/sso/google/url")
   public ResponseEntity<SsoUrlResponse> googleSsoUrl(
       @RequestParam(value = "redirectTo", required = false) String redirectTo) {
-    if (!StringUtils.hasText(redirectTo)) {
-      return ResponseEntity.ok(googleSsoService.createSsoUrl());
-    }
     return ResponseEntity.ok(googleSsoService.createSsoUrl(redirectTo));
   }
 
