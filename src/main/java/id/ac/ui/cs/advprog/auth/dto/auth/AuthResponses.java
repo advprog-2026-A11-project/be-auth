@@ -27,15 +27,6 @@ public final class AuthResponses {
 
   public record MessageResponse(String message) {
   }
-
-  public record SsoCallbackResponse(
-      String accessToken,
-      String refreshToken,
-      String userId,
-      boolean linked,
-      String message) {
-  }
-
   public record SsoUrlResponse(
       String provider,
       String authorizationUrl,

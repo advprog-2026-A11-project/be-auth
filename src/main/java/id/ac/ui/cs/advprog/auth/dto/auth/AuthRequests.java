@@ -41,12 +41,5 @@ public final class AuthRequests {
       @Size(max = 100, message = "displayName must be <= 100 characters")
       String displayName) {
   }
-
-  public record SsoCallbackRequest(
-      @NotBlank(message = "code is required")
-      String code,
-      @NotBlank(message = "state is required")
-      String state) {
-  }
 }
 

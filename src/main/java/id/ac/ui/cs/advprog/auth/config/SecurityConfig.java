@@ -73,7 +73,6 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/auth/sso/google/url").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/auth/sso/google/callback").permitAll()
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
             .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
             .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()

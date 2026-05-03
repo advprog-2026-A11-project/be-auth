@@ -72,9 +72,6 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletRequest refresh = new MockHttpServletRequest("POST", "/api/auth/refresh");
     final MockHttpServletRequest ssoUrl =
         new MockHttpServletRequest("GET", "/api/auth/sso/google/url");
-    final MockHttpServletRequest ssoCallback = new MockHttpServletRequest(
-        "POST",
-        "/api/auth/sso/google/callback");
     final MockHttpServletRequest protectedApi = new MockHttpServletRequest("GET", "/api/users/me");
 
     assertTrue(filter.shouldNotFilter(nonApi));
@@ -82,7 +79,6 @@ class SupabaseJwtAuthenticationFilterTest {
     assertTrue(filter.shouldNotFilter(register));
     assertTrue(filter.shouldNotFilter(refresh));
     assertTrue(filter.shouldNotFilter(ssoUrl));
-    assertTrue(filter.shouldNotFilter(ssoCallback));
     assertEquals(false, filter.shouldNotFilter(protectedApi));
   }
 
@@ -93,14 +89,11 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletRequest refresh = new MockHttpServletRequest("GET", "/api/auth/refresh");
     final MockHttpServletRequest ssoUrl =
         new MockHttpServletRequest("POST", "/api/auth/sso/google/url");
-    final MockHttpServletRequest ssoCallback =
-        new MockHttpServletRequest("GET", "/api/auth/sso/google/callback");
 
     assertFalse(filter.shouldNotFilter(login));
     assertFalse(filter.shouldNotFilter(register));
     assertFalse(filter.shouldNotFilter(refresh));
     assertFalse(filter.shouldNotFilter(ssoUrl));
-    assertFalse(filter.shouldNotFilter(ssoCallback));
   }
 
   @Test

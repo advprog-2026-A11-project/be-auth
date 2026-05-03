@@ -5,11 +5,9 @@ import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.LoginRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.RefreshTokenRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.RegisterRequest;
-import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LogoutResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.MessageResponse;
-import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
@@ -26,7 +24,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -138,12 +135,6 @@ public class AuthController {
   public ResponseEntity<SsoUrlResponse> googleSsoUrl(
       @RequestParam(value = "redirectTo", required = false) String redirectTo) {
     return ResponseEntity.ok(googleSsoService.createSsoUrl(redirectTo));
-  }
-
-  @PostMapping("/sso/google/callback")
-  public ResponseEntity<SsoCallbackResponse> googleSsoCallback(
-      @Valid @RequestBody SsoCallbackRequest request) {
-    return ResponseEntity.ok(googleSsoService.handleCallback(request));
   }
 
   private ResponseEntity<ErrorResponse> unauthorized(String message) {
