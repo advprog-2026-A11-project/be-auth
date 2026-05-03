@@ -10,13 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -40,9 +39,10 @@ public class SupabaseGoogleSsoService {
   private final SupabaseJwtService supabaseJwtService;
   private final UserProfileService userProfileService;
   private final AuthSessionService authSessionService;
+  private final PkceStateStore pkceStateStore;
+  private final Clock clock;
   private final RestClient restClient;
   private final SecureRandom secureRandom = new SecureRandom();
-  private final ConcurrentMap<String, PkceFlowState> pkceStates = new ConcurrentHashMap<>();
 
   public SupabaseGoogleSsoService(
       @Value("${supabase.url:}") String supabaseUrl,
@@ -51,7 +51,9 @@ public class SupabaseGoogleSsoService {
       @Value("${auth.sso.state-ttl-seconds:600}") long stateTtlSeconds,
       SupabaseJwtService supabaseJwtService,
       UserProfileService userProfileService,
-      AuthSessionService authSessionService) {
+      AuthSessionService authSessionService,
+      PkceStateStore pkceStateStore,
+      Clock clock) {
     this.supabaseUrl = supabaseUrl;
     this.supabaseApiKey = supabaseApiKey;
     this.redirectUrl = redirectUrl;
@@ -59,6 +61,8 @@ public class SupabaseGoogleSsoService {
     this.supabaseJwtService = supabaseJwtService;
     this.userProfileService = userProfileService;
     this.authSessionService = authSessionService;
+    this.pkceStateStore = pkceStateStore;
+    this.clock = clock;
     this.restClient = RestClient.builder().build();
   }
 
@@ -68,15 +72,14 @@ public class SupabaseGoogleSsoService {
 
   public SsoUrlResponse createSsoUrl(String redirectTo) {
     ensureConfig();
-    cleanupExpiredStates();
 
     String flowId = UUID.randomUUID().toString();
     String codeVerifier = generateCodeVerifier();
     String codeChallenge = toS256CodeChallenge(codeVerifier);
-    Instant expiresAt = Instant.now().plusSeconds(stateTtlSeconds);
+    Instant expiresAt = Instant.now(clock).plusSeconds(stateTtlSeconds);
     String targetRedirectUrl = resolveRedirectUrl(redirectTo);
     String callbackRedirectUrl = withAppState(targetRedirectUrl, flowId);
-    pkceStates.put(flowId, new PkceFlowState(codeVerifier, expiresAt, callbackRedirectUrl));
+    pkceStateStore.save(flowId, codeVerifier, expiresAt, callbackRedirectUrl);
 
     String authorizeUrl = UriComponentsBuilder
         .fromHttpUrl(trimTrailingSlash(supabaseUrl) + "/auth/v1/authorize")
@@ -94,18 +97,19 @@ public class SupabaseGoogleSsoService {
   @SuppressWarnings("unchecked")
   public SsoCallbackResponse handleCallback(SsoCallbackRequest request) {
     ensureConfig();
-    cleanupExpiredStates();
 
-    PkceFlowState flowState = pkceStates.remove(request.state());
-    if (flowState == null || flowState.expiresAt().isBefore(Instant.now())) {
+    Optional<PkceStateStore.PkceFlowState> flowState = pkceStateStore.take(
+        request.state(),
+        Instant.now(clock));
+    if (flowState.isEmpty()) {
       throw new UnauthorizedException("Invalid or expired SSO state");
     }
 
     String tokenUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/token?grant_type=pkce";
     TokenExchangeRequest payload = new TokenExchangeRequest(
         request.code(),
-        flowState.codeVerifier(),
-        flowState.redirectUrl());
+        flowState.get().codeVerifier(),
+        flowState.get().redirectUrl());
 
     try {
       TokenExchangeResponse tokenResponse = restClient.post()
@@ -181,11 +185,6 @@ public class SupabaseGoogleSsoService {
       authSessionService.logout(accessToken);
       throw new UnauthorizedException(DEACTIVATED_ACCOUNT_MESSAGE);
     }
-  }
-
-  private void cleanupExpiredStates() {
-    Instant now = Instant.now();
-    pkceStates.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
   }
 
   private String generateCodeVerifier() {
@@ -270,10 +269,6 @@ public class SupabaseGoogleSsoService {
 
     return "";
   }
-
-  private record PkceFlowState(String codeVerifier, Instant expiresAt, String redirectUrl) {
-  }
-
   private record TokenExchangeRequest(
       @JsonProperty("auth_code") String authCode,
       @JsonProperty("code_verifier") String codeVerifier,

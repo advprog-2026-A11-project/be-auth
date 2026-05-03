@@ -3,25 +3,29 @@ package id.ac.ui.cs.advprog.auth.service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class TokenRevocationService {
 
-  private final Map<String, Instant> revokedTokens = new ConcurrentHashMap<>();
+  private final RevokedTokenStore revokedTokenStore;
+  private final Clock clock;
+
+  public TokenRevocationService(RevokedTokenStore revokedTokenStore, Clock clock) {
+    this.revokedTokenStore = revokedTokenStore;
+    this.clock = clock;
+  }
 
   public void revoke(String accessToken, Instant expiresAt) {
     if (!StringUtils.hasText(accessToken) || expiresAt == null) {
       return;
     }
 
-    cleanupExpired();
-    revokedTokens.put(hash(accessToken), expiresAt);
+    revokedTokenStore.save(hash(accessToken), expiresAt, Instant.now(clock));
   }
 
   public boolean isRevoked(String accessToken) {
@@ -29,14 +33,7 @@ public class TokenRevocationService {
       return false;
     }
 
-    cleanupExpired();
-    Instant expiresAt = revokedTokens.get(hash(accessToken));
-    return expiresAt != null;
-  }
-
-  private void cleanupExpired() {
-    Instant now = Instant.now();
-    revokedTokens.entrySet().removeIf(entry -> !entry.getValue().isAfter(now));
+    return revokedTokenStore.exists(hash(accessToken), Instant.now(clock));
   }
 
   private String hash(String accessToken) {
