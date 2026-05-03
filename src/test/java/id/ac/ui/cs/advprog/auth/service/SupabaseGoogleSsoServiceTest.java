@@ -48,6 +48,7 @@ class SupabaseGoogleSsoServiceTest {
   private HttpServer server;
   private SupabaseGoogleSsoService service;
   private InMemoryPkceStateStore pkceStateStore;
+  private GoogleSsoIdentityService googleSsoIdentityService;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -58,14 +59,14 @@ class SupabaseGoogleSsoServiceTest {
 
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     pkceStateStore = new InMemoryPkceStateStore();
+    googleSsoIdentityService = new GoogleSsoIdentityService(userProfileService, authSessionService);
     service = new SupabaseGoogleSsoService(
         baseUrl,
         "anon-key",
         CALLBACK_URL,
         600,
         supabaseJwtService,
-        userProfileService,
-        authSessionService,
+        googleSsoIdentityService,
         pkceStateStore,
         Clock.fixed(Instant.parse("2026-05-03T00:00:00Z"), ZoneOffset.UTC));
 

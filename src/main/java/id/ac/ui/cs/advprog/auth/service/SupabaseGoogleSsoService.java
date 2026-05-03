@@ -5,7 +5,6 @@ import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.SsoCallbackRequest;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -13,7 +12,6 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,16 +27,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class SupabaseGoogleSsoService {
 
-  private static final String DEACTIVATED_ACCOUNT_MESSAGE =
-      "Your account has been deactivated. Please contact an administrator.";
-
   private final String supabaseUrl;
   private final String supabaseApiKey;
   private final String redirectUrl;
   private final long stateTtlSeconds;
   private final SupabaseJwtService supabaseJwtService;
-  private final UserProfileService userProfileService;
-  private final AuthSessionService authSessionService;
+  private final GoogleSsoIdentityService googleSsoIdentityService;
   private final PkceStateStore pkceStateStore;
   private final Clock clock;
   private final RestClient restClient;
@@ -50,8 +44,7 @@ public class SupabaseGoogleSsoService {
       @Value("${auth.sso.google.redirect-url:}") String redirectUrl,
       @Value("${auth.sso.state-ttl-seconds:600}") long stateTtlSeconds,
       SupabaseJwtService supabaseJwtService,
-      UserProfileService userProfileService,
-      AuthSessionService authSessionService,
+      GoogleSsoIdentityService googleSsoIdentityService,
       PkceStateStore pkceStateStore,
       Clock clock) {
     this.supabaseUrl = supabaseUrl;
@@ -59,8 +52,7 @@ public class SupabaseGoogleSsoService {
     this.redirectUrl = redirectUrl;
     this.stateTtlSeconds = stateTtlSeconds;
     this.supabaseJwtService = supabaseJwtService;
-    this.userProfileService = userProfileService;
-    this.authSessionService = authSessionService;
+    this.googleSsoIdentityService = googleSsoIdentityService;
     this.pkceStateStore = pkceStateStore;
     this.clock = clock;
     this.restClient = RestClient.builder().build();
@@ -132,58 +124,21 @@ public class SupabaseGoogleSsoService {
       }
 
       Jwt jwt = supabaseJwtService.validateAccessToken(accessToken);
-      String sub = jwt.getSubject();
-      String email = jwt.getClaimAsString("email");
-      String role = jwt.getClaimAsString("role");
-      String displayName = extractDisplayName(jwt);
-
-      if (!StringUtils.hasText(sub)) {
-        throw new UnauthorizedException("SSO callback token missing subject");
-      }
-
-      ensureIdentityIsActive(accessToken, sub, email);
       String refreshToken = asString(tokenResponse.refreshToken());
-
-      boolean linked = isExistingIdentity(sub, email);
-      UserProfile profile = userProfileService.upsertFromIdentity(
-          sub,
-          email,
-          role,
-          "GOOGLE",
-          sub,
-          displayName);
+      GoogleSsoIdentityService.ProvisionedIdentity provisionedIdentity =
+          googleSsoIdentityService.provisionIdentity(jwt, accessToken);
 
       return new SsoCallbackResponse(
           accessToken,
           refreshToken,
-          profile.getId().toString(),
-          linked,
+          provisionedIdentity.profile().getId().toString(),
+          provisionedIdentity.linked(),
           "Google SSO login successful");
     } catch (HttpStatusCodeException ex) {
       if (ex.getStatusCode().is4xxClientError()) {
         throw new UnauthorizedException("Invalid SSO callback code");
       }
       throw new IllegalStateException("Identity provider error while processing SSO callback", ex);
-    }
-  }
-
-  private boolean isExistingIdentity(String sub, String email) {
-    Optional<UserProfile> bySub = userProfileService.findBySupabaseUserId(sub);
-    if (bySub.isPresent()) {
-      return true;
-    }
-    return StringUtils.hasText(email) && userProfileService.findByEmail(email).isPresent();
-  }
-
-  private void ensureIdentityIsActive(String accessToken, String sub, String email) {
-    Optional<UserProfile> existing = userProfileService.findBySupabaseUserId(sub);
-    if (existing.isEmpty() && StringUtils.hasText(email)) {
-      existing = userProfileService.findByEmail(email);
-    }
-
-    if (existing.isPresent() && !existing.get().isActive()) {
-      authSessionService.logout(accessToken);
-      throw new UnauthorizedException(DEACTIVATED_ACCOUNT_MESSAGE);
     }
   }
 
@@ -244,31 +199,6 @@ public class SupabaseGoogleSsoService {
     return value == null ? "" : String.valueOf(value);
   }
 
-  @SuppressWarnings("unchecked")
-  private String extractDisplayName(Jwt jwt) {
-    String fullName = jwt.getClaimAsString("full_name");
-    if (StringUtils.hasText(fullName)) {
-      return fullName.trim();
-    }
-
-    String name = jwt.getClaimAsString("name");
-    if (StringUtils.hasText(name)) {
-      return name.trim();
-    }
-
-    Object userMetadata = jwt.getClaims().get("user_metadata");
-    if (userMetadata instanceof Map<?, ?> metadata) {
-      Object metadataName = metadata.get("full_name");
-      if (metadataName == null) {
-        metadataName = metadata.get("name");
-      }
-      if (metadataName != null && StringUtils.hasText(String.valueOf(metadataName))) {
-        return String.valueOf(metadataName).trim();
-      }
-    }
-
-    return "";
-  }
   private record TokenExchangeRequest(
       @JsonProperty("auth_code") String authCode,
       @JsonProperty("code_verifier") String codeVerifier,
