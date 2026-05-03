@@ -21,12 +21,15 @@ public class AuthLoginService {
 
   private final SupabaseAuthClient supabaseAuthClient;
   private final UserProfileService userProfileService;
+  private final AccessTokenClaimRefreshService accessTokenClaimRefreshService;
 
   public AuthLoginService(
       SupabaseAuthClient supabaseAuthClient,
-      UserProfileService userProfileService) {
+      UserProfileService userProfileService,
+      AccessTokenClaimRefreshService accessTokenClaimRefreshService) {
     this.supabaseAuthClient = supabaseAuthClient;
     this.userProfileService = userProfileService;
+    this.accessTokenClaimRefreshService = accessTokenClaimRefreshService;
   }
 
   public LoginResponse login(String identifier, String password) {
@@ -39,6 +42,7 @@ public class AuthLoginService {
           result.supabaseUserId(),
           result.email(),
           result.role());
+      result = accessTokenClaimRefreshService.ensurePublicUserIdClaim(result);
 
       return new LoginResponse(
           result.accessToken(),
@@ -78,12 +82,13 @@ public class AuthLoginService {
           result.role());
 
       if (StringUtils.hasText(username) || StringUtils.hasText(displayName)) {
-        profile = userProfileService.updateCurrentUserProfile(
+        profile = userProfileService.updateIdentityProfile(
             result.supabaseUserId(),
             result.email(),
             username,
             displayName);
       }
+      result = accessTokenClaimRefreshService.ensurePublicUserIdClaim(result);
 
       String message = StringUtils.hasText(result.accessToken())
           ? "Registration successful"

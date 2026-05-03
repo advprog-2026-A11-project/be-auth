@@ -57,7 +57,11 @@ class DeleteAccountIntegrationTest {
     userProfileRepository.save(me);
 
     when(supabaseJwtService.validateAccessToken("token-delete-1"))
-        .thenReturn(jwt("token-delete-1", "sub-delete-1", "delete1@example.com"));
+        .thenReturn(jwt(
+            "token-delete-1",
+            "sub-delete-1",
+            "delete1@example.com",
+            me.getId().toString()));
     doNothing().when(supabaseAuthClient).logout("token-delete-1");
 
     mockMvc.perform(delete("/api/users/me")
@@ -93,7 +97,11 @@ class DeleteAccountIntegrationTest {
     userProfileRepository.save(me);
 
     when(supabaseJwtService.validateAccessToken("token-delete-2"))
-        .thenReturn(jwt("token-delete-2", "sub-delete-2", "delete2@example.com"));
+        .thenReturn(jwt(
+            "token-delete-2",
+            "sub-delete-2",
+            "delete2@example.com",
+            me.getId().toString()));
 
     mockMvc.perform(delete("/api/users/me")
             .header("Authorization", "Bearer token-delete-2")
@@ -103,7 +111,7 @@ class DeleteAccountIntegrationTest {
         .andExpect(jsonPath("$.message").value("confirmation must be DELETE"));
   }
 
-  private Jwt jwt(String tokenValue, String sub, String email) {
+  private Jwt jwt(String tokenValue, String sub, String email, String publicUserId) {
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
@@ -114,6 +122,7 @@ class DeleteAccountIntegrationTest {
             "sub", sub,
             "email", email,
             "role", "authenticated",
+            "yomu_user_id", publicUserId,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
   }

@@ -111,46 +111,35 @@ public class UserProfileService {
   }
 
   public UserProfile updateCurrentUserProfile(
+      String publicUserId,
+      String username,
+      String displayName) {
+    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
+    applySelfManagedFields(existing, username, displayName);
+    return repository.save(existing);
+  }
+
+  public UserProfile updateIdentityProfile(
       String supabaseUserId,
       String email,
       String username,
       String displayName) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(
-        supabaseUserId,
-        email);
-
-    if (StringUtils.hasText(username)) {
-      String normalizedUsername = username.trim();
-      if (!normalizedUsername.equals(existing.getUsername())
-          && repository.existsByUsername(normalizedUsername)) {
-        throw new ConflictException("Username already taken");
-      }
-      existing.setUsername(normalizedUsername);
-    }
-
-    if (displayName != null) {
-      existing.setDisplayName(displayName.trim());
-    }
-
+    UserProfile existing = resolveProfileByIdentityOrThrow(supabaseUserId, email);
+    applySelfManagedFields(existing, username, displayName);
     return repository.save(existing);
   }
 
-  public UserProfile deactivateCurrentUser(String supabaseUserId, String email) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(
-        supabaseUserId,
-        email);
+  public UserProfile deactivateCurrentUser(String publicUserId) {
+    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
 
     existing.setActive(false);
     return repository.save(existing);
   }
 
   public UserProfile updateCurrentUserEmail(
-      String supabaseUserId,
-      String email,
+      String publicUserId,
       String newEmail) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(
-        supabaseUserId,
-        email);
+    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
     String normalizedEmail = normalizeEmailOrThrow(newEmail);
 
     if (!normalizedEmail.equals(existing.getEmail())
@@ -163,12 +152,9 @@ public class UserProfileService {
   }
 
   public UserProfile updateCurrentUserPhone(
-      String supabaseUserId,
-      String email,
+      String publicUserId,
       String newPhone) {
-    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(
-        supabaseUserId,
-        email);
+    UserProfile existing = currentUserProfileLookupService.findCurrentUserOrThrow(publicUserId);
     String normalizedPhone = normalizePhoneOrThrow(newPhone);
 
     if (!normalizedPhone.equals(existing.getPhone())
@@ -245,6 +231,35 @@ public class UserProfileService {
     }
 
     target.setActive(incoming.isActive());
+  }
+
+  private UserProfile resolveProfileByIdentityOrThrow(String supabaseUserId, String email) {
+    Optional<UserProfile> existing = Optional.empty();
+    if (StringUtils.hasText(supabaseUserId)) {
+      existing = repository.findBySupabaseUserId(supabaseUserId);
+    }
+    if (existing.isEmpty() && StringUtils.hasText(email)) {
+      existing = repository.findByEmail(email.trim().toLowerCase());
+    }
+    return existing.orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+  }
+
+  private void applySelfManagedFields(
+      UserProfile existing,
+      String username,
+      String displayName) {
+    if (StringUtils.hasText(username)) {
+      String normalizedUsername = username.trim();
+      if (!normalizedUsername.equals(existing.getUsername())
+          && repository.existsByUsername(normalizedUsername)) {
+        throw new ConflictException("Username already taken");
+      }
+      existing.setUsername(normalizedUsername);
+    }
+
+    if (displayName != null) {
+      existing.setDisplayName(displayName.trim());
+    }
   }
 
 }

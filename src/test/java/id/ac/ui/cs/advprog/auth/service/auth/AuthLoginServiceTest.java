@@ -25,12 +25,18 @@ class AuthLoginServiceTest {
   @Mock
   private UserProfileService userProfileService;
 
+  @Mock
+  private AccessTokenClaimRefreshService accessTokenClaimRefreshService;
+
   private AuthLoginService service;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    service = new AuthLoginService(supabaseAuthClient, userProfileService);
+    service = new AuthLoginService(
+        supabaseAuthClient,
+        userProfileService,
+        accessTokenClaimRefreshService);
   }
 
   @Test
@@ -87,6 +93,8 @@ class AuthLoginServiceTest {
             "supabase-user-phone",
             "phone@example.com",
             "STUDENT"));
+    when(accessTokenClaimRefreshService.ensurePublicUserIdClaim(org.mockito.ArgumentMatchers.any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(userProfileService.upsertFromIdentity(
         "supabase-user-phone",
         "phone@example.com",

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -27,46 +28,40 @@ class CurrentUserProfileLookupServiceTest {
   }
 
   @Test
-  void findCurrentUserOrThrowPrefersSupabaseUserId() {
+  void findCurrentUserOrThrowUsesPublicUserId() {
     UserProfile profile = new UserProfile();
-    profile.setSupabaseUserId("sub-123");
-    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(profile));
+    profile.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    when(repository.findById(profile.getId())).thenReturn(Optional.of(profile));
 
-    UserProfile resolved = service.findCurrentUserOrThrow("sub-123", "user@example.com");
+    UserProfile resolved = service.findCurrentUserOrThrow(profile.getId().toString());
 
     assertEquals(profile, resolved);
-    verify(repository).findBySupabaseUserId("sub-123");
-  }
-
-  @Test
-  void findCurrentUserOrThrowFallsBackToNormalizedEmail() {
-    UserProfile profile = new UserProfile();
-    profile.setEmail("user@example.com");
-    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.empty());
-    when(repository.findByEmail("user@example.com")).thenReturn(Optional.of(profile));
-
-    UserProfile resolved = service.findCurrentUserOrThrow("sub-123", " User@example.com ");
-
-    assertEquals(profile, resolved);
-    verify(repository).findByEmail("user@example.com");
+    verify(repository).findById(profile.getId());
   }
 
   @Test
   void findCurrentUserOrThrowRejectsMissingIdentity() {
     IllegalArgumentException ex = assertThrows(
         IllegalArgumentException.class,
-        () -> service.findCurrentUserOrThrow(" ", " "));
+        () -> service.findCurrentUserOrThrow(" "));
 
-    assertEquals("Authenticated user identity is required", ex.getMessage());
+    assertEquals("Authenticated public user id is required", ex.getMessage());
+  }
+
+  @Test
+  void findCurrentUserOrThrowRejectsInvalidPublicUserId() {
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.findCurrentUserOrThrow("not-a-uuid"));
+
+    assertEquals("Authenticated public user id is invalid", ex.getMessage());
   }
 
   @Test
   void findCurrentUserOrThrowRejectsMissingProfile() {
-    when(repository.findByEmail("user@example.com")).thenReturn(Optional.empty());
-
     IllegalArgumentException ex = assertThrows(
         IllegalArgumentException.class,
-        () -> service.findCurrentUserOrThrow(null, "user@example.com"));
+        () -> service.findCurrentUserOrThrow("c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     assertEquals("User profile not found", ex.getMessage());
   }

@@ -25,8 +25,8 @@ public class AdminController {
 
   @GetMapping("/ping")
   public ResponseEntity<AdminPingResponse> ping() {
-    var currentUser = currentUserProvider.requireCurrentUser();
-    var profile = userProfileService.findBySupabaseUserId(currentUser.sub())
+    var publicUserId = currentUserProvider.requireCurrentPublicUserId();
+    var profile = userProfileService.findByPublicUserId(publicUserId)
         .orElseThrow(() -> new UnauthorizedException("Authenticated user profile not found"));
     return ResponseEntity.ok(new AdminPingResponse("Admin access granted", profile.getId()));
   }

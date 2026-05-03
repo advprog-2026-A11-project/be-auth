@@ -36,13 +36,19 @@ class AdminControllerTest {
   @Test
   void pingReturnsAdminAccessGrantedWhenProfileExists() {
     AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-admin-1", "admin@example.com", "ADMIN");
+        new AuthenticatedUserPrincipal(
+            "sub-admin-1",
+            "admin@example.com",
+            "ADMIN",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile profile = new UserProfile();
     UUID userId = UUID.randomUUID();
     profile.setId(userId);
 
-    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(userProfileService.findBySupabaseUserId("sub-admin-1")).thenReturn(Optional.of(profile));
+    when(currentUserProvider.requireCurrentPublicUserId())
+        .thenReturn("c1f84e7b-bb84-412d-81bb-4449df141f11");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(profile));
 
     var response = controller.ping();
 
@@ -53,21 +59,27 @@ class AdminControllerTest {
 
   @Test
   void pingWithoutCurrentUserThrowsUnauthorizedException() {
-    when(currentUserProvider.requireCurrentUser())
-        .thenThrow(new UnauthorizedException("No authenticated user in security context"));
+    when(currentUserProvider.requireCurrentPublicUserId())
+        .thenThrow(new UnauthorizedException("Missing public user id claim"));
 
     UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> controller.ping());
 
-    assertEquals("No authenticated user in security context", ex.getMessage());
+    assertEquals("Missing public user id claim", ex.getMessage());
   }
 
   @Test
   void pingWithoutProfileThrowsUnauthorizedException() {
     AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-admin-1", "admin@example.com", "ADMIN");
+        new AuthenticatedUserPrincipal(
+            "sub-admin-1",
+            "admin@example.com",
+            "ADMIN",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
 
-    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(userProfileService.findBySupabaseUserId("sub-admin-1")).thenReturn(Optional.empty());
+    when(currentUserProvider.requireCurrentPublicUserId())
+        .thenReturn("c1f84e7b-bb84-412d-81bb-4449df141f11");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.empty());
 
     UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> controller.ping());
 

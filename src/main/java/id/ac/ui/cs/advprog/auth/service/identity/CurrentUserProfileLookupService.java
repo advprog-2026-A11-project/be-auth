@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.auth.service.identity;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,25 +16,21 @@ public class CurrentUserProfileLookupService {
     this.repository = repository;
   }
 
-  public UserProfile findCurrentUserOrThrow(String supabaseUserId, String email) {
-    return findCurrentUser(supabaseUserId, email).orElseThrow(
+  public UserProfile findCurrentUserOrThrow(String publicUserId) {
+    return findCurrentUser(publicUserId).orElseThrow(
         () -> new IllegalArgumentException("User profile not found"));
   }
 
-  public Optional<UserProfile> findCurrentUser(String supabaseUserId, String email) {
-    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
-      throw new IllegalArgumentException("Authenticated user identity is required");
+  public Optional<UserProfile> findCurrentUser(String publicUserId) {
+    if (!StringUtils.hasText(publicUserId)) {
+      throw new IllegalArgumentException("Authenticated public user id is required");
     }
 
-    Optional<UserProfile> existing = StringUtils.hasText(supabaseUserId)
-        ? repository.findBySupabaseUserId(supabaseUserId)
-        : Optional.empty();
-
-    if (existing.isEmpty() && StringUtils.hasText(email)) {
-      existing = repository.findByEmail(email.trim().toLowerCase());
+    try {
+      return repository.findById(UUID.fromString(publicUserId.trim()));
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("Authenticated public user id is invalid", ex);
     }
-
-    return existing;
   }
 }
 

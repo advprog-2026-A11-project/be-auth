@@ -125,8 +125,7 @@ public class UserProfileController {
     AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile updated = service.updateCurrentUserProfile(
-        principal.sub(),
-        principal.email(),
+        principal.publicUserId(),
         request.username(),
         request.displayName());
 
@@ -147,7 +146,7 @@ public class UserProfileController {
     String accessToken = BearerTokenExtractor.extractOrBadRequest(httpRequest);
     UserProfile updated = authSessionService.changeEmail(
         accessToken,
-        principal.sub(),
+        principal.publicUserId(),
         principal.email(),
         request.email());
 
@@ -163,8 +162,7 @@ public class UserProfileController {
     AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile updated = service.updateCurrentUserPhone(
-        principal.sub(),
-        principal.email(),
+        principal.publicUserId(),
         request.phone());
 
     return ResponseEntity.ok(new UpdatePhoneResponse(
@@ -183,7 +181,7 @@ public class UserProfileController {
 
     AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
-    UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
+    UserProfile deactivated = service.deactivateCurrentUser(principal.publicUserId());
     authSessionService.logout(BearerTokenExtractor.extractOrBadRequest(httpRequest));
 
     return ResponseEntity.ok(new DeleteAccountResponse(

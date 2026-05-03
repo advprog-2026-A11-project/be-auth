@@ -95,20 +95,23 @@ class AuthSessionServiceTest {
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
 
-    when(userProfileService.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+    when(userProfileService.updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com"))
         .thenReturn(updated);
 
     service.changeEmail(
         "access-token",
-        "sub-123",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com",
         "new@example.com");
 
-    verify(userProfileService).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
+    verify(userProfileService).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com");
     verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
     verify(userProfileService, never()).updateCurrentUserEmail(
-        "sub-123",
-        "new@example.com",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com");
   }
 
@@ -119,7 +122,9 @@ class AuthSessionServiceTest {
     updated.setSupabaseUserId("sub-123");
     updated.setEmail("new@example.com");
 
-    when(userProfileService.updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com"))
+    when(userProfileService.updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com"))
         .thenReturn(updated);
     doThrow(new IllegalStateException("Identity provider unavailable"))
         .when(supabaseAuthClient)
@@ -129,13 +134,17 @@ class AuthSessionServiceTest {
         IllegalStateException.class,
         () -> service.changeEmail(
             "access-token",
-            "sub-123",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
             "old@example.com",
             "new@example.com"));
 
     assertEquals("Identity provider unavailable", ex.getMessage());
-    verify(userProfileService).updateCurrentUserEmail("sub-123", "old@example.com", "new@example.com");
-    verify(userProfileService).updateCurrentUserEmail("sub-123", "new@example.com", "old@example.com");
+    verify(userProfileService).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com");
+    verify(userProfileService).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "old@example.com");
   }
 
   @Test

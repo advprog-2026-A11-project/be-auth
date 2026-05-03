@@ -34,6 +34,7 @@ public class SupabaseGoogleSsoService {
   private final String redirectUrl;
   private final long stateTtlSeconds;
   private final SupabaseJwtService supabaseJwtService;
+  private final AccessTokenClaimRefreshService accessTokenClaimRefreshService;
   private final GoogleSsoIdentityService googleSsoIdentityService;
   private final PkceStateStore pkceStateStore;
   private final Clock clock;
@@ -46,6 +47,7 @@ public class SupabaseGoogleSsoService {
       @Value("${auth.sso.google.redirect-url:}") String redirectUrl,
       @Value("${auth.sso.state-ttl-seconds:600}") long stateTtlSeconds,
       SupabaseJwtService supabaseJwtService,
+      AccessTokenClaimRefreshService accessTokenClaimRefreshService,
       GoogleSsoIdentityService googleSsoIdentityService,
       PkceStateStore pkceStateStore,
       Clock clock) {
@@ -54,6 +56,7 @@ public class SupabaseGoogleSsoService {
     this.redirectUrl = redirectUrl;
     this.stateTtlSeconds = stateTtlSeconds;
     this.supabaseJwtService = supabaseJwtService;
+    this.accessTokenClaimRefreshService = accessTokenClaimRefreshService;
     this.googleSsoIdentityService = googleSsoIdentityService;
     this.pkceStateStore = pkceStateStore;
     this.clock = clock;
@@ -129,10 +132,12 @@ public class SupabaseGoogleSsoService {
       String refreshToken = asString(tokenResponse.refreshToken());
       GoogleSsoIdentityService.ProvisionedIdentity provisionedIdentity =
           googleSsoIdentityService.provisionIdentity(jwt, accessToken);
+      AccessTokenClaimRefreshService.SessionTokens resolvedTokens =
+          accessTokenClaimRefreshService.ensurePublicUserIdClaim(accessToken, refreshToken);
 
       return new SsoCallbackResponse(
-          accessToken,
-          refreshToken,
+          resolvedTokens.accessToken(),
+          resolvedTokens.refreshToken(),
           provisionedIdentity.profile().getId().toString(),
           provisionedIdentity.linked(),
           "Google SSO login successful");

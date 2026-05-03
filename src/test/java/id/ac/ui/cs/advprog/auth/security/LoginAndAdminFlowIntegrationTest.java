@@ -159,16 +159,21 @@ class LoginAndAdminFlowIntegrationTest {
 
   @Test
   void logoutEndpointRevokesCurrentToken() throws Exception {
-    Jwt jwt = validJwt("token-logout", "supabase-user-4", "logout@example.com");
+    Jwt jwt = validJwt(
+        "token-logout",
+        "supabase-user-4",
+        "logout@example.com",
+        "f3150ad7-cfde-4eeb-8eed-deebb8780780");
     when(supabaseJwtService.validateAccessToken("token-logout")).thenReturn(jwt);
 
     UserProfile user = new UserProfile();
+    user.setId(UUID.fromString("f3150ad7-cfde-4eeb-8eed-deebb8780780"));
     user.setSupabaseUserId("supabase-user-4");
     user.setRole("USER");
     user.setEmail("logout@example.com");
     user.setActive(true);
-    when(userProfileService.findBySupabaseUserId("supabase-user-4")).thenReturn(Optional.of(user));
-    when(userProfileService.findByEmail("logout@example.com")).thenReturn(Optional.of(user));
+    when(userProfileService.findByPublicUserId("f3150ad7-cfde-4eeb-8eed-deebb8780780"))
+        .thenReturn(Optional.of(user));
     doNothing().when(supabaseAuthClient).logout("token-logout");
 
     mockMvc.perform(post("/api/auth/logout")
@@ -184,15 +189,20 @@ class LoginAndAdminFlowIntegrationTest {
 
   @Test
   void adminRouteDeniedForUserRole() throws Exception {
-    Jwt jwt = validJwt("token-user", "supabase-user-1", "user@example.com");
+    Jwt jwt = validJwt(
+        "token-user",
+        "supabase-user-1",
+        "user@example.com",
+        "78ba3c17-2dec-4eef-878f-fd326dcb8181");
     when(supabaseJwtService.validateAccessToken("token-user")).thenReturn(jwt);
 
     UserProfile user = new UserProfile();
+    user.setId(UUID.fromString("78ba3c17-2dec-4eef-878f-fd326dcb8181"));
     user.setSupabaseUserId("supabase-user-1");
     user.setRole("USER");
     user.setEmail("user@example.com");
-    when(userProfileService.findBySupabaseUserId("supabase-user-1")).thenReturn(Optional.of(user));
-    when(userProfileService.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+    when(userProfileService.findByPublicUserId("78ba3c17-2dec-4eef-878f-fd326dcb8181"))
+        .thenReturn(Optional.of(user));
 
     mockMvc.perform(get("/api/admin/ping")
             .header("Authorization", "Bearer token-user"))
@@ -201,7 +211,11 @@ class LoginAndAdminFlowIntegrationTest {
 
   @Test
   void adminRouteAllowedForAdminRole() throws Exception {
-    Jwt jwt = validJwt("token-admin", "supabase-admin-1", "admin@example.com");
+    Jwt jwt = validJwt(
+        "token-admin",
+        "supabase-admin-1",
+        "admin@example.com",
+        "a5a45e5e-ee42-446f-9a6e-3c2d3dd9c106");
     when(supabaseJwtService.validateAccessToken("token-admin")).thenReturn(jwt);
 
     UserProfile admin = new UserProfile();
@@ -209,9 +223,8 @@ class LoginAndAdminFlowIntegrationTest {
     admin.setSupabaseUserId("supabase-admin-1");
     admin.setRole("ADMIN");
     admin.setEmail("admin@example.com");
-    when(userProfileService.findBySupabaseUserId("supabase-admin-1"))
+    when(userProfileService.findByPublicUserId("a5a45e5e-ee42-446f-9a6e-3c2d3dd9c106"))
         .thenReturn(Optional.of(admin));
-    when(userProfileService.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
 
     mockMvc.perform(get("/api/admin/ping")
             .header("Authorization", "Bearer token-admin"))
@@ -220,7 +233,7 @@ class LoginAndAdminFlowIntegrationTest {
         .andExpect(jsonPath("$.userId").value("cc0d1aa4-9a09-4f8b-b7f6-cb9c903d2fc7"));
   }
 
-  private Jwt validJwt(String tokenValue, String sub, String email) {
+  private Jwt validJwt(String tokenValue, String sub, String email, String publicUserId) {
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
@@ -231,6 +244,7 @@ class LoginAndAdminFlowIntegrationTest {
             "sub", sub,
             "email", email,
             "role", "authenticated",
+            "yomu_user_id", publicUserId,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
   }

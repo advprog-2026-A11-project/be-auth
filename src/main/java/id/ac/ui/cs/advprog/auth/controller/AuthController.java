@@ -22,7 +22,6 @@ import id.ac.ui.cs.advprog.auth.service.auth.SupabaseGoogleSsoService;
 import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,8 +38,6 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
-  private static final String EMAIL_CLAIM = "email";
 
   private final AuthLoginService authLoginService;
   private final AuthSessionService authSessionService;
@@ -66,22 +63,26 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<?> me(HttpServletRequest request) {
-    Optional<Jwt> currentJwt = currentUserProvider.getCurrentJwt();
-    if (currentJwt.isEmpty()) {
+    Jwt claims = currentUserProvider.getCurrentJwt().orElse(null);
+    if (claims == null) {
       return unauthorized("Missing Bearer token");
     }
 
-    Jwt claims = currentJwt.get();
-    String sub = claims.getSubject();
-    String email = claims.getClaimAsString(EMAIL_CLAIM);
+    String publicUserId;
+    try {
+      publicUserId = currentUserProvider.requireCurrentPublicUserId();
+    } catch (id.ac.ui.cs.advprog.auth.exception.UnauthorizedException ex) {
+      return unauthorized(ex.getMessage());
+    }
 
-    Optional<UserProfile> profile = resolveProfile(sub, email);
+    String sub = claims.getSubject();
+    UserProfile profile = userProfileService.findByPublicUserId(publicUserId).orElse(null);
     return ResponseEntity.ok(AuthMeResponse.of(
         sub,
         claims.getAudience(),
         claims.getIssuer(),
         claims.getExpiresAt(),
-        profile.orElse(null)));
+        profile));
   }
 
   @PostMapping("/login")
@@ -150,33 +151,6 @@ public class AuthController {
 
   private ResponseEntity<ErrorResponse> unauthorized(String message) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(message));
-  }
-
-  private Optional<UserProfile> resolveProfile(String sub, String email) {
-    Optional<UserProfile> profile = resolveProfileByPublicUserId();
-    if (profile.isPresent()) {
-      return profile;
-    }
-
-    return resolveProfileByIdentity(sub, email);
-  }
-
-  private Optional<UserProfile> resolveProfileByPublicUserId() {
-    return currentUserProvider.getCurrentUser()
-        .map(AuthenticatedUserPrincipal::publicUserId)
-        .filter(StringUtils::hasText)
-        .flatMap(userProfileService::findByPublicUserId);
-  }
-
-  private Optional<UserProfile> resolveProfileByIdentity(String sub, String email) {
-    Optional<UserProfile> profile = Optional.empty();
-    if (StringUtils.hasText(sub)) {
-      profile = userProfileService.findBySupabaseUserId(sub);
-    }
-    if (profile.isEmpty() && StringUtils.hasText(email)) {
-      profile = userProfileService.findByEmail(email);
-    }
-    return profile;
   }
 
   private void ensurePasswordAuthEnabled() {

@@ -358,7 +358,7 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   @Test
-  void doFilterInternalDefaultsToStudentAuthorityWhenRoleAndIdentityAreBlank()
+  void doFilterInternalRejectsBlankIdentityWhenPublicUserIdIsMissing()
       throws Exception {
     final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-blank-role");
@@ -370,14 +370,12 @@ class SupabaseJwtAuthenticationFilterTest {
 
     filter.doFilterInternal(request, response, chain);
 
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    assertTrue(auth != null);
-    assertTrue(
-        auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
+    assertEquals(401, response.getStatus());
+    assertTrue(response.getContentAsString().contains("Missing public user id claim"));
     verify(userProfileService, never()).findByPublicUserId(anyString());
     verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
-    verify(chain).doFilter(request, response);
+    verify(chain, never()).doFilter(request, response);
   }
 
   @Test

@@ -16,6 +16,8 @@ public class CurrentUserProvider {
 
   private static final String NO_AUTHENTICATED_USER_MESSAGE =
       "No authenticated user in security context";
+  private static final String MISSING_PUBLIC_USER_ID_MESSAGE =
+      "Missing public user id claim";
 
   public Optional<Jwt> getCurrentJwt() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -47,11 +49,15 @@ public class CurrentUserProvider {
     Optional<Jwt> currentJwt = getCurrentJwt();
     if (currentJwt.isPresent()) {
       Jwt jwt = currentJwt.get();
+      String publicUserId = resolvePublicUserId(jwt);
+      if (!StringUtils.hasText(publicUserId)) {
+        return Optional.empty();
+      }
       return Optional.of(new AuthenticatedUserPrincipal(
           jwt.getSubject(),
           jwt.getClaimAsString("email"),
           resolveRole(authentication.getAuthorities(), jwt.getClaimAsString("role")),
-          resolvePublicUserId(jwt)));
+          publicUserId));
     }
 
     return Optional.empty();
@@ -60,6 +66,13 @@ public class CurrentUserProvider {
   public AuthenticatedUserPrincipal requireCurrentUser() {
     return getCurrentUser().orElseThrow(
         () -> new UnauthorizedException(NO_AUTHENTICATED_USER_MESSAGE));
+  }
+
+  public String requireCurrentPublicUserId() {
+    return getCurrentUser()
+        .map(AuthenticatedUserPrincipal::publicUserId)
+        .filter(StringUtils::hasText)
+        .orElseThrow(() -> new UnauthorizedException(MISSING_PUBLIC_USER_ID_MESSAGE));
   }
 
   private String resolveRole(
@@ -76,12 +89,7 @@ public class CurrentUserProvider {
   }
 
   private String resolvePublicUserId(Jwt jwt) {
-    String publicUserId = jwt.getClaimAsString("yomu_user_id");
-    if (StringUtils.hasText(publicUserId)) {
-      return publicUserId;
-    }
-
-    return jwt.getClaimAsString("user_id");
+    return jwt.getClaimAsString("yomu_user_id");
   }
 }
 

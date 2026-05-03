@@ -131,7 +131,11 @@ class UserProfileControllerExtraTest {
   void updateMeSuccess() {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", "New User");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "user@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
@@ -142,7 +146,10 @@ class UserProfileControllerExtraTest {
     updated.setEmail("user@example.com");
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", "New User"))
+    when(service.updateCurrentUserProfile(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new-user",
+        "New User"))
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
@@ -155,7 +162,11 @@ class UserProfileControllerExtraTest {
   void updateMeWithUsernameOnlySuccess() {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", " ");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "user@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
@@ -166,7 +177,10 @@ class UserProfileControllerExtraTest {
     updated.setEmail("user@example.com");
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", " "))
+    when(service.updateCurrentUserProfile(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new-user",
+        " "))
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
@@ -178,7 +192,11 @@ class UserProfileControllerExtraTest {
   void updateMeWithDisplayNameOnlySuccess() {
     final UpdateProfileRequest request = new UpdateProfileRequest(" ", "New User");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "user@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
@@ -189,7 +207,10 @@ class UserProfileControllerExtraTest {
     updated.setEmail("user@example.com");
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(service.updateCurrentUserProfile("sub-123", "user@example.com", " ", "New User"))
+    when(service.updateCurrentUserProfile(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        " ",
+        "New User"))
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
@@ -201,7 +222,11 @@ class UserProfileControllerExtraTest {
   void updateMeWithNullDisplayNameSuccess() {
     final UpdateProfileRequest request = new UpdateProfileRequest("new-user", null);
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "user@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
@@ -212,7 +237,10 @@ class UserProfileControllerExtraTest {
     updated.setEmail("user@example.com");
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(service.updateCurrentUserProfile("sub-123", "user@example.com", "new-user", null))
+    when(service.updateCurrentUserProfile(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new-user",
+        null))
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
@@ -224,7 +252,11 @@ class UserProfileControllerExtraTest {
   void updateMeWithNullUsernameSuccess() {
     final UpdateProfileRequest request = new UpdateProfileRequest(null, "New User");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "user@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final UUID profileId = UUID.randomUUID();
 
     UserProfile updated = new UserProfile();
@@ -235,7 +267,10 @@ class UserProfileControllerExtraTest {
     updated.setEmail("user@example.com");
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(service.updateCurrentUserProfile("sub-123", "user@example.com", null, "New User"))
+    when(service.updateCurrentUserProfile(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        null,
+        "New User"))
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
@@ -274,7 +309,11 @@ class UserProfileControllerExtraTest {
   void deleteMeSuccess() {
     final DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-789",
+            "user2@example.com",
+            "USER",
+            "d3cf2a8c-6ffb-48c1-9f3b-38df8968d5c6");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     final UUID profileId = UUID.randomUUID();
     UserProfile deactivated = new UserProfile();
@@ -283,7 +322,8 @@ class UserProfileControllerExtraTest {
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer token-delete-789");
-    when(service.deactivateCurrentUser("sub-789", "user2@example.com")).thenReturn(deactivated);
+    when(service.deactivateCurrentUser("d3cf2a8c-6ffb-48c1-9f3b-38df8968d5c6"))
+        .thenReturn(deactivated);
 
     var response = controller.deleteMe(request, httpRequest);
     assertEquals(200, response.getStatusCodeValue());
@@ -347,7 +387,11 @@ class UserProfileControllerExtraTest {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     when(currentUserProvider.requireCurrentUser())
-        .thenReturn(new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER"));
+        .thenReturn(new AuthenticatedUserPrincipal(
+            "sub-789",
+            "user2@example.com",
+            "USER",
+            "d3cf2a8c-6ffb-48c1-9f3b-38df8968d5c6"));
     when(httpRequest.getHeader("Authorization")).thenReturn(null);
 
     IllegalArgumentException ex =
@@ -363,7 +407,11 @@ class UserProfileControllerExtraTest {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     when(currentUserProvider.requireCurrentUser())
-        .thenReturn(new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER"));
+        .thenReturn(new AuthenticatedUserPrincipal(
+            "sub-789",
+            "user2@example.com",
+            "USER",
+            "d3cf2a8c-6ffb-48c1-9f3b-38df8968d5c6"));
     when(httpRequest.getHeader("Authorization")).thenReturn("Basic token");
 
     IllegalArgumentException ex =
@@ -379,7 +427,11 @@ class UserProfileControllerExtraTest {
     DeleteAccountRequest request = new DeleteAccountRequest("DELETE");
     HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     when(currentUserProvider.requireCurrentUser())
-        .thenReturn(new AuthenticatedUserPrincipal("sub-789", "user2@example.com", "USER"));
+        .thenReturn(new AuthenticatedUserPrincipal(
+            "sub-789",
+            "user2@example.com",
+            "USER",
+            "d3cf2a8c-6ffb-48c1-9f3b-38df8968d5c6"));
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer   ");
 
     IllegalArgumentException ex =
@@ -394,7 +446,11 @@ class UserProfileControllerExtraTest {
   void updateEmailSuccess() {
     final UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "old@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
@@ -406,7 +462,7 @@ class UserProfileControllerExtraTest {
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     when(authSessionService.changeEmail(
         "access-email-123",
-        "sub-123",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com",
         "new@example.com"))
         .thenReturn(updated);
@@ -418,24 +474,28 @@ class UserProfileControllerExtraTest {
     assertEquals("new@example.com", response.getBody().email());
     verify(authSessionService).changeEmail(
         "access-email-123",
-        "sub-123",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com",
         "new@example.com");
-    verify(service, never()).updateCurrentUserEmail(anyString(), anyString(), anyString());
+    verify(service, never()).updateCurrentUserEmail(anyString(), anyString());
   }
 
   @Test
   void updateEmailDuplicateRejectsBeforeIdentityProviderChange() {
     final UpdateEmailRequest request = new UpdateEmailRequest("taken@example.com");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "old@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     when(authSessionService.changeEmail(
         "access-email-123",
-        "sub-123",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com",
         "taken@example.com"))
         .thenThrow(new ConflictException("Email already taken"));
@@ -447,7 +507,7 @@ class UserProfileControllerExtraTest {
     assertEquals("Email already taken", ex.getMessage());
     verify(authSessionService).changeEmail(
         "access-email-123",
-        "sub-123",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com",
         "taken@example.com");
   }
@@ -456,7 +516,11 @@ class UserProfileControllerExtraTest {
   void updateEmailRollsBackLocalProfileWhenIdentityProviderUpdateFails() {
     final UpdateEmailRequest request = new UpdateEmailRequest("new@example.com");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "old@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "old@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
@@ -468,7 +532,11 @@ class UserProfileControllerExtraTest {
     when(httpRequest.getHeader("Authorization")).thenReturn("Bearer access-email-123");
     doThrow(new IllegalStateException("Identity provider unavailable"))
         .when(authSessionService)
-        .changeEmail("access-email-123", "sub-123", "old@example.com", "new@example.com");
+        .changeEmail(
+            "access-email-123",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "old@example.com",
+            "new@example.com");
 
     IllegalStateException ex = assertThrows(
         IllegalStateException.class,
@@ -477,17 +545,21 @@ class UserProfileControllerExtraTest {
     assertEquals("Identity provider unavailable", ex.getMessage());
     verify(authSessionService).changeEmail(
         "access-email-123",
-        "sub-123",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "old@example.com",
         "new@example.com");
-    verify(service, never()).updateCurrentUserEmail(anyString(), anyString(), anyString());
+    verify(service, never()).updateCurrentUserEmail(anyString(), anyString());
   }
 
   @Test
   void updatePhoneSuccess() {
     final UpdatePhoneRequest request = new UpdatePhoneRequest("+628123456789");
     final AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER");
+        new AuthenticatedUserPrincipal(
+            "sub-123",
+            "user@example.com",
+            "USER",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11");
     final UUID profileId = UUID.randomUUID();
     UserProfile updated = new UserProfile();
     updated.setId(profileId);
@@ -495,7 +567,9 @@ class UserProfileControllerExtraTest {
     updated.setPhone("+628123456789");
 
     when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
-    when(service.updateCurrentUserPhone("sub-123", "user@example.com", "+628123456789"))
+    when(service.updateCurrentUserPhone(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "+628123456789"))
         .thenReturn(updated);
 
     ResponseEntity<UpdatePhoneResponse> response = controller.updatePhone(request);

@@ -48,6 +48,9 @@ class SupabaseGoogleSsoServiceTest {
   @Mock
   private AuthSessionService authSessionService;
 
+  @Mock
+  private AccessTokenClaimRefreshService accessTokenClaimRefreshService;
+
   private HttpServer server;
   private SupabaseGoogleSsoService service;
   private InMemoryPkceStateStore pkceStateStore;
@@ -63,12 +66,15 @@ class SupabaseGoogleSsoServiceTest {
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     pkceStateStore = new InMemoryPkceStateStore();
     googleSsoIdentityService = new GoogleSsoIdentityService(userProfileService, authSessionService);
+    when(accessTokenClaimRefreshService.ensurePublicUserIdClaim("access-token", "refresh-token"))
+        .thenReturn(new AccessTokenClaimRefreshService.SessionTokens("access-token", "refresh-token"));
     service = new SupabaseGoogleSsoService(
         baseUrl,
         "anon-key",
         CALLBACK_URL,
         600,
         supabaseJwtService,
+        accessTokenClaimRefreshService,
         googleSsoIdentityService,
         pkceStateStore,
         Clock.fixed(Instant.parse("2026-05-03T00:00:00Z"), ZoneOffset.UTC));

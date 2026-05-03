@@ -34,6 +34,8 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
   private static final String DEACTIVATED_ACCOUNT_MESSAGE =
       "Your account has been deactivated. Please contact an administrator.";
+  private static final String MISSING_PUBLIC_USER_ID_MESSAGE =
+      "Missing public user id claim";
 
   private final TokenRevocationService tokenRevocationService;
   private final UserProfileService userProfileService;
@@ -123,11 +125,18 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     Jwt jwt = currentJwt.get();
-    String sub = jwt.getSubject();
-    String email = jwt.getClaimAsString("email");
     Optional<UserProfile> profile;
     try {
-      profile = resolveProfile(currentUserProvider.getCurrentUser(), sub, email);
+      String publicUserId = currentUserProvider.requireCurrentPublicUserId();
+      profile = userProfileService.findByPublicUserId(publicUserId);
+    } catch (id.ac.ui.cs.advprog.auth.exception.UnauthorizedException ex) {
+      SecurityContextHolder.clearContext();
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          MISSING_PUBLIC_USER_ID_MESSAGE);
+      return;
     } catch (DataAccessException ex) {
       writeServiceUnavailable(request, response);
       return;
@@ -163,29 +172,6 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     return Role.canonicalize(tokenRole);
-  }
-
-  private Optional<UserProfile> resolveProfile(
-      Optional<AuthenticatedUserPrincipal> currentUser,
-      String sub,
-      String email) {
-    Optional<UserProfile> profile = currentUser
-        .map(AuthenticatedUserPrincipal::publicUserId)
-        .filter(StringUtils::hasText)
-        .flatMap(userProfileService::findByPublicUserId);
-
-    if (profile.isPresent()) {
-      return profile;
-    }
-
-    Optional<UserProfile> fallbackProfile = Optional.empty();
-    if (StringUtils.hasText(sub)) {
-      fallbackProfile = userProfileService.findBySupabaseUserId(sub);
-    }
-    if (fallbackProfile.isEmpty() && StringUtils.hasText(email)) {
-      fallbackProfile = userProfileService.findByEmail(email);
-    }
-    return fallbackProfile;
   }
 
   private void writeServiceUnavailable(

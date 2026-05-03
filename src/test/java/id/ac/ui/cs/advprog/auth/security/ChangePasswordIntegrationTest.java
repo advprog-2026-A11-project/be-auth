@@ -45,14 +45,20 @@ class ChangePasswordIntegrationTest {
   @Test
   void changePasswordSuccessReturnsOk() throws Exception {
     when(supabaseJwtService.validateAccessToken("token-password"))
-        .thenReturn(jwt("token-password", "sub-password", "password@example.com"));
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     UserProfile active = new UserProfile();
+    active.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     active.setSupabaseUserId("sub-password");
     active.setEmail("password@example.com");
     active.setRole("USER");
     active.setActive(true);
-    when(userProfileService.findBySupabaseUserId("sub-password")).thenReturn(Optional.of(active));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(active));
     doNothing().when(authSessionService).changePassword(
         eq("token-password"),
         eq("password@example.com"),
@@ -76,14 +82,20 @@ class ChangePasswordIntegrationTest {
   @Test
   void changePasswordWrongCurrentPasswordReturnsUnauthorized() throws Exception {
     when(supabaseJwtService.validateAccessToken("token-password"))
-        .thenReturn(jwt("token-password", "sub-password", "password@example.com"));
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     UserProfile active = new UserProfile();
+    active.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     active.setSupabaseUserId("sub-password");
     active.setEmail("password@example.com");
     active.setRole("USER");
     active.setActive(true);
-    when(userProfileService.findBySupabaseUserId("sub-password")).thenReturn(Optional.of(active));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(active));
     doThrow(new UnauthorizedException("Invalid login credentials"))
         .when(authSessionService)
         .changePassword(
@@ -109,14 +121,20 @@ class ChangePasswordIntegrationTest {
   @Test
   void changePasswordShortNewPasswordReturnsBadRequest() throws Exception {
     when(supabaseJwtService.validateAccessToken("token-password"))
-        .thenReturn(jwt("token-password", "sub-password", "password@example.com"));
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     UserProfile active = new UserProfile();
+    active.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     active.setSupabaseUserId("sub-password");
     active.setEmail("password@example.com");
     active.setRole("USER");
     active.setActive(true);
-    when(userProfileService.findBySupabaseUserId("sub-password")).thenReturn(Optional.of(active));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(active));
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
@@ -132,7 +150,7 @@ class ChangePasswordIntegrationTest {
         .andExpect(jsonPath("$.validationErrors.newPassword").exists());
   }
 
-  private Jwt jwt(String tokenValue, String sub, String email) {
+  private Jwt jwt(String tokenValue, String sub, String email, String publicUserId) {
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
@@ -143,6 +161,7 @@ class ChangePasswordIntegrationTest {
             "sub", sub,
             "email", email,
             "role", "authenticated",
+            "yomu_user_id", publicUserId,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
   }

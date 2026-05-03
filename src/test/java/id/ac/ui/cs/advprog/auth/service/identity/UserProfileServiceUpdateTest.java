@@ -85,14 +85,13 @@ class UserProfileServiceUpdateTest {
   @Test
   void updateCurrentUserEmailNormalizesAndSaves() {
     UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
-    existing.setSupabaseUserId("sub-123");
-    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    existing.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    when(repository.findById(existing.getId())).thenReturn(Optional.of(existing));
     when(repository.existsByEmail("new@example.com")).thenReturn(false);
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     UserProfile updated = service.updateCurrentUserEmail(
-        "sub-123",
-        "old@example.com",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "  New@Example.com  ");
 
     assertEquals("new@example.com", updated.getEmail());
@@ -102,15 +101,14 @@ class UserProfileServiceUpdateTest {
   @Test
   void updateCurrentUserEmailRejectsDuplicate() {
     UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
-    existing.setSupabaseUserId("sub-123");
-    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    existing.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    when(repository.findById(existing.getId())).thenReturn(Optional.of(existing));
     when(repository.existsByEmail("taken@example.com")).thenReturn(true);
 
     ConflictException ex = assertThrows(
         ConflictException.class,
         () -> service.updateCurrentUserEmail(
-            "sub-123",
-            "old@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
             "taken@example.com"));
 
     assertEquals("Email already taken", ex.getMessage());
@@ -119,14 +117,13 @@ class UserProfileServiceUpdateTest {
   @Test
   void updateCurrentUserPhoneNormalizesAndSaves() {
     UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
-    existing.setSupabaseUserId("sub-123");
-    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    existing.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    when(repository.findById(existing.getId())).thenReturn(Optional.of(existing));
     when(repository.existsByPhone("+628123456789")).thenReturn(false);
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     UserProfile updated = service.updateCurrentUserPhone(
-        "sub-123",
-        "old@example.com",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
         "  +628123456789  ");
 
     assertEquals("+628123456789", updated.getPhone());
@@ -136,15 +133,14 @@ class UserProfileServiceUpdateTest {
   @Test
   void updateCurrentUserPhoneRejectsDuplicate() {
     UserProfile existing = new UserProfile("user", "old@example.com", "name", "USER", true);
-    existing.setSupabaseUserId("sub-123");
-    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    existing.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    when(repository.findById(existing.getId())).thenReturn(Optional.of(existing));
     when(repository.existsByPhone("+628999999999")).thenReturn(true);
 
     ConflictException ex = assertThrows(
         ConflictException.class,
         () -> service.updateCurrentUserPhone(
-            "sub-123",
-            "old@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
             "+628999999999"));
 
     assertEquals("Phone already taken", ex.getMessage());

@@ -76,12 +76,11 @@ public class AuthSessionService {
 
   public UserProfile changeEmail(
       String accessToken,
-      String supabaseUserId,
+      String publicUserId,
       String currentEmail,
       String newEmail) {
     UserProfile updated = userProfileService.updateCurrentUserEmail(
-        supabaseUserId,
-        currentEmail,
+        publicUserId,
         newEmail);
 
     try {
@@ -89,8 +88,7 @@ public class AuthSessionService {
       return updated;
     } catch (RuntimeException ex) {
       userProfileService.updateCurrentUserEmail(
-          supabaseUserId,
-          updated.getEmail(),
+          publicUserId,
           currentEmail);
       throw ex;
     }
