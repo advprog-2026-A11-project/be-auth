@@ -17,14 +17,14 @@ import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
+import java.time.Clock;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentMap;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +47,7 @@ class SupabaseGoogleSsoServiceTest {
 
   private HttpServer server;
   private SupabaseGoogleSsoService service;
+  private InMemoryPkceStateStore pkceStateStore;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -56,6 +57,7 @@ class SupabaseGoogleSsoServiceTest {
     server.start();
 
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
+    pkceStateStore = new InMemoryPkceStateStore();
     service = new SupabaseGoogleSsoService(
         baseUrl,
         "anon-key",
@@ -63,9 +65,15 @@ class SupabaseGoogleSsoServiceTest {
         600,
         supabaseJwtService,
         userProfileService,
-        authSessionService);
+        authSessionService,
+        pkceStateStore,
+        Clock.fixed(Instant.parse("2026-05-03T00:00:00Z"), ZoneOffset.UTC));
 
-    seedPkceState("opaque-state");
+    pkceStateStore.save(
+        "opaque-state",
+        "verifier",
+        Instant.parse("2026-05-03T00:05:00Z"),
+        CALLBACK_URL + "?app_state=opaque-state");
   }
 
   @AfterEach
@@ -187,24 +195,6 @@ class SupabaseGoogleSsoServiceTest {
     assertEquals(true, TokenHandler.lastRequestBody.contains("opaque-state"));
   }
 
-  @SuppressWarnings("unchecked")
-  private void seedPkceState(String state) throws Exception {
-    Field pkceStatesField = SupabaseGoogleSsoService.class.getDeclaredField("pkceStates");
-    pkceStatesField.setAccessible(true);
-    ConcurrentMap<String, Object> pkceStates =
-        (ConcurrentMap<String, Object>) pkceStatesField.get(service);
-
-    Class<?> stateClass = Class.forName(
-        "id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService$PkceFlowState");
-    var constructor = stateClass.getDeclaredConstructor(String.class, Instant.class, String.class);
-    constructor.setAccessible(true);
-    Object flowState = constructor.newInstance(
-        "verifier",
-        Instant.now().plusSeconds(300),
-        CALLBACK_URL + "?app_state=" + state);
-    pkceStates.put(state, flowState);
-  }
-
   private static class TokenHandler implements HttpHandler {
     private static String lastRequestBody = "";
 
@@ -225,6 +215,21 @@ class SupabaseGoogleSsoServiceTest {
       try (OutputStream outputStream = exchange.getResponseBody()) {
         outputStream.write(response);
       }
+    }
+  }
+
+  private static class InMemoryPkceStateStore implements PkceStateStore {
+    private final java.util.Map<String, PkceFlowState> states = new java.util.HashMap<>();
+
+    @Override
+    public void save(String flowId, String codeVerifier, Instant expiresAt, String redirectUrl) {
+      states.put(flowId, new PkceFlowState(codeVerifier, expiresAt, redirectUrl));
+    }
+
+    @Override
+    public Optional<PkceFlowState> take(String flowId, Instant now) {
+      states.entrySet().removeIf(entry -> !entry.getValue().expiresAt().isAfter(now));
+      return Optional.ofNullable(states.remove(flowId));
     }
   }
 }
