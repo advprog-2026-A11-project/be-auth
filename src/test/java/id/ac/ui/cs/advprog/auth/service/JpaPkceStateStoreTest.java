@@ -23,6 +23,19 @@ class JpaPkceStateStoreTest {
   private GoogleSsoPkceStateRepository repository;
 
   @Test
+  void savePersistsStateForLaterConsumption() {
+    Instant now = Instant.parse("2026-05-03T00:00:00Z");
+
+    store.save(
+        "flow-id",
+        "verifier",
+        now.plusSeconds(300),
+        "https://app.test/callback?app_state=flow-id");
+
+    assertTrue(repository.existsById("flow-id"));
+  }
+
+  @Test
   void takeReturnsStoredStateAndDeletesIt() {
     Instant now = Instant.parse("2026-05-03T00:00:00Z");
     repository.save(new GoogleSsoPkceState(
