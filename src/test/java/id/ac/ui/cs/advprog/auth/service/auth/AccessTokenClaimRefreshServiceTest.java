@@ -108,59 +108,6 @@ class AccessTokenClaimRefreshServiceTest {
     verify(supabaseJwtService, never()).validateAccessToken("access-token");
   }
 
-  @Test
-  void ensurePublicUserIdClaimTokensKeepsTokensWhenClaimAlreadyPresent() {
-    when(supabaseJwtService.validateAccessToken("access-token"))
-        .thenReturn(jwt("access-token", "c1f84e7b-bb84-412d-81bb-4449df141f11"));
-
-    AccessTokenClaimRefreshService.SessionTokens resolved =
-        service.ensurePublicUserIdClaim("access-token", "refresh-token");
-
-    assertEquals("access-token", resolved.accessToken());
-    assertEquals("refresh-token", resolved.refreshToken());
-    verify(supabaseAuthClient, never()).refreshSession("refresh-token");
-  }
-
-  @Test
-  void ensurePublicUserIdClaimTokensRefreshesWhenClaimIsMissing() {
-    when(supabaseJwtService.validateAccessToken("access-token"))
-        .thenReturn(jwt("access-token", null));
-    when(supabaseAuthClient.refreshSession("refresh-token"))
-        .thenReturn(new SupabaseAuthClient.LoginResult(
-            "access-token-2",
-            "refresh-token-2",
-            3600L,
-            "sub-123",
-            "user@example.com",
-            "authenticated"));
-
-    AccessTokenClaimRefreshService.SessionTokens resolved =
-        service.ensurePublicUserIdClaim("access-token", "refresh-token");
-
-    assertEquals("access-token-2", resolved.accessToken());
-    assertEquals("refresh-token-2", resolved.refreshToken());
-  }
-
-  @Test
-  void ensurePublicUserIdClaimTokensSkipsValidationWithoutAccessToken() {
-    AccessTokenClaimRefreshService.SessionTokens resolved =
-        service.ensurePublicUserIdClaim("", "refresh-token");
-
-    assertEquals("", resolved.accessToken());
-    assertEquals("refresh-token", resolved.refreshToken());
-    verify(supabaseJwtService, never()).validateAccessToken("access-token");
-  }
-
-  @Test
-  void ensurePublicUserIdClaimTokensSkipsValidationWithoutRefreshToken() {
-    AccessTokenClaimRefreshService.SessionTokens resolved =
-        service.ensurePublicUserIdClaim("access-token", "");
-
-    assertEquals("access-token", resolved.accessToken());
-    assertEquals("", resolved.refreshToken());
-    verify(supabaseJwtService, never()).validateAccessToken("access-token");
-  }
-
   private Jwt jwt(String tokenValue, String publicUserId) {
     Map<String, Object> claims = new java.util.LinkedHashMap<>();
     claims.put("sub", "sub-123");

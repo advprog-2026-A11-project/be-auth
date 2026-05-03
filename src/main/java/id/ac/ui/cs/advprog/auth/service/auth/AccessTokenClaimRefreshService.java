@@ -32,21 +32,4 @@ public class AccessTokenClaimRefreshService {
 
     return supabaseAuthClient.refreshSession(session.refreshToken());
   }
-
-  public SessionTokens ensurePublicUserIdClaim(String accessToken, String refreshToken) {
-    if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(refreshToken)) {
-      return new SessionTokens(accessToken, refreshToken);
-    }
-
-    Jwt jwt = supabaseJwtService.validateAccessToken(accessToken);
-    if (StringUtils.hasText(jwt.getClaimAsString("yomu_user_id"))) {
-      return new SessionTokens(accessToken, refreshToken);
-    }
-
-    SupabaseAuthClient.LoginResult refreshed = supabaseAuthClient.refreshSession(refreshToken);
-    return new SessionTokens(refreshed.accessToken(), refreshed.refreshToken());
-  }
-
-  public record SessionTokens(String accessToken, String refreshToken) {
-  }
 }
