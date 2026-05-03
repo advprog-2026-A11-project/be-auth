@@ -179,15 +179,22 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    authenticateJwt("valid-inactive", "sub-inactive", "inactive@example.com", "USER");
+    authenticateJwtWithPublicUserId(
+        "valid-inactive",
+        "sub-inactive",
+        "inactive@example.com",
+        "USER",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile inactive = new UserProfile();
+    inactive.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     inactive.setSupabaseUserId("sub-inactive");
     inactive.setEmail("inactive@example.com");
     inactive.setRole("USER");
     inactive.setActive(false);
 
     when(tokenRevocationService.isRevoked("valid-inactive")).thenReturn(false);
-    when(userProfileService.findBySupabaseUserId("sub-inactive")).thenReturn(Optional.of(inactive));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(inactive));
 
     filter.doFilterInternal(request, response, chain);
 
@@ -204,8 +211,14 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    final Jwt jwt = jwt("existing-jwt-token", "ctx-sub-2", "ctx2@example.com", "authenticated");
+    final Jwt jwt = jwt(
+        "existing-jwt-token",
+        "ctx-sub-2",
+        "ctx2@example.com",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile admin = new UserProfile();
+    admin.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     admin.setSupabaseUserId("ctx-sub-2");
     admin.setEmail("ctx2@example.com");
     admin.setRole("ADMIN");
@@ -218,7 +231,8 @@ class SupabaseJwtAuthenticationFilterTest {
             List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
 
     when(tokenRevocationService.isRevoked("existing-jwt-token")).thenReturn(false);
-    when(userProfileService.findBySupabaseUserId("ctx-sub-2")).thenReturn(Optional.of(admin));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(admin));
 
     filter.doFilterInternal(request, response, chain);
 
@@ -236,10 +250,15 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    authenticateJwt("valid-user", "sub-user", "user@example.com", "authenticated");
+    authenticateJwtWithPublicUserId(
+        "valid-user",
+        "sub-user",
+        "user@example.com",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
     when(tokenRevocationService.isRevoked("valid-user")).thenReturn(false);
-    when(userProfileService.findBySupabaseUserId("sub-user")).thenReturn(Optional.empty());
-    when(userProfileService.findByEmail("user@example.com")).thenReturn(Optional.empty());
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.empty());
 
     filter.doFilterInternal(request, response, chain);
 
@@ -258,15 +277,22 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    authenticateJwt("valid-admin", "sub-admin", "admin@example.com", "USER");
+    authenticateJwtWithPublicUserId(
+        "valid-admin",
+        "sub-admin",
+        "admin@example.com",
+        "USER",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile admin = new UserProfile();
+    admin.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     admin.setSupabaseUserId("sub-admin");
     admin.setEmail("admin@example.com");
     admin.setRole("ADMIN");
     admin.setActive(true);
 
     when(tokenRevocationService.isRevoked("valid-admin")).thenReturn(false);
-    when(userProfileService.findBySupabaseUserId("sub-admin")).thenReturn(Optional.of(admin));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(admin));
 
     filter.doFilterInternal(request, response, chain);
 
@@ -276,27 +302,23 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   @Test
-  void doFilterInternalFallsBackToEmailLookupWhenSubMissing() throws Exception {
+  void doFilterInternalRejectsTokenWithoutPublicUserIdClaim() throws Exception {
     final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/users/me");
     request.addHeader("Authorization", "Bearer valid-email");
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
     authenticateJwt("valid-email", " ", "fallback@example.com", "USER");
-    UserProfile user = new UserProfile();
-    user.setSupabaseUserId("sub-fallback");
-    user.setEmail("fallback@example.com");
-    user.setRole("USER");
-    user.setActive(true);
-
     when(tokenRevocationService.isRevoked("valid-email")).thenReturn(false);
-    when(userProfileService.findByEmail("fallback@example.com")).thenReturn(Optional.of(user));
 
     filter.doFilterInternal(request, response, chain);
 
+    assertEquals(401, response.getStatus());
+    assertTrue(response.getContentAsString().contains("Missing public user id claim"));
+    verify(userProfileService, never()).findByPublicUserId(anyString());
     verify(userProfileService, never()).findBySupabaseUserId(anyString());
-    verify(userProfileService).findByEmail("fallback@example.com");
-    verify(chain).doFilter(request, response);
+    verify(userProfileService, never()).findByEmail(anyString());
+    verify(chain, never()).doFilter(request, response);
   }
 
   @Test
@@ -352,6 +374,7 @@ class SupabaseJwtAuthenticationFilterTest {
     assertTrue(auth != null);
     assertTrue(
         auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
+    verify(userProfileService, never()).findByPublicUserId(anyString());
     verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
     verify(chain).doFilter(request, response);
@@ -364,19 +387,21 @@ class SupabaseJwtAuthenticationFilterTest {
     final MockHttpServletResponse response = new MockHttpServletResponse();
     final FilterChain chain = mock(FilterChain.class);
 
-    authenticateJwt(
+    authenticateJwtWithPublicUserId(
         "valid-blank-profile-role",
         "sub-role-fallback",
         "role@example.com",
-        "authenticated");
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile user = new UserProfile();
+    user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     user.setSupabaseUserId("sub-role-fallback");
     user.setEmail("role@example.com");
     user.setRole(" ");
     user.setActive(true);
 
     when(tokenRevocationService.isRevoked("valid-blank-profile-role")).thenReturn(false);
-    when(userProfileService.findBySupabaseUserId("sub-role-fallback"))
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenReturn(Optional.of(user));
 
     filter.doFilterInternal(request, response, chain);

@@ -120,6 +120,7 @@ class AuthControllerTest {
             "sub", "ctx-sub-1",
             "email", "ctx@example.com",
             "role", "authenticated",
+            "yomu_user_id", "c1f84e7b-bb84-412d-81bb-4449df141f11",
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
 
@@ -130,10 +131,12 @@ class AuthControllerTest {
             List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
 
     UserProfile user = new UserProfile();
+    user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     user.setSupabaseUserId("ctx-sub-1");
     user.setEmail("ctx@example.com");
     user.setRole("ADMIN");
-    when(profileService.findBySupabaseUserId("ctx-sub-1")).thenReturn(Optional.of(user));
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(user));
 
     ResponseEntity<?> resp = controller.me(req);
 
@@ -147,7 +150,11 @@ class AuthControllerTest {
   void meReturnsProfileWhenPresent() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
-    authenticateJwt("sub", "a@b", "authenticated");
+    authenticateJwtWithPublicUserId(
+        "sub",
+        "a@b",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
 
     UserProfile user = new UserProfile();
     user.setId(UUID.randomUUID());
@@ -160,7 +167,8 @@ class AuthControllerTest {
     user.setGoogleSub("google-sub-1");
     user.setActive(true);
 
-    when(profileService.findByEmail("a@b")).thenReturn(Optional.of(user));
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(user));
 
     ResponseEntity<?> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
@@ -173,22 +181,18 @@ class AuthControllerTest {
   }
 
   @Test
-  void meUsesSupabaseUserIdProfileWithoutEmailFallback() throws Exception {
+  void meReturnsUnauthorizedWhenPublicUserIdClaimMissing() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
     authenticateJwt("sub-123", "sub@example.com", "authenticated");
 
-    UserProfile user = new UserProfile();
-    user.setSupabaseUserId("sub-123");
-    user.setEmail("sub@example.com");
-    when(profileService.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(user));
-
     ResponseEntity<?> resp = controller.me(req);
 
-    assertEquals(200, resp.getStatusCodeValue());
-    assertAuthMeResponseType(resp);
-    verify(profileService).findBySupabaseUserId("sub-123");
-    verify(profileService, never()).findByEmail("sub@example.com");
+    assertEquals(401, resp.getStatusCodeValue());
+    assertEquals("Missing public user id claim", ((ErrorResponse) resp.getBody()).error());
+    verify(profileService, never()).findByPublicUserId(anyString());
+    verify(profileService, never()).findBySupabaseUserId(anyString());
+    verify(profileService, never()).findByEmail(anyString());
   }
 
   @Test
@@ -221,8 +225,13 @@ class AuthControllerTest {
   void meReturnsNullProfileWhenAbsent() throws Exception {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
-    authenticateJwt("sub", "x@y", "authenticated");
-    when(profileService.findByEmail("x@y")).thenReturn(Optional.empty());
+    authenticateJwtWithPublicUserId(
+        "sub",
+        "x@y",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.empty());
 
     ResponseEntity<?> resp = controller.me(req);
     assertEquals(200, resp.getStatusCodeValue());
@@ -289,45 +298,15 @@ class AuthControllerTest {
   }
 
   @Test
-  void meFallsBackToEmailLookupWhenSubIsBlank() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
-    authenticateJwt(" ", "fallback@example.com", "authenticated");
-
-    UserProfile user = new UserProfile();
-    user.setEmail("fallback@example.com");
-    user.setUsername("fallback-user");
-    when(profileService.findByEmail("fallback@example.com")).thenReturn(Optional.of(user));
-
-    ResponseEntity<?> resp = controller.me(req);
-
-    assertEquals(200, resp.getStatusCodeValue());
-    assertAuthMeResponseType(resp);
-    verify(profileService, never()).findBySupabaseUserId(anyString());
-    verify(profileService).findByEmail("fallback@example.com");
-  }
-
-  @Test
-  void meSkipsProfileLookupWhenSubjectAndEmailAreBlank() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
-    authenticateJwt(" ", " ", "authenticated");
-
-    ResponseEntity<?> resp = controller.me(req);
-
-    assertEquals(200, resp.getStatusCodeValue());
-    assertAuthMeResponseType(resp);
-    assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
-    verify(profileService, never()).findBySupabaseUserId(anyString());
-    verify(profileService, never()).findByEmail(anyString());
-  }
-
-  @Test
   void mePropagatesDataAccessExceptionWhenProfileLookupFails() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     when(req.getHeader("Authorization")).thenReturn(null);
-    authenticateJwt("sub-error", "error@example.com", "authenticated");
-    when(profileService.findBySupabaseUserId("sub-error"))
+    authenticateJwtWithPublicUserId(
+        "sub-error",
+        "error@example.com",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenThrow(new DataAccessResourceFailureException("db down"));
 
     DataAccessResourceFailureException ex = assertThrows(
