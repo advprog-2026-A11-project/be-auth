@@ -14,26 +14,27 @@ import org.springframework.util.StringUtils;
 public class UserProfileService {
 
   private final UserProfileRepository repository;
-  private final SupabaseAuthClient supabaseAuthClient;
+  private final UserProfileIdentitySyncService identitySyncService;
+  private final CurrentUserProfileLookupService currentUserProfileLookupService;
 
   public UserProfileService(
       UserProfileRepository repository,
-      SupabaseAuthClient supabaseAuthClient) {
+      UserProfileIdentitySyncService identitySyncService,
+      CurrentUserProfileLookupService currentUserProfileLookupService) {
     this.repository = repository;
-    this.supabaseAuthClient = supabaseAuthClient;
+    this.identitySyncService = identitySyncService;
+    this.currentUserProfileLookupService = currentUserProfileLookupService;
   }
 
   public UserProfile create(UserProfile user) {
-    SupabaseAuthClient.IdentityUser identity =
-        supabaseAuthClient.getUserById(requireSupabaseUserId(user.getSupabaseUserId()));
-
-    UserProfile synced = upsertFromIdentity(
-        identity.supabaseUserId(),
-        identity.email(),
-        identity.role(),
-        identity.authProvider(),
-        identity.googleSub(),
-        identity.displayName());
+    UserProfile synced = identitySyncService.syncAdminUpdate(new UserProfile(), user);
+    synced = identitySyncService.upsertFromIdentity(
+        synced.getSupabaseUserId(),
+        synced.getEmail(),
+        user.getRole(),
+        synced.getAuthProvider(),
+        synced.getGoogleSub(),
+        synced.getDisplayName());
 
     applyAdminManagedFields(synced, user);
     return repository.save(synced);
@@ -90,7 +91,7 @@ public class UserProfileService {
   }
 
   public UserProfile upsertFromIdentity(String supabaseUserId, String email, String incomingRole) {
-    return upsertFromIdentity(supabaseUserId, email, incomingRole, "PASSWORD", null, null);
+    return identitySyncService.upsertFromIdentity(supabaseUserId, email, incomingRole);
   }
 
   public UserProfile upsertFromIdentity(
@@ -100,46 +101,13 @@ public class UserProfileService {
       String authProvider,
       String googleSub,
       String displayName) {
-    if (!StringUtils.hasText(supabaseUserId)) {
-      throw new IllegalArgumentException("supabaseUserId is required");
-    }
-
-    String normalizedEmail = StringUtils.hasText(email)
-        ? email.trim().toLowerCase()
-        : (supabaseUserId + "@local.test");
-
-    Optional<UserProfile> bySub = repository.findBySupabaseUserId(supabaseUserId);
-    if (bySub.isPresent()) {
-      UserProfile existing = bySub.get();
-      existing.setEmail(normalizedEmail);
-      existing.setRole(Role.canonicalize(existing.getRole()));
-      applyIdentityEnrichment(existing, authProvider, googleSub, displayName);
-      return repository.save(existing);
-    }
-
-    Optional<UserProfile> byEmail = repository.findByEmail(normalizedEmail);
-    if (byEmail.isPresent()) {
-      UserProfile existing = byEmail.get();
-      if (StringUtils.hasText(existing.getSupabaseUserId())
-          && !supabaseUserId.equals(existing.getSupabaseUserId())) {
-        throw new ConflictException("Identity conflict for email");
-      }
-      existing.setSupabaseUserId(supabaseUserId);
-      existing.setRole(Role.canonicalize(existing.getRole()));
-      applyIdentityEnrichment(existing, authProvider, googleSub, displayName);
-      return repository.save(existing);
-    }
-
-    UserProfile created = new UserProfile();
-    created.setSupabaseUserId(supabaseUserId);
-    created.setEmail(normalizedEmail);
-    created.setUsername(generateUniqueUsername(normalizedEmail, supabaseUserId));
-    created.setDisplayName(resolveDisplayName(normalizedEmail, displayName));
-    created.setRole(Role.canonicalize(incomingRole));
-    created.setAuthProvider(resolveAuthProvider(authProvider));
-    created.setGoogleSub(normalizeOptionalValue(googleSub));
-    created.setActive(true);
-    return repository.save(created);
+    return identitySyncService.upsertFromIdentity(
+        supabaseUserId,
+        email,
+        incomingRole,
+        authProvider,
+        googleSub,
+        displayName);
   }
 
   public UserProfile updateCurrentUserProfile(
@@ -213,23 +181,7 @@ public class UserProfileService {
 
   public Optional<UserProfile> update(UUID id, UserProfile incoming) {
     return repository.findById(id).map(existing -> {
-      String supabaseUserId = StringUtils.hasText(incoming.getSupabaseUserId())
-          ? incoming.getSupabaseUserId().trim()
-          : existing.getSupabaseUserId();
-      if (StringUtils.hasText(supabaseUserId)) {
-        SupabaseAuthClient.IdentityUser identity =
-            supabaseAuthClient.getUserById(requireSupabaseUserId(supabaseUserId));
-
-        existing.setSupabaseUserId(identity.supabaseUserId());
-        existing.setEmail(normalizeEmailOrThrow(identity.email()));
-        applyIdentityEnrichment(
-            existing,
-            identity.authProvider(),
-            identity.googleSub(),
-            identity.displayName());
-      } else {
-        applyLocalAdminEmail(existing, incoming);
-      }
+      identitySyncService.syncAdminUpdate(existing, incoming);
       applyAdminManagedFields(existing, incoming);
 
       return repository.save(existing);
@@ -251,24 +203,7 @@ public class UserProfileService {
   }
 
   private UserProfile findCurrentUserOrThrow(String supabaseUserId, String email) {
-    return findCurrentUser(supabaseUserId, email).orElseThrow(
-        () -> new IllegalArgumentException("User profile not found"));
-  }
-
-  private Optional<UserProfile> findCurrentUser(String supabaseUserId, String email) {
-    if (!StringUtils.hasText(supabaseUserId) && !StringUtils.hasText(email)) {
-      throw new IllegalArgumentException("Authenticated user identity is required");
-    }
-
-    Optional<UserProfile> existing = StringUtils.hasText(supabaseUserId)
-        ? repository.findBySupabaseUserId(supabaseUserId)
-        : Optional.empty();
-
-    if (existing.isEmpty() && StringUtils.hasText(email)) {
-      existing = repository.findByEmail(email.trim().toLowerCase());
-    }
-
-    return existing;
+    return currentUserProfileLookupService.findCurrentUserOrThrow(supabaseUserId, email);
   }
 
   private String normalizeEmailOrThrow(String email) {
@@ -283,51 +218,6 @@ public class UserProfileService {
       throw new IllegalArgumentException("phone is required");
     }
     return phone.trim();
-  }
-
-  private String generateUniqueUsername(String email, String supabaseUserId) {
-    String base = sanitizeUsernameCandidate(email);
-    String candidate = base;
-    int counter = 1;
-
-    while (repository.existsByUsername(candidate)) {
-      candidate = base + "-" + counter;
-      counter++;
-    }
-
-    if (counter == 1) {
-      return candidate;
-    }
-
-    String suffix = supabaseUserId.substring(0, Math.min(6, supabaseUserId.length()));
-    String suffixedCandidate = base + "-" + suffix;
-    if (!repository.existsByUsername(suffixedCandidate)) {
-      return suffixedCandidate;
-    }
-
-    return candidate;
-  }
-
-  private String sanitizeUsernameCandidate(String email) {
-    String localPart = email;
-    int atIndex = email.indexOf("@");
-    if (atIndex > 0) {
-      localPart = email.substring(0, atIndex);
-    }
-
-    String sanitized = localPart.replaceAll("[^A-Za-z0-9._-]", "-").trim();
-    if (!StringUtils.hasText(sanitized)) {
-      return "user";
-    }
-    if (sanitized.length() < 3) {
-      return (sanitized + "user").substring(0, 4);
-    }
-    return sanitized;
-  }
-
-  private String extractDisplayName(String email) {
-    int atIndex = email.indexOf("@");
-    return atIndex > 0 ? email.substring(0, atIndex) : email;
   }
 
   private void applyAdminManagedFields(UserProfile target, UserProfile incoming) {
@@ -351,58 +241,6 @@ public class UserProfileService {
     }
 
     target.setActive(incoming.isActive());
-  }
-
-  private void applyLocalAdminEmail(UserProfile target, UserProfile incoming) {
-    if (!StringUtils.hasText(incoming.getEmail())) {
-      return;
-    }
-
-    String normalizedEmail = normalizeEmailOrThrow(incoming.getEmail());
-    if (!normalizedEmail.equals(target.getEmail()) && repository.existsByEmail(normalizedEmail)) {
-      throw new ConflictException("Email already taken");
-    }
-
-    target.setEmail(normalizedEmail);
-  }
-
-  private void applyIdentityEnrichment(
-      UserProfile user,
-      String authProvider,
-      String googleSub,
-      String displayName) {
-    user.setAuthProvider(resolveAuthProvider(authProvider));
-    if (StringUtils.hasText(googleSub)) {
-      user.setGoogleSub(googleSub.trim());
-    }
-    if (!StringUtils.hasText(user.getDisplayName()) && StringUtils.hasText(displayName)) {
-      user.setDisplayName(displayName.trim());
-    }
-  }
-
-  private String resolveDisplayName(String email, String displayName) {
-    if (StringUtils.hasText(displayName)) {
-      return displayName.trim();
-    }
-    return extractDisplayName(email);
-  }
-
-  private String resolveAuthProvider(String authProvider) {
-    if (!StringUtils.hasText(authProvider)) {
-      return "PASSWORD";
-    }
-    return authProvider.trim().toUpperCase();
-  }
-
-  private String normalizeOptionalValue(String value) {
-    return StringUtils.hasText(value) ? value.trim() : null;
-  }
-
-  private String requireSupabaseUserId(String supabaseUserId) {
-    if (!StringUtils.hasText(supabaseUserId)) {
-      throw new IllegalArgumentException("supabaseUserId is required");
-    }
-    return supabaseUserId.trim();
   }
 
 }

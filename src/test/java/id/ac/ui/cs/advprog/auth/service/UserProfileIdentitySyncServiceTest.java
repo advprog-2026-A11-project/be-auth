@@ -113,15 +113,23 @@ class UserProfileIdentitySyncServiceTest {
   }
 
   @Test
-  void syncAdminUpdateRejectsBlankSupabaseUserId() {
+  void syncAdminUpdateUsesExistingSupabaseUserIdWhenIncomingIsBlank() {
     UserProfile existing = new UserProfile();
     existing.setSupabaseUserId("sub-123");
+    when(supabaseAuthClient.getUserById("sub-123")).thenReturn(new SupabaseAuthClient.IdentityUser(
+        "sub-123",
+        "provider@example.com",
+        "authenticated",
+        "password",
+        null,
+        "Provider Name"));
     UserProfile incoming = new UserProfile();
     incoming.setSupabaseUserId(" ");
 
     UserProfile synced = service.syncAdminUpdate(existing, incoming);
 
     assertEquals("sub-123", synced.getSupabaseUserId());
+    assertEquals("provider@example.com", synced.getEmail());
   }
 
   @Test

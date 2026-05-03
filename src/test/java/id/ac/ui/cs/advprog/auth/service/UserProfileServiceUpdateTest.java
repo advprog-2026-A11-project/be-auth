@@ -11,7 +11,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -20,12 +19,18 @@ class UserProfileServiceUpdateTest {
   @Mock
   private UserProfileRepository repository;
 
-  @InjectMocks
+  @Mock
+  private SupabaseAuthClient supabaseAuthClient;
+
   private UserProfileService service;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+    service = new UserProfileService(
+        repository,
+        new UserProfileIdentitySyncService(repository, supabaseAuthClient),
+        new CurrentUserProfileLookupService(repository));
   }
 
   @Test
