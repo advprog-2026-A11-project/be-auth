@@ -7,6 +7,8 @@ import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -68,23 +70,11 @@ public class UserProfileService {
     return repository.findByUsername(username);
   }
 
-  public Optional<UserProfile> findBySupabaseUserId(String supabaseUserId) {
-    return repository.findBySupabaseUserId(supabaseUserId);
-  }
-
   public Optional<UserProfile> findByPhone(String phone) {
     if (!StringUtils.hasText(phone)) {
       return Optional.empty();
     }
     return repository.findByPhone(phone.trim());
-  }
-
-  public boolean usernameExists(String username) {
-    return repository.existsByUsername(username);
-  }
-
-  public boolean emailExists(String email) {
-    return repository.existsByEmail(email);
   }
 
   public UserProfile upsertFromIdentity(String supabaseUserId, String email, String incomingRole) {
@@ -111,9 +101,7 @@ public class UserProfileService {
       String publicUserId,
       String username,
       String displayName) {
-    UserProfile existing = requireCurrentUserProfile(publicUserId);
-    applySelfManagedFields(existing, username, displayName);
-    return repository.save(existing);
+    return saveCurrentUser(publicUserId, existing -> applyProfileFields(existing, username, displayName));
   }
 
   public UserProfile updateIdentityProfile(
@@ -122,45 +110,34 @@ public class UserProfileService {
       String username,
       String displayName) {
     UserProfile existing = resolveProfileByIdentityOrThrow(supabaseUserId, email);
-    applySelfManagedFields(existing, username, displayName);
+    applyProfileFields(existing, username, displayName);
     return repository.save(existing);
   }
 
   public UserProfile deactivateCurrentUser(String publicUserId) {
-    UserProfile existing = requireCurrentUserProfile(publicUserId);
-
-    existing.setActive(false);
-    return repository.save(existing);
+    return saveCurrentUser(publicUserId, existing -> existing.setActive(false));
   }
 
   public UserProfile updateCurrentUserEmail(
       String publicUserId,
       String newEmail) {
-    UserProfile existing = requireCurrentUserProfile(publicUserId);
-    String normalizedEmail = normalizeEmailOrThrow(newEmail);
-
-    if (!normalizedEmail.equals(existing.getEmail())
-        && repository.existsByEmail(normalizedEmail)) {
-      throw new ConflictException("Email already taken");
-    }
-
-    existing.setEmail(normalizedEmail);
-    return repository.save(existing);
+    return saveCurrentUser(publicUserId, existing -> existing.setEmail(
+        requireUnique(
+            existing.getEmail(),
+            normalizeEmailOrThrow(newEmail),
+            repository::existsByEmail,
+            "Email already taken")));
   }
 
   public UserProfile updateCurrentUserPhone(
       String publicUserId,
       String newPhone) {
-    UserProfile existing = requireCurrentUserProfile(publicUserId);
-    String normalizedPhone = normalizePhoneOrThrow(newPhone);
-
-    if (!normalizedPhone.equals(existing.getPhone())
-        && repository.existsByPhone(normalizedPhone)) {
-      throw new ConflictException("Phone already taken");
-    }
-
-    existing.setPhone(normalizedPhone);
-    return repository.save(existing);
+    return saveCurrentUser(publicUserId, existing -> existing.setPhone(
+        requireUnique(
+            existing.getPhone(),
+            normalizePhoneOrThrow(newPhone),
+            repository::existsByPhone,
+            "Phone already taken")));
   }
 
   public Optional<UserProfile> updateDisplayName(UUID id, String newDisplayName) {
@@ -180,17 +157,11 @@ public class UserProfileService {
   }
 
   public UserProfile deactivateById(UUID id) {
-    return repository.findById(id).map(existing -> {
-      existing.setActive(false);
-      return repository.save(existing);
-    }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+    return saveExistingById(id, existing -> existing.setActive(false));
   }
 
   public UserProfile activateById(UUID id) {
-    return repository.findById(id).map(existing -> {
-      existing.setActive(true);
-      return repository.save(existing);
-    }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+    return saveExistingById(id, existing -> existing.setActive(true));
   }
 
   private String normalizeEmailOrThrow(String email) {
@@ -208,18 +179,7 @@ public class UserProfileService {
   }
 
   private void applyAdminManagedFields(UserProfile target, UserProfile incoming) {
-    if (StringUtils.hasText(incoming.getUsername())) {
-      String normalizedUsername = incoming.getUsername().trim();
-      if (!normalizedUsername.equals(target.getUsername())
-          && repository.existsByUsername(normalizedUsername)) {
-        throw new ConflictException("Username already taken");
-      }
-      target.setUsername(normalizedUsername);
-    }
-
-    if (incoming.getDisplayName() != null) {
-      target.setDisplayName(incoming.getDisplayName().trim());
-    }
+    applyProfileFields(target, incoming.getUsername(), incoming.getDisplayName());
 
     if (StringUtils.hasText(incoming.getRole())) {
       target.setRole(Role.canonicalize(incoming.getRole()));
@@ -257,22 +217,45 @@ public class UserProfileService {
     }
   }
 
-  private void applySelfManagedFields(
-      UserProfile existing,
-      String username,
-      String displayName) {
+  private void applyProfileFields(UserProfile existing, String username, String displayName) {
     if (StringUtils.hasText(username)) {
-      String normalizedUsername = username.trim();
-      if (!normalizedUsername.equals(existing.getUsername())
-          && repository.existsByUsername(normalizedUsername)) {
-        throw new ConflictException("Username already taken");
-      }
-      existing.setUsername(normalizedUsername);
+      existing.setUsername(requireUnique(
+          existing.getUsername(),
+          username.trim(),
+          repository::existsByUsername,
+          "Username already taken"));
     }
 
     if (displayName != null) {
       existing.setDisplayName(displayName.trim());
     }
+  }
+
+  private UserProfile saveCurrentUser(String publicUserId, Consumer<UserProfile> mutator) {
+    UserProfile existing = requireCurrentUserProfile(publicUserId);
+    mutator.accept(existing);
+    return repository.save(existing);
+  }
+
+  private UserProfile saveExistingById(UUID id, Consumer<UserProfile> mutator) {
+    return repository.findById(id).map(existing -> {
+      mutator.accept(existing);
+      return repository.save(existing);
+    }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+  }
+
+  private String requireUnique(
+      String currentValue,
+      String newValue,
+      Predicate<String> existsCheck,
+      String conflictMessage) {
+    if (newValue.equals(currentValue)) {
+      return newValue;
+    }
+    if (existsCheck.test(newValue)) {
+      throw new ConflictException(conflictMessage);
+    }
+    return newValue;
   }
 
 }

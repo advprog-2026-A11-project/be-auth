@@ -309,7 +309,6 @@ class SupabaseJwtAuthenticationFilterTest {
     assertEquals(401, response.getStatus());
     assertTrue(response.getContentAsString().contains("Missing public user id claim"));
     verify(userProfileService, never()).findByPublicUserId(anyString());
-    verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
     verify(chain, never()).doFilter(request, response);
   }
@@ -345,7 +344,6 @@ class SupabaseJwtAuthenticationFilterTest {
     assertTrue(auth != null);
     assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
     verify(userProfileService).findByPublicUserId(publicUserId.toString());
-    verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
     verify(chain).doFilter(request, response);
   }
@@ -366,7 +364,6 @@ class SupabaseJwtAuthenticationFilterTest {
     assertEquals(401, response.getStatus());
     assertTrue(response.getContentAsString().contains("Missing public user id claim"));
     verify(userProfileService, never()).findByPublicUserId(anyString());
-    verify(userProfileService, never()).findBySupabaseUserId(anyString());
     verify(userProfileService, never()).findByEmail(anyString());
     verify(chain, never()).doFilter(request, response);
   }

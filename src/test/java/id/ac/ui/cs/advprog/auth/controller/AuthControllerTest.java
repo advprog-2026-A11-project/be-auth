@@ -191,7 +191,6 @@ class AuthControllerTest {
     assertEquals(401, resp.getStatusCodeValue());
     assertEquals("Missing public user id claim", ((ErrorResponse) resp.getBody()).error());
     verify(profileService, never()).findByPublicUserId(anyString());
-    verify(profileService, never()).findBySupabaseUserId(anyString());
     verify(profileService, never()).findByEmail(anyString());
   }
 
@@ -217,7 +216,6 @@ class AuthControllerTest {
     assertEquals(200, resp.getStatusCodeValue());
     assertAuthMeResponseType(resp);
     verify(profileService).findByPublicUserId(publicUserId.toString());
-    verify(profileService, never()).findBySupabaseUserId(anyString());
     verify(profileService, never()).findByEmail(anyString());
   }
 
