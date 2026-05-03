@@ -33,3 +33,4 @@ class AuthStateModelTest {
     assertEquals("https://app.test/callback?app_state=flow-id", state.getRedirectUrl());
   }
 }
+

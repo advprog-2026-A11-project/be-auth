@@ -3,7 +3,7 @@ package id.ac.ui.cs.advprog.auth.controller;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.AdminPingResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,3 +31,4 @@ public class AdminController {
     return ResponseEntity.ok(new AdminPingResponse("Admin access granted", profile.getId()));
   }
 }
+

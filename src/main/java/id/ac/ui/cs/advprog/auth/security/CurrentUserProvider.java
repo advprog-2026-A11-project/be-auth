@@ -84,3 +84,4 @@ public class CurrentUserProvider {
     return jwt.getClaimAsString("user_id");
   }
 }
+

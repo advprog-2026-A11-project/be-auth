@@ -18,3 +18,4 @@ public interface GoogleSsoPkceStateRepository extends JpaRepository<GoogleSsoPkc
   @Query("select state from GoogleSsoPkceState state where state.flowId = :flowId")
   Optional<GoogleSsoPkceState> findByFlowIdForUpdate(@Param("flowId") String flowId);
 }
+

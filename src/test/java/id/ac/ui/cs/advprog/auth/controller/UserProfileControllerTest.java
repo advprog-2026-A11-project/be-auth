@@ -10,8 +10,8 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -163,3 +163,4 @@ class UserProfileControllerTest {
     assertTrue(response.getBody().isActive());
   }
 }
+

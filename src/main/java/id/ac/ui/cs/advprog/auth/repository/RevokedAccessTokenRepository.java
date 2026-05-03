@@ -10,3 +10,4 @@ public interface RevokedAccessTokenRepository extends JpaRepository<RevokedAcces
 
   boolean existsByTokenHashAndExpiresAtAfter(String tokenHash, Instant expiresAt);
 }
+

@@ -16,10 +16,10 @@ import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.auth.SupabaseGoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Optional;
@@ -187,3 +187,4 @@ public class AuthController {
     }
   }
 }
+

@@ -14,11 +14,11 @@ import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.auth.SupabaseGoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import java.time.Instant;
@@ -483,3 +483,4 @@ class AuthControllerTest {
             List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
   }
 }
+

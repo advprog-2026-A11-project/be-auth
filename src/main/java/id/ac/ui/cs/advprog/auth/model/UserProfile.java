@@ -180,3 +180,4 @@ public class UserProfile {
     this.updatedAt = updatedAt;
   }
 }
+

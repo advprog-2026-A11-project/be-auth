@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
-import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseAuthClient;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -191,3 +191,4 @@ class UpdateProfileIntegrationTest {
             "iss", "https://supabase.test/auth/v1"));
   }
 }
+

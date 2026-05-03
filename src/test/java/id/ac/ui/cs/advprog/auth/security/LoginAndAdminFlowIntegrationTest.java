@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseAuthClient;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -235,3 +235,4 @@ class LoginAndAdminFlowIntegrationTest {
             "iss", "https://supabase.test/auth/v1"));
   }
 }
+

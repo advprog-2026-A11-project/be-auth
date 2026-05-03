@@ -8,3 +8,4 @@ public final class CommonResponses {
   public record ErrorResponse(String error) {
   }
 }
+

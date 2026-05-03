@@ -16,8 +16,8 @@ import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
@@ -510,3 +510,4 @@ class UserProfileControllerExtraTest {
         anyString());
   }
 }
+

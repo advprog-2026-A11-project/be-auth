@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoCallbackResponse;
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.auth.service.SupabaseGoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.auth.SupabaseGoogleSsoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -74,3 +74,4 @@ class GoogleSsoIntegrationTest {
         .andExpect(jsonPath("$.message").value("Invalid SSO callback code"));
   }
 }
+

@@ -2,7 +2,6 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.springframework.boot.gradle.tasks.run.BootRun
-import java.io.ByteArrayOutputStream
 
 plugins {
     java
@@ -39,15 +38,15 @@ val coverageExclusions = listOf(
     "**/exception/GlobalExceptionHandler*",
     "**/model/UserProfile*",
     "**/security/CurrentUserProvider*",
-    "**/service/HttpSupabaseAuthClient*",
-    "**/service/AuthLoginService*",
-    "**/service/PkceStateStore*",
-    "**/service/RevokedTokenStore*",
-    "**/service/SupabaseGoogleSsoService*",
-    "**/service/SupabaseAuthClient*",
-    "**/service/CurrentUserProfileLookupService*",
-    "**/service/UserProfileIdentitySyncService*",
-    "**/service/UserProfileService*"
+    "**/service/**/HttpSupabaseAuthClient*",
+    "**/service/**/AuthLoginService*",
+    "**/service/**/PkceStateStore*",
+    "**/service/**/RevokedTokenStore*",
+    "**/service/**/SupabaseGoogleSsoService*",
+    "**/service/**/SupabaseAuthClient*",
+    "**/service/**/CurrentUserProfileLookupService*",
+    "**/service/**/UserProfileIdentitySyncService*",
+    "**/service/**/UserProfileService*"
 )
 
 sonarqube {

@@ -22,3 +22,4 @@ public enum Role {
     return from(incomingRole).name();
   }
 }
+

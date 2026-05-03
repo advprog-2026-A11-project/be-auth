@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -147,3 +147,4 @@ class ChangePasswordIntegrationTest {
             "iss", "https://supabase.test/auth/v1"));
   }
 }
+

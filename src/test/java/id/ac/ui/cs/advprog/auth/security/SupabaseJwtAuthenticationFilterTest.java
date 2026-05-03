@@ -11,9 +11,9 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import jakarta.servlet.FilterChain;
 import java.time.Instant;
 import java.util.List;
@@ -429,3 +429,4 @@ class SupabaseJwtAuthenticationFilterTest {
             List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
   }
 }
+

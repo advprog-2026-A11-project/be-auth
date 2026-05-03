@@ -10,3 +10,4 @@ public record AuthenticatedUserPrincipal(
     this(sub, email, role, null);
   }
 }
+

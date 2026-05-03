@@ -20,3 +20,4 @@ class RoleTest {
     assertEquals("ADMIN", Role.canonicalize("admin"));
   }
 }
+

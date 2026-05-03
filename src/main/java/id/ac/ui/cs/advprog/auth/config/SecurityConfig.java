@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.auth.security.UnauthorizedResponseWriter;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -97,3 +97,4 @@ public class SecurityConfig {
     return http.build();
   }
 }
+

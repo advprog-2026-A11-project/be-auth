@@ -39,3 +39,4 @@ public final class BearerTokenExtractor {
     return token;
   }
 }
+

@@ -120,3 +120,4 @@ class CurrentUserProviderTest {
             "iss", "https://supabase.test/auth/v1"));
   }
 }
+
