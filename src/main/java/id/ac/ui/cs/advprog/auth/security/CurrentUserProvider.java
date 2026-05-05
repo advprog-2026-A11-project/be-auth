@@ -2,10 +2,8 @@ package id.ac.ui.cs.advprog.auth.security;
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.Role;
-import java.util.Collection;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
@@ -56,7 +54,7 @@ public class CurrentUserProvider {
       return Optional.of(new AuthenticatedUserPrincipal(
           jwt.getSubject(),
           jwt.getClaimAsString("email"),
-          resolveRole(authentication.getAuthorities(), jwt.getClaimAsString("user_role")),
+          Role.canonicalize(jwt.getClaimAsString("user_role")),
           publicUserId));
     }
 
@@ -73,19 +71,6 @@ public class CurrentUserProvider {
         .map(AuthenticatedUserPrincipal::publicUserId)
         .filter(StringUtils::hasText)
         .orElseThrow(() -> new UnauthorizedException(MISSING_PUBLIC_USER_ID_MESSAGE));
-  }
-
-  private String resolveRole(
-      Collection<? extends GrantedAuthority> authorities,
-      String claimedRole) {
-    for (GrantedAuthority authority : authorities) {
-      String authorityValue = authority.getAuthority();
-      if (StringUtils.hasText(authorityValue) && authorityValue.startsWith("ROLE_")) {
-        return Role.canonicalize(authorityValue.substring("ROLE_".length()));
-      }
-    }
-
-    return Role.canonicalize(claimedRole);
   }
 
   private String resolvePublicUserId(Jwt jwt) {

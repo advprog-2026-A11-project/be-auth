@@ -46,8 +46,8 @@ class CurrentUserProviderTest {
   }
 
   @Test
-  void getCurrentUserBuildsPrincipalFromJwtClaimsAndAuthorities() {
-    Jwt jwt = jwt("token-1", "sub-234", "jwt@example.com", "authenticated");
+  void getCurrentUserBuildsPrincipalFromJwtClaims() {
+    Jwt jwt = jwt("token-1", "sub-234", "jwt@example.com", "authenticated", "ADMIN");
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(
             jwt,
