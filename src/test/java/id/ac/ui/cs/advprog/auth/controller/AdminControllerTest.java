@@ -5,11 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,9 +18,6 @@ class AdminControllerTest {
 
   @Mock
   private CurrentUserProvider currentUserProvider;
-
-  @Mock
-  private UserProfileService userProfileService;
 
   @InjectMocks
   private AdminController controller;
@@ -41,49 +35,24 @@ class AdminControllerTest {
             "admin@example.com",
             "ADMIN",
             "c1f84e7b-bb84-412d-81bb-4449df141f11");
-    UserProfile profile = new UserProfile();
-    UUID userId = UUID.randomUUID();
-    profile.setId(userId);
 
-    when(currentUserProvider.requireCurrentPublicUserId())
-        .thenReturn("c1f84e7b-bb84-412d-81bb-4449df141f11");
-    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
-        .thenReturn(Optional.of(profile));
+    when(currentUserProvider.requireCurrentUser()).thenReturn(principal);
 
     var response = controller.ping();
 
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Admin access granted", response.getBody().message());
-    assertEquals(userId, response.getBody().userId());
+    assertEquals(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"), response.getBody().userId());
   }
 
   @Test
   void pingWithoutCurrentUserThrowsUnauthorizedException() {
-    when(currentUserProvider.requireCurrentPublicUserId())
+    when(currentUserProvider.requireCurrentUser())
         .thenThrow(new UnauthorizedException("Missing public user id claim"));
 
     UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> controller.ping());
 
     assertEquals("Missing public user id claim", ex.getMessage());
-  }
-
-  @Test
-  void pingWithoutProfileThrowsUnauthorizedException() {
-    AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal(
-            "sub-admin-1",
-            "admin@example.com",
-            "ADMIN",
-            "c1f84e7b-bb84-412d-81bb-4449df141f11");
-
-    when(currentUserProvider.requireCurrentPublicUserId())
-        .thenReturn("c1f84e7b-bb84-412d-81bb-4449df141f11");
-    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
-        .thenReturn(Optional.empty());
-
-    UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> controller.ping());
-
-    assertEquals("Authenticated user profile not found", ex.getMessage());
   }
 }
 
