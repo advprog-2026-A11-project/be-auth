@@ -54,7 +54,6 @@ public class UserProfileController {
   @PostMapping
   public ResponseEntity<UserProfileResponse> create(@RequestBody UserProfileRequest request) {
     UserProfile user = toEntity(request);
-    normalizeIntegrationDefaults(user);
     UserProfile created = service.create(user);
     return new ResponseEntity<>(UserProfileResponse.from(created), HttpStatus.CREATED);
   }
@@ -77,7 +76,6 @@ public class UserProfileController {
       @PathVariable UUID id,
       @RequestBody UserProfileRequest request) {
     UserProfile user = toEntity(request);
-    normalizeIntegrationDefaults(user);
     return service.update(id, user)
         .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
@@ -171,28 +169,16 @@ public class UserProfileController {
         deactivated.getId()));
   }
 
-  private void normalizeIntegrationDefaults(UserProfile user) {
-    String username = user.getUsername() == null ? "" : user.getUsername().trim();
-    user.setUsername(username);
-
-    if (user.getDisplayName() == null) {
-      user.setDisplayName("");
-    }
-
-    user.setRole(Role.canonicalize(user.getRole()));
-
-    if (user.getEmail() == null || user.getEmail().isBlank()) {
-      user.setEmail(username + "@local.test");
-    }
-  }
-
   private UserProfile toEntity(UserProfileRequest request) {
     UserProfile user = new UserProfile();
-    user.setUsername(request.getUsername());
-    user.setEmail(request.getEmail());
+    String username = request.getUsername() == null ? "" : request.getUsername().trim();
+    String email = request.getEmail();
+
+    user.setUsername(username);
+    user.setEmail((email == null || email.isBlank()) ? username + "@local.test" : email);
     user.setSupabaseUserId(request.getSupabaseUserId());
-    user.setDisplayName(request.getDisplayName());
-    user.setRole(request.getRole());
+    user.setDisplayName(request.getDisplayName() == null ? "" : request.getDisplayName());
+    user.setRole(Role.canonicalize(request.getRole()));
     if (request.getActive() != null) {
       user.setActive(request.getActive());
     }
