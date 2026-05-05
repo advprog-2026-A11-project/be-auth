@@ -403,7 +403,7 @@ class AuthControllerTest {
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(currentUserProvider.getCurrentUser())
         .thenReturn(Optional.of(
-            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER")));
+            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER", null)));
     when(request.getHeader("Authorization")).thenReturn("Bearer   ");
 
     ResponseStatusException ex = assertThrows(

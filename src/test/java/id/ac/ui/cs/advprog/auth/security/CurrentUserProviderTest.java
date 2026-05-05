@@ -35,7 +35,7 @@ class CurrentUserProviderTest {
   @Test
   void getCurrentUserReturnsPrincipalWhenAlreadyResolved() {
     AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "ADMIN");
+        new AuthenticatedUserPrincipal("sub-123", "user@example.com", "ADMIN", null);
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(principal, null, List.of()));
 

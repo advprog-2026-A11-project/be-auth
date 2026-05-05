@@ -5,9 +5,5 @@ public record AuthenticatedUserPrincipal(
     String email,
     String role,
     String publicUserId) {
-
-  public AuthenticatedUserPrincipal(String sub, String email, String role) {
-    this(sub, email, role, null);
-  }
 }
 
