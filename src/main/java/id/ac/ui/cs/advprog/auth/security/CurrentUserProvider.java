@@ -56,7 +56,7 @@ public class CurrentUserProvider {
       return Optional.of(new AuthenticatedUserPrincipal(
           jwt.getSubject(),
           jwt.getClaimAsString("email"),
-          resolveRole(authentication.getAuthorities(), jwt.getClaimAsString("role")),
+          resolveRole(authentication.getAuthorities(), jwt.getClaimAsString("user_role")),
           publicUserId));
     }
 

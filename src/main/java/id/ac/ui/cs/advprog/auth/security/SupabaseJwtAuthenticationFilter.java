@@ -147,7 +147,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
-    String role = resolveRole(profile, jwt.getClaimAsString("role"));
+    String role = resolveRole(profile, jwt.getClaimAsString("user_role"));
     List<GrantedAuthority> authorities = buildAuthorities(role);
     UsernamePasswordAuthenticationToken authenticationToken =
         new UsernamePasswordAuthenticationToken(jwt, token, authorities);
