@@ -10,12 +10,17 @@ import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseAuthClient;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 class AuthLoginServiceTest {
 
@@ -26,7 +31,7 @@ class AuthLoginServiceTest {
   private UserProfileService userProfileService;
 
   @Mock
-  private AccessTokenClaimRefreshService accessTokenClaimRefreshService;
+  private SupabaseJwtService supabaseJwtService;
 
   private AuthLoginService service;
 
@@ -36,7 +41,7 @@ class AuthLoginServiceTest {
     service = new AuthLoginService(
         supabaseAuthClient,
         userProfileService,
-        accessTokenClaimRefreshService);
+        supabaseJwtService);
   }
 
   @Test
@@ -93,16 +98,54 @@ class AuthLoginServiceTest {
             "supabase-user-phone",
             "phone@example.com",
             "STUDENT"));
-    when(accessTokenClaimRefreshService.ensurePublicUserIdClaim(org.mockito.ArgumentMatchers.any()))
-        .thenAnswer(invocation -> invocation.getArgument(0));
     when(userProfileService.upsertFromIdentity(
         "supabase-user-phone",
         "phone@example.com",
         "STUDENT")).thenReturn(user);
+    when(supabaseJwtService.validateAccessToken("access-token"))
+        .thenReturn(jwt("access-token", "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     service.login("+628123456789", "password123");
 
     verify(supabaseAuthClient).loginWithPassword("phone@example.com", "password123");
+  }
+
+  @Test
+  void loginRefreshesSessionWhenAccessTokenMissingPublicUserIdClaim() {
+    UserProfile user = new UserProfile();
+    user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    user.setEmail("user@example.com");
+    user.setRole("STUDENT");
+    user.setActive(true);
+
+    SupabaseAuthClient.LoginResult loginResult = new SupabaseAuthClient.LoginResult(
+        "access-token",
+        "refresh-token",
+        3600L,
+        "supabase-user-1",
+        "user@example.com",
+        "authenticated");
+    SupabaseAuthClient.LoginResult refreshedResult = new SupabaseAuthClient.LoginResult(
+        "access-token-2",
+        "refresh-token-2",
+        3600L,
+        "supabase-user-1",
+        "user@example.com",
+        "authenticated");
+
+    when(userProfileService.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+    when(supabaseAuthClient.loginWithPassword("user@example.com", "password123"))
+        .thenReturn(loginResult);
+    when(userProfileService.upsertFromIdentity("supabase-user-1", "user@example.com", "authenticated"))
+        .thenReturn(user);
+    when(supabaseJwtService.validateAccessToken("access-token"))
+        .thenReturn(jwt("access-token", null));
+    when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(refreshedResult);
+
+    var response = service.login("user@example.com", "password123");
+
+    assertEquals("access-token-2", response.accessToken());
+    assertEquals("refresh-token-2", response.refreshToken());
   }
 
   @Test
@@ -123,6 +166,21 @@ class AuthLoginServiceTest {
         ex.getMessage());
     verify(supabaseAuthClient, never())
         .loginWithPassword("inactive-phone@example.com", "password123");
+  }
+
+  private Jwt jwt(String tokenValue, String publicUserId) {
+    Map<String, Object> claims = new java.util.LinkedHashMap<>();
+    claims.put("sub", "supabase-user-1");
+    claims.put("email", "user@example.com");
+    claims.put("role", "authenticated");
+    claims.put("aud", List.of("authenticated"));
+    claims.put("iss", "https://supabase.test/auth/v1");
+    if (publicUserId != null) {
+      claims.put("yomu_user_id", publicUserId);
+    }
+
+    Instant now = Instant.now();
+    return new Jwt(tokenValue, now, now.plusSeconds(3600), Map.of("alg", "none"), claims);
   }
 }
 
