@@ -22,7 +22,14 @@ public class SupabaseGoogleSsoService {
   public SsoUrlResponse createSsoUrl(String redirectTo) {
     ensureConfig();
 
-    String targetRedirectUrl = resolveRedirectUrl(redirectTo);
+    String targetRedirectUrl = redirectUrl;
+    if (StringUtils.hasText(redirectTo)) {
+      String candidate = redirectTo.trim();
+      if (!candidate.startsWith("http://") && !candidate.startsWith("https://")) {
+        throw new IllegalArgumentException("redirectTo must start with http:// or https://");
+      }
+      targetRedirectUrl = candidate;
+    }
 
     String authorizeUrl = UriComponentsBuilder
         .fromHttpUrl(trimTrailingSlash(supabaseUrl) + "/auth/v1/authorize")
@@ -42,17 +49,6 @@ public class SupabaseGoogleSsoService {
     if (!StringUtils.hasText(redirectUrl)) {
       throw new IllegalStateException("auth.sso.google.redirect-url must be configured");
     }
-  }
-
-  private String resolveRedirectUrl(String requestedRedirectUrl) {
-    if (!StringUtils.hasText(requestedRedirectUrl)) {
-      return redirectUrl;
-    }
-    String candidate = requestedRedirectUrl.trim();
-    if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
-      return candidate;
-    }
-    throw new IllegalArgumentException("redirectTo must start with http:// or https://");
   }
 
   private String trimTrailingSlash(String value) {

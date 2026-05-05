@@ -4,28 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockitoAnnotations;
 
 class SupabaseGoogleSsoServiceTest {
 
   private static final String CALLBACK_URL = "http://localhost:3000/users/account";
 
-  private SupabaseGoogleSsoService service;
-
-  @BeforeEach
-  void setUp() {
-    MockitoAnnotations.openMocks(this);
-    service = new SupabaseGoogleSsoService(
-        "https://ubsiynttkoqzdcxpxzbg.supabase.co",
-        "https://app.yomu.id/auth/callback");
-  }
-
-  @AfterEach
-  void tearDown() {
-  }
+  private final SupabaseGoogleSsoService service = new SupabaseGoogleSsoService(
+      "https://ubsiynttkoqzdcxpxzbg.supabase.co",
+      "https://app.yomu.id/auth/callback");
 
   @Test
   void createSsoUrlDoesNotUseBackendPkceParameters() {
