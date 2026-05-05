@@ -84,7 +84,7 @@ class CurrentUserProviderTest {
 
   @Test
   void getCurrentUserFallsBackToClaimRoleWhenAuthorityIsMissing() {
-    Jwt jwt = jwt("token-3", "sub-456", "claim@example.com", "admin");
+    Jwt jwt = jwt("token-3", "sub-456", "claim@example.com", "authenticated", "admin");
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(jwt, null, List.of()));
 
@@ -105,19 +105,27 @@ class CurrentUserProviderTest {
   }
 
   private Jwt jwt(String tokenValue, String sub, String email, String role) {
+    return jwt(tokenValue, sub, email, role, null);
+  }
+
+  private Jwt jwt(String tokenValue, String sub, String email, String role, String userRole) {
     Instant now = Instant.now();
+    Map<String, Object> claims = new java.util.LinkedHashMap<>();
+    claims.put("sub", sub);
+    claims.put("email", email);
+    claims.put("role", role);
+    claims.put("yomu_user_id", "c1f84e7b-bb84-412d-81bb-4449df141f11");
+    claims.put("aud", List.of("authenticated"));
+    claims.put("iss", "https://supabase.test/auth/v1");
+    if (userRole != null) {
+      claims.put("user_role", userRole);
+    }
     return new Jwt(
         tokenValue,
         now,
         now.plusSeconds(3600),
         Map.of("alg", "none"),
-        Map.of(
-            "sub", sub,
-            "email", email,
-            "role", role,
-            "yomu_user_id", "c1f84e7b-bb84-412d-81bb-4449df141f11",
-            "aud", List.of("authenticated"),
-            "iss", "https://supabase.test/auth/v1"));
+        claims);
   }
 }
 

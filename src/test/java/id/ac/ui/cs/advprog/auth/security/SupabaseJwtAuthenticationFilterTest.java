@@ -177,6 +177,7 @@ class SupabaseJwtAuthenticationFilterTest {
         "sub-inactive",
         "inactive@example.com",
         "USER",
+        null,
         "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile inactive = new UserProfile();
     inactive.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
@@ -209,6 +210,7 @@ class SupabaseJwtAuthenticationFilterTest {
         "ctx-sub-2",
         "ctx2@example.com",
         "authenticated",
+        null,
         "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile admin = new UserProfile();
     admin.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
@@ -248,6 +250,7 @@ class SupabaseJwtAuthenticationFilterTest {
         "sub-user",
         "user@example.com",
         "authenticated",
+        "ADMIN",
         "c1f84e7b-bb84-412d-81bb-4449df141f11");
     when(tokenRevocationService.isRevoked("valid-user")).thenReturn(false);
     when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
@@ -257,7 +260,7 @@ class SupabaseJwtAuthenticationFilterTest {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     assertTrue(
-        auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
+        auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
     verify(chain).doFilter(request, response);
   }
 
@@ -275,6 +278,7 @@ class SupabaseJwtAuthenticationFilterTest {
         "sub-admin",
         "admin@example.com",
         "USER",
+        null,
         "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile admin = new UserProfile();
     admin.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
@@ -326,6 +330,7 @@ class SupabaseJwtAuthenticationFilterTest {
         " ",
         " ",
         "USER",
+        null,
         publicUserId.toString());
     UserProfile user = new UserProfile();
     user.setId(publicUserId);
@@ -380,6 +385,7 @@ class SupabaseJwtAuthenticationFilterTest {
         "sub-role-fallback",
         "role@example.com",
         "authenticated",
+        null,
         "c1f84e7b-bb84-412d-81bb-4449df141f11");
     UserProfile user = new UserProfile();
     user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
@@ -402,16 +408,25 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   private Jwt jwt(String tokenValue, String sub, String email, String role) {
-    return jwt(tokenValue, sub, email, role, null);
+    return jwt(tokenValue, sub, email, role, null, null);
   }
 
-  private Jwt jwt(String tokenValue, String sub, String email, String role, String publicUserId) {
+  private Jwt jwt(
+      String tokenValue,
+      String sub,
+      String email,
+      String role,
+      String userRole,
+      String publicUserId) {
     Map<String, Object> claims = new java.util.LinkedHashMap<>();
     claims.put("sub", sub);
     claims.put("email", email);
     claims.put("role", role);
     claims.put("aud", List.of("authenticated"));
     claims.put("iss", "https://supabase.test/auth/v1");
+    if (userRole != null) {
+      claims.put("user_role", userRole);
+    }
     if (publicUserId != null) {
       claims.put("yomu_user_id", publicUserId);
     }
@@ -426,7 +441,7 @@ class SupabaseJwtAuthenticationFilterTest {
   }
 
   private void authenticateJwt(String tokenValue, String sub, String email, String role) {
-    authenticateJwtWithPublicUserId(tokenValue, sub, email, role, null);
+    authenticateJwtWithPublicUserId(tokenValue, sub, email, role, null, null);
   }
 
   private void authenticateJwtWithPublicUserId(
@@ -434,10 +449,11 @@ class SupabaseJwtAuthenticationFilterTest {
       String sub,
       String email,
       String role,
+      String userRole,
       String publicUserId) {
     SecurityContextHolder.getContext().setAuthentication(
         new UsernamePasswordAuthenticationToken(
-            jwt(tokenValue, sub, email, role, publicUserId),
+            jwt(tokenValue, sub, email, role, userRole, publicUserId),
             null,
             List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
   }
