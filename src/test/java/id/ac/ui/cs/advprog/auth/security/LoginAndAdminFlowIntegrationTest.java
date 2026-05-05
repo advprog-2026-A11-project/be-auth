@@ -163,6 +163,7 @@ class LoginAndAdminFlowIntegrationTest {
         "token-logout",
         "supabase-user-4",
         "logout@example.com",
+        "USER",
         "f3150ad7-cfde-4eeb-8eed-deebb8780780");
     when(supabaseJwtService.validateAccessToken("token-logout")).thenReturn(jwt);
 
@@ -193,6 +194,7 @@ class LoginAndAdminFlowIntegrationTest {
         "token-user",
         "supabase-user-1",
         "user@example.com",
+        "USER",
         "78ba3c17-2dec-4eef-878f-fd326dcb8181");
     when(supabaseJwtService.validateAccessToken("token-user")).thenReturn(jwt);
 
@@ -215,6 +217,7 @@ class LoginAndAdminFlowIntegrationTest {
         "token-admin",
         "supabase-admin-1",
         "admin@example.com",
+        "ADMIN",
         "a5a45e5e-ee42-446f-9a6e-3c2d3dd9c106");
     when(supabaseJwtService.validateAccessToken("token-admin")).thenReturn(jwt);
 
@@ -230,10 +233,15 @@ class LoginAndAdminFlowIntegrationTest {
             .header("Authorization", "Bearer token-admin"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Admin access granted"))
-        .andExpect(jsonPath("$.userId").value("cc0d1aa4-9a09-4f8b-b7f6-cb9c903d2fc7"));
+        .andExpect(jsonPath("$.userId").value("a5a45e5e-ee42-446f-9a6e-3c2d3dd9c106"));
   }
 
-  private Jwt validJwt(String tokenValue, String sub, String email, String publicUserId) {
+  private Jwt validJwt(
+      String tokenValue,
+      String sub,
+      String email,
+      String userRole,
+      String publicUserId) {
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
@@ -244,6 +252,7 @@ class LoginAndAdminFlowIntegrationTest {
             "sub", sub,
             "email", email,
             "role", "authenticated",
+            "user_role", userRole,
             "yomu_user_id", publicUserId,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
