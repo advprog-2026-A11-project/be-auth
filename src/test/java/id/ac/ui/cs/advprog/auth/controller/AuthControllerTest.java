@@ -79,38 +79,20 @@ class AuthControllerTest {
   }
 
   @Test
-  void meMissingHeaderReturnsUnauthorized() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
-    ResponseEntity<?> resp = controller.me(req);
-    assertEquals(401, resp.getStatusCodeValue());
-    assertEquals("Missing Bearer token", ((ErrorResponse) resp.getBody()).error());
-  }
-
-  @Test
-  void meNonBearerHeaderReturnsUnauthorized() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Basic abc");
-
-    ResponseEntity<?> resp = controller.me(req);
-
+  void meReturnsUnauthorizedWithoutAuthenticatedJwt() {
+    ResponseEntity<?> resp = controller.me();
     assertEquals(401, resp.getStatusCodeValue());
     assertEquals("Missing Bearer token", ((ErrorResponse) resp.getBody()).error());
   }
 
   @Test
   void meInvalidTokenReturnsUnauthorized() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer bad");
-    ResponseEntity<?> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
     assertEquals(401, resp.getStatusCodeValue());
   }
 
   @Test
-  void meUsesAuthenticatedJwtFromSecurityContextWhenHeaderMissing() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
-
+  void meUsesAuthenticatedJwtFromSecurityContext() throws Exception {
     Jwt jwt = new Jwt(
         "security-context-token",
         Instant.now(),
@@ -138,7 +120,7 @@ class AuthControllerTest {
     when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenReturn(Optional.of(user));
 
-    ResponseEntity<?> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
 
     assertEquals(200, resp.getStatusCodeValue());
     assertAuthMeResponseType(resp);
@@ -148,8 +130,6 @@ class AuthControllerTest {
 
   @Test
   void meReturnsProfileWhenPresent() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
     authenticateJwtWithPublicUserId(
         "sub",
         "a@b",
@@ -170,7 +150,7 @@ class AuthControllerTest {
     when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenReturn(Optional.of(user));
 
-    ResponseEntity<?> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
     assertEquals(200, resp.getStatusCodeValue());
     assertAuthMeResponseType(resp);
     Object profilePayload = invokeRecordAccessor(resp.getBody(), "profile");
@@ -182,11 +162,9 @@ class AuthControllerTest {
 
   @Test
   void meReturnsUnauthorizedWhenPublicUserIdClaimMissing() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
     authenticateJwt("sub-123", "sub@example.com", "authenticated");
 
-    ResponseEntity<?> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
 
     assertEquals(401, resp.getStatusCodeValue());
     assertEquals("Missing public user id claim", ((ErrorResponse) resp.getBody()).error());
@@ -196,8 +174,6 @@ class AuthControllerTest {
 
   @Test
   void mePrefersPublicUserIdClaimWhenPresent() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
     UUID publicUserId = UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11");
     authenticateJwtWithPublicUserId(
         "sub-123",
@@ -211,7 +187,7 @@ class AuthControllerTest {
     user.setEmail("sub@example.com");
     when(profileService.findByPublicUserId(publicUserId.toString())).thenReturn(Optional.of(user));
 
-    ResponseEntity<?> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
 
     assertEquals(200, resp.getStatusCodeValue());
     assertAuthMeResponseType(resp);
@@ -221,8 +197,6 @@ class AuthControllerTest {
 
   @Test
   void meReturnsNullProfileWhenAbsent() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
     authenticateJwtWithPublicUserId(
         "sub",
         "x@y",
@@ -231,7 +205,7 @@ class AuthControllerTest {
     when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenReturn(Optional.empty());
 
-    ResponseEntity<?> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
     assertEquals(200, resp.getStatusCodeValue());
     assertAuthMeResponseType(resp);
     assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
@@ -296,8 +270,6 @@ class AuthControllerTest {
 
   @Test
   void mePropagatesDataAccessExceptionWhenProfileLookupFails() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
     authenticateJwtWithPublicUserId(
         "sub-error",
         "error@example.com",
@@ -308,7 +280,7 @@ class AuthControllerTest {
 
     DataAccessResourceFailureException ex = assertThrows(
         DataAccessResourceFailureException.class,
-        () -> controller.me(req));
+        controller::me);
 
     assertEquals("db down", ex.getMessage());
   }

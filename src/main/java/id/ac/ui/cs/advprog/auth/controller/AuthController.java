@@ -59,7 +59,7 @@ public class AuthController {
   }
 
   @GetMapping("/me")
-  public ResponseEntity<?> me(HttpServletRequest request) {
+  public ResponseEntity<?> me() {
     Jwt claims = currentUserProvider.getCurrentJwt().orElse(null);
     if (claims == null) {
       return unauthorized("Missing Bearer token");
