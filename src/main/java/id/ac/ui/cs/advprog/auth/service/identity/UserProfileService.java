@@ -81,22 +81,6 @@ public class UserProfileService {
     return identitySyncService.upsertFromIdentity(supabaseUserId, email, incomingRole);
   }
 
-  public UserProfile upsertFromIdentity(
-      String supabaseUserId,
-      String email,
-      String incomingRole,
-      String authProvider,
-      String googleSub,
-      String displayName) {
-    return identitySyncService.upsertFromIdentity(
-        supabaseUserId,
-        email,
-        incomingRole,
-        authProvider,
-        googleSub,
-        displayName);
-  }
-
   public UserProfile updateCurrentUserProfile(
       String publicUserId,
       String username,
