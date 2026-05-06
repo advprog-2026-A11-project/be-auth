@@ -85,7 +85,9 @@ public class UserProfileService {
       String publicUserId,
       String username,
       String displayName) {
-    return saveCurrentUser(publicUserId, existing -> applyProfileFields(existing, username, displayName));
+    return saveCurrentUser(
+        publicUserId,
+        existing -> applyProfileFields(existing, username, displayName));
   }
 
   public UserProfile updateIdentityProfile(
@@ -236,5 +238,4 @@ public class UserProfileService {
   }
 
 }
-
 

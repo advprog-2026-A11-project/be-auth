@@ -27,6 +27,7 @@ public final class AuthResponses {
 
   public record MessageResponse(String message) {
   }
+
   public record SsoUrlResponse(
       String provider,
       String authorizationUrl,

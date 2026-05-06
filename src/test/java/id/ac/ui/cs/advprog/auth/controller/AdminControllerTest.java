@@ -42,7 +42,9 @@ class AdminControllerTest {
 
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("Admin access granted", response.getBody().message());
-    assertEquals(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"), response.getBody().userId());
+    assertEquals(
+        UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"),
+        response.getBody().userId());
   }
 
   @Test

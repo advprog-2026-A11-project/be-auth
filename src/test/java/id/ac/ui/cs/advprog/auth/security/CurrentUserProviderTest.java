@@ -13,8 +13,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 class CurrentUserProviderTest {
@@ -109,7 +109,6 @@ class CurrentUserProviderTest {
   }
 
   private Jwt jwt(String tokenValue, String sub, String email, String role, String userRole) {
-    Instant now = Instant.now();
     Map<String, Object> claims = new java.util.LinkedHashMap<>();
     claims.put("sub", sub);
     claims.put("email", email);
@@ -120,6 +119,7 @@ class CurrentUserProviderTest {
     if (userRole != null) {
       claims.put("user_role", userRole);
     }
+    Instant now = Instant.now();
     return new Jwt(
         tokenValue,
         now,

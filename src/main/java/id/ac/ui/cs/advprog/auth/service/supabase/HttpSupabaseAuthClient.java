@@ -49,7 +49,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
           .body(IdentityPayload.class);
 
       if (responseBody == null) {
-        throw new IllegalStateException("User lookup failed: empty response from identity provider");
+        throw new IllegalStateException(
+            "User lookup failed: empty response from identity provider");
       }
 
       String resolvedSupabaseUserId = responseBody.id();

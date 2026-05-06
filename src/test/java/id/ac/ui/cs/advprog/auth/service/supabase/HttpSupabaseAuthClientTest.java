@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.auth.service.supabase;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -271,7 +271,9 @@ class HttpSupabaseAuthClientTest {
             "new-user",
             "New User"));
 
-    assertEquals("Registration failed: invalid token payload from identity provider", ex.getMessage());
+    assertEquals(
+        "Registration failed: invalid token payload from identity provider",
+        ex.getMessage());
   }
 
   @Test
@@ -454,7 +456,10 @@ class HttpSupabaseAuthClientTest {
       String userId = path.substring(path.lastIndexOf('/') + 1);
 
       if ("missing-user".equals(userId)) {
-        writeJson(exchange, 404, """
+        writeJson(
+            exchange,
+            404,
+            """
             {
               "message": "User not found"
             }
@@ -463,7 +468,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("server-error-user".equals(userId)) {
-        writeJson(exchange, 500, """
+        writeJson(
+            exchange,
+            500,
+            """
             {
               "message": "Server error"
             }
@@ -478,7 +486,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("invalid-user".equals(userId)) {
-        writeJson(exchange, 200, """
+        writeJson(
+            exchange,
+            200,
+            """
             {
               "id": "invalid-user"
             }
@@ -487,7 +498,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("/auth/v1/admin/users".equals(path)) {
-        writeJson(exchange, 400, """
+        writeJson(
+            exchange,
+            400,
+            """
             {
               "message": "User already registered"
             }
@@ -495,7 +509,10 @@ class HttpSupabaseAuthClientTest {
         return;
       }
 
-      writeJson(exchange, 200, """
+      writeJson(
+          exchange,
+          200,
+          """
           {
             "id": "user-123",
             "email": "admin@example.com",
@@ -671,7 +688,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if (requestBody.contains("\"plain@example.com\"")) {
-        writeJson(exchange, 200, """
+        writeJson(
+            exchange,
+            200,
+            """
             {
               "access_token": "signup-access-token-plain",
               "refresh_token": "signup-refresh-token-plain",
@@ -686,7 +706,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if (requestBody.contains("\"missing-signup-user@example.com\"")) {
-        writeJson(exchange, 200, """
+        writeJson(
+            exchange,
+            200,
+            """
             {
               "access_token": "signup-access-token"
             }
@@ -695,7 +718,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if (requestBody.contains("\"invalid-signup@example.com\"")) {
-        writeJson(exchange, 200, """
+        writeJson(
+            exchange,
+            200,
+            """
             {
               "access_token": "signup-access-token",
               "user": {
@@ -707,7 +733,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if (requestBody.contains("\"rate-limit@example.com\"")) {
-        writeJson(exchange, 400, """
+        writeJson(
+            exchange,
+            400,
+            """
             {
               "message": "Email rate limit exceeded"
             }
@@ -716,7 +745,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if (requestBody.contains("\"bad-signup@example.com\"")) {
-        writeJson(exchange, 400, """
+        writeJson(
+            exchange,
+            400,
+            """
             {
               "message": "Signup rejected"
             }
@@ -725,7 +757,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if (requestBody.contains("\"server-error-signup@example.com\"")) {
-        writeJson(exchange, 500, """
+        writeJson(
+            exchange,
+            500,
+            """
             {
               "message": "Signup server failed"
             }
@@ -733,7 +768,10 @@ class HttpSupabaseAuthClientTest {
         return;
       }
 
-      writeJson(exchange, 200, """
+      writeJson(
+          exchange,
+          200,
+          """
           {
             "access_token": "signup-access-token",
             "refresh_token": "signup-refresh-token",
@@ -756,7 +794,10 @@ class HttpSupabaseAuthClientTest {
     public void handle(HttpExchange exchange) throws IOException {
       String authorization = exchange.getRequestHeaders().getFirst("Authorization");
       if ("Bearer bad-logout-token".equals(authorization)) {
-        writeJson(exchange, 400, """
+        writeJson(
+            exchange,
+            400,
+            """
             {
               "message": "Session not found"
             }
@@ -765,7 +806,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("Bearer server-error-logout-token".equals(authorization)) {
-        writeJson(exchange, 500, """
+        writeJson(
+            exchange,
+            500,
+            """
             {
               "message": "Logout server failed"
             }
@@ -784,7 +828,10 @@ class HttpSupabaseAuthClientTest {
     public void handle(HttpExchange exchange) throws IOException {
       String authorization = exchange.getRequestHeaders().getFirst("Authorization");
       if ("Bearer bad-email-token".equals(authorization)) {
-        writeJson(exchange, 400, """
+        writeJson(
+            exchange,
+            400,
+            """
             {
               "message": "Email update rejected"
             }
@@ -793,7 +840,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("Bearer server-error-email-token".equals(authorization)) {
-        writeJson(exchange, 500, """
+        writeJson(
+            exchange,
+            500,
+            """
             {
               "message": "Email service failed"
             }
@@ -802,7 +852,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("Bearer bad-password-token".equals(authorization)) {
-        writeJson(exchange, 400, """
+        writeJson(
+            exchange,
+            400,
+            """
             {
               "message": "Password update rejected"
             }
@@ -811,7 +864,10 @@ class HttpSupabaseAuthClientTest {
       }
 
       if ("Bearer server-error-password-token".equals(authorization)) {
-        writeJson(exchange, 500, """
+        writeJson(
+            exchange,
+            500,
+            """
             {
               "message": "Password service failed"
             }

@@ -11,9 +11,9 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
 import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import jakarta.servlet.FilterChain;
 import java.time.Instant;
 import java.util.List;
@@ -29,8 +29,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 class SupabaseJwtAuthenticationFilterTest {

@@ -148,12 +148,12 @@ public class UserProfile {
     this.role = Role.from(role);
   }
 
-  public Role getRoleEnum() {
-    return role == null ? Role.STUDENT : role;
-  }
-
   public void setRole(Role role) {
     this.role = role == null ? Role.STUDENT : role;
+  }
+
+  public Role getRoleEnum() {
+    return role == null ? Role.STUDENT : role;
   }
 
   public boolean isActive() {

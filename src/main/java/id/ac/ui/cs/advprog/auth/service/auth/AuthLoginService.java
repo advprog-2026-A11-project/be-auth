@@ -168,7 +168,8 @@ public class AuthLoginService {
 
   private SupabaseAuthClient.LoginResult ensurePublicUserIdClaim(
       SupabaseAuthClient.LoginResult session) {
-    if (!StringUtils.hasText(session.accessToken()) || !StringUtils.hasText(session.refreshToken())) {
+    if (!StringUtils.hasText(session.accessToken())
+        || !StringUtils.hasText(session.refreshToken())) {
       return session;
     }
 
@@ -181,5 +182,4 @@ public class AuthLoginService {
   }
 
 }
-
 

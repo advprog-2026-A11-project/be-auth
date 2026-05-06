@@ -22,7 +22,8 @@ class TokenRevocationServiceTest {
 
   private final RevokedTokenStore revokedTokenStore = Mockito.mock(RevokedTokenStore.class);
   private final Clock clock = Clock.fixed(Instant.parse("2026-05-03T00:00:00Z"), ZoneOffset.UTC);
-  private final TokenRevocationService service = new TokenRevocationService(revokedTokenStore, clock);
+  private final TokenRevocationService service =
+      new TokenRevocationService(revokedTokenStore, clock);
 
   @Test
   void revokeIgnoresBlankToken() {

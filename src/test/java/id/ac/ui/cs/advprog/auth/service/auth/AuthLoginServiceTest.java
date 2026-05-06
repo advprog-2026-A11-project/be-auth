@@ -136,7 +136,10 @@ class AuthLoginServiceTest {
     when(userProfileService.findByEmail("user@example.com")).thenReturn(Optional.of(user));
     when(supabaseAuthClient.loginWithPassword("user@example.com", "password123"))
         .thenReturn(loginResult);
-    when(userProfileService.upsertFromIdentity("supabase-user-1", "user@example.com", "authenticated"))
+    when(userProfileService.upsertFromIdentity(
+        "supabase-user-1",
+        "user@example.com",
+        "authenticated"))
         .thenReturn(user);
     when(supabaseJwtService.validateAccessToken("access-token"))
         .thenReturn(jwt("access-token", null));
