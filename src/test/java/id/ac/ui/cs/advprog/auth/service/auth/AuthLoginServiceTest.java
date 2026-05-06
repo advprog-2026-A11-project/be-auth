@@ -121,7 +121,8 @@ class AuthLoginServiceTest {
     user.setActive(true);
 
     when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.of(user));
-    when(userProfileService.findByEmail("normalized-phone@example.com")).thenReturn(Optional.of(user));
+    when(userProfileService.findByEmail("normalized-phone@example.com"))
+        .thenReturn(Optional.of(user));
     when(supabaseAuthClient.loginWithPassword("normalized-phone@example.com", "password123"))
         .thenReturn(new SupabaseAuthClient.LoginResult(
             "access-token",
@@ -170,7 +171,8 @@ class AuthLoginServiceTest {
     user.setActive(true);
 
     when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.of(user));
-    when(userProfileService.findByEmail("country-code-phone@example.com")).thenReturn(Optional.of(user));
+    when(userProfileService.findByEmail("country-code-phone@example.com"))
+        .thenReturn(Optional.of(user));
     when(supabaseAuthClient.loginWithPassword("country-code-phone@example.com", "password123"))
         .thenReturn(new SupabaseAuthClient.LoginResult(
             "access-token",

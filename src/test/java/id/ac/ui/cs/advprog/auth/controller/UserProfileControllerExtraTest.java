@@ -111,12 +111,12 @@ class UserProfileControllerExtraTest {
   @Test
   void lookupProfilesReturnsMinimalPublicProfilesInRequestOrder() {
     UUID id1 = UUID.randomUUID();
-    UUID id2 = UUID.randomUUID();
     UserProfile u1 = new UserProfile();
     u1.setId(id1);
     u1.setUsername("alpha");
     u1.setDisplayName("Alpha User");
     u1.setEmail("alpha@example.com");
+    UUID id2 = UUID.randomUUID();
     UserProfile u2 = new UserProfile();
     u2.setId(id2);
     u2.setUsername("beta");

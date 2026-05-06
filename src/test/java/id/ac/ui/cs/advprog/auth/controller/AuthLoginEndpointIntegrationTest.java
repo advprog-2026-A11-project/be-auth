@@ -39,7 +39,8 @@ class AuthLoginEndpointIntegrationTest {
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
+            .content(
+                """
                 {
                   "identifier": "0812-345-6789",
                   "password": "password123"
@@ -58,7 +59,8 @@ class AuthLoginEndpointIntegrationTest {
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
+            .content(
+                """
                 {
                   "identifier": "0811 1111 111",
                   "password": "password123"
