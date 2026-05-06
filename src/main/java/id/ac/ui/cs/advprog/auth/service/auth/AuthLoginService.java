@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.service.auth;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
+import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
@@ -72,11 +73,16 @@ public class AuthLoginService {
 
   public LoginResponse register(
       String email,
+      String phone,
       String password,
       String username,
       String displayName) {
+    String normalizedEmail = normalizeRegistrationEmail(email);
+    String normalizedPhone = normalizeRegistrationPhone(phone);
+    ensureRegistrationIdentityAvailable(normalizedEmail, normalizedPhone);
+
     SupabaseAuthClient.LoginResult result = supabaseAuthClient.registerWithPassword(
-        email.trim().toLowerCase(),
+        normalizedEmail,
         password,
         username,
         displayName);
@@ -92,7 +98,15 @@ public class AuthLoginService {
             result.supabaseUserId(),
             result.email(),
             username,
-            displayName);
+            displayName,
+            normalizedPhone);
+      } else {
+        profile = userProfileService.updateIdentityProfile(
+            result.supabaseUserId(),
+            result.email(),
+            null,
+            null,
+            normalizedPhone);
       }
       result = ensurePublicUserIdClaim(result);
 
@@ -175,6 +189,10 @@ public class AuthLoginService {
   }
 
   private String normalizePhoneIdentifier(String identifier) {
+    if (!StringUtils.hasText(identifier)) {
+      return null;
+    }
+
     String compact = identifier.replaceAll("[\\s\\-()]", "");
     if (!StringUtils.hasText(compact)) {
       return null;
@@ -191,6 +209,30 @@ public class AuthLoginService {
     }
 
     return compact;
+  }
+
+  private String normalizeRegistrationEmail(String email) {
+    if (!StringUtils.hasText(email)) {
+      throw new IllegalArgumentException("email is required");
+    }
+    return email.trim().toLowerCase();
+  }
+
+  private String normalizeRegistrationPhone(String phone) {
+    String normalizedPhone = normalizePhoneIdentifier(phone == null ? null : phone.trim());
+    if (!StringUtils.hasText(normalizedPhone)) {
+      throw new IllegalArgumentException("phone is required");
+    }
+    return normalizedPhone;
+  }
+
+  private void ensureRegistrationIdentityAvailable(String email, String phone) {
+    if (userProfileService.findByEmail(email).isPresent()) {
+      throw new ConflictException("Email already taken");
+    }
+    if (userProfileService.findByPhone(phone).isPresent()) {
+      throw new ConflictException("Phone already taken");
+    }
   }
 
   private SupabaseAuthClient.LoginResult ensurePublicUserIdClaim(

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import id.ac.ui.cs.advprog.auth.exception.ConflictException;
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
@@ -262,6 +263,108 @@ class AuthLoginServiceTest {
         ex.getMessage());
     verify(supabaseAuthClient, never())
         .loginWithPassword("inactive-phone@example.com", "password123");
+  }
+
+  @Test
+  void registerStoresPhoneOnProfileWhenEmailAndPhoneAreAvailable() {
+    UserProfile profile = new UserProfile();
+    profile.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    profile.setEmail("new@example.com");
+    profile.setRole("STUDENT");
+    profile.setActive(true);
+    profile.setPhone("+628123456789");
+
+    SupabaseAuthClient.LoginResult registerResult = new SupabaseAuthClient.LoginResult(
+        "access-token",
+        "refresh-token",
+        3600L,
+        "supabase-user-1",
+        "new@example.com",
+        "authenticated");
+
+    when(userProfileService.findByEmail("new@example.com")).thenReturn(Optional.empty());
+    when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.empty());
+    when(supabaseAuthClient.registerWithPassword(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User")).thenReturn(registerResult);
+    when(userProfileService.upsertFromIdentity(
+        "supabase-user-1",
+        "new@example.com",
+        "authenticated")).thenReturn(profile);
+    when(userProfileService.updateIdentityProfile(
+        "supabase-user-1",
+        "new@example.com",
+        "newuser",
+        "New User",
+        "+628123456789")).thenReturn(profile);
+    when(supabaseJwtService.validateAccessToken("access-token"))
+        .thenReturn(jwt("access-token", "c1f84e7b-bb84-412d-81bb-4449df141f11"));
+
+    var response = service.register(
+        "new@example.com",
+        "+628123456789",
+        "password123",
+        "newuser",
+        "New User");
+
+    assertEquals("c1f84e7b-bb84-412d-81bb-4449df141f11", response.userId());
+    verify(userProfileService).findByEmail("new@example.com");
+    verify(userProfileService).findByPhone("+628123456789");
+    verify(userProfileService).updateIdentityProfile(
+        "supabase-user-1",
+        "new@example.com",
+        "newuser",
+        "New User",
+        "+628123456789");
+  }
+
+  @Test
+  void registerRejectsEmailAlreadyUsedByExistingAccount() {
+    UserProfile existing = new UserProfile();
+    existing.setEmail("existing@example.com");
+    when(userProfileService.findByEmail("existing@example.com")).thenReturn(Optional.of(existing));
+
+    ConflictException ex = assertThrows(
+        ConflictException.class,
+        () -> service.register(
+            "existing@example.com",
+            "+628123456789",
+            "password123",
+            "newuser",
+            "New User"));
+
+    assertEquals("Email already taken", ex.getMessage());
+    verify(supabaseAuthClient, never()).registerWithPassword(
+        "existing@example.com",
+        "password123",
+        "newuser",
+        "New User");
+  }
+
+  @Test
+  void registerRejectsPhoneAlreadyUsedByExistingAccount() {
+    UserProfile existing = new UserProfile();
+    existing.setPhone("+628123456789");
+    when(userProfileService.findByEmail("new@example.com")).thenReturn(Optional.empty());
+    when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.of(existing));
+
+    ConflictException ex = assertThrows(
+        ConflictException.class,
+        () -> service.register(
+            "new@example.com",
+            "0812-345-6789",
+            "password123",
+            "newuser",
+            "New User"));
+
+    assertEquals("Phone already taken", ex.getMessage());
+    verify(supabaseAuthClient, never()).registerWithPassword(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User");
   }
 
   private Jwt jwt(String tokenValue, String publicUserId) {

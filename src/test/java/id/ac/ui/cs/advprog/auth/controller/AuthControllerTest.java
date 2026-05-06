@@ -215,6 +215,7 @@ class AuthControllerTest {
   void registerReturnsCreated() {
     RegisterRequest request = new RegisterRequest(
         "new@example.com",
+        "+628123456789",
         "password123",
         "newuser",
         "New User");
@@ -228,6 +229,7 @@ class AuthControllerTest {
         "Registration successful");
     when(authLoginService.register(
         "new@example.com",
+        "+628123456789",
         "password123",
         "newuser",
         "New User")).thenReturn(response);

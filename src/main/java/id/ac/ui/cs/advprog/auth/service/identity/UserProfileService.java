@@ -92,8 +92,17 @@ public class UserProfileService {
       String email,
       String username,
       String displayName) {
+    return updateIdentityProfile(supabaseUserId, email, username, displayName, null);
+  }
+
+  public UserProfile updateIdentityProfile(
+      String supabaseUserId,
+      String email,
+      String username,
+      String displayName,
+      String phone) {
     UserProfile existing = resolveProfileByIdentityOrThrow(supabaseUserId, email);
-    applyProfileFields(existing, username, displayName);
+    applyProfileFields(existing, username, displayName, phone);
     return repository.save(existing);
   }
 
@@ -172,7 +181,7 @@ public class UserProfileService {
   }
 
   private void applyAdminManagedFields(UserProfile target, UserProfile incoming) {
-    applyProfileFields(target, incoming.getUsername(), incoming.getDisplayName());
+    applyProfileFields(target, incoming.getUsername(), incoming.getDisplayName(), null);
 
     if (StringUtils.hasText(incoming.getRole())) {
       target.setRole(Role.canonicalize(incoming.getRole()));
@@ -211,6 +220,14 @@ public class UserProfileService {
   }
 
   private void applyProfileFields(UserProfile existing, String username, String displayName) {
+    applyProfileFields(existing, username, displayName, null);
+  }
+
+  private void applyProfileFields(
+      UserProfile existing,
+      String username,
+      String displayName,
+      String phone) {
     if (StringUtils.hasText(username)) {
       existing.setUsername(requireUnique(
           existing.getUsername(),
@@ -221,6 +238,14 @@ public class UserProfileService {
 
     if (displayName != null) {
       existing.setDisplayName(displayName.trim());
+    }
+
+    if (phone != null) {
+      existing.setPhone(requireUnique(
+          existing.getPhone(),
+          normalizePhoneOrThrow(phone),
+          repository::existsByPhone,
+          "Phone already taken"));
     }
   }
 
