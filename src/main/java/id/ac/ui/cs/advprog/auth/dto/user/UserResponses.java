@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.auth.dto.user;
 
+import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import java.util.List;
 import java.util.UUID;
 
 public final class UserResponses {
@@ -30,6 +32,23 @@ public final class UserResponses {
       String username,
       String displayName,
       String email) {
+  }
+
+  public record PublicUserProfileResponse(
+      UUID id,
+      String username,
+      String displayName) {
+
+    public static PublicUserProfileResponse from(UserProfile profile) {
+      return new PublicUserProfileResponse(
+          profile.getId(),
+          profile.getUsername(),
+          profile.getDisplayName());
+    }
+  }
+
+  public record LookupProfilesResponse(
+      List<PublicUserProfileResponse> profiles) {
   }
 }
 
