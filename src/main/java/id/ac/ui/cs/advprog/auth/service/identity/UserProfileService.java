@@ -47,6 +47,23 @@ public class UserProfileService {
     return repository.findById(id);
   }
 
+  public List<UserProfile> findPublicProfilesByIds(List<UUID> userIds) {
+    if (userIds == null || userIds.isEmpty()) {
+      return List.of();
+    }
+
+    List<UUID> distinctIds = userIds.stream().distinct().toList();
+    List<UserProfile> profiles = repository.findAllById(distinctIds);
+
+    return distinctIds.stream()
+        .flatMap(
+            id -> profiles.stream()
+                .filter(profile -> id.equals(profile.getId()))
+                .findFirst()
+                .stream())
+        .toList();
+  }
+
   public Optional<UserProfile> findByPublicUserId(String publicUserId) {
     if (!StringUtils.hasText(publicUserId)) {
       return Optional.empty();
