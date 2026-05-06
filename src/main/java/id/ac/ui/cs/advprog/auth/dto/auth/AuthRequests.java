@@ -36,8 +36,8 @@ public final class AuthRequests {
       String email,
       @NotBlank(message = "phone is required")
       @Pattern(
-          regexp = "^(\\+?[0-9][0-9\\s\\-()]*)$",
-          message = "phone must be a valid phone number")
+          regexp = "^(?=(?:\\D*\\d){8,15}\\D*$)\\+?[0-9][0-9\\s\\-()]*$",
+          message = "phone must contain 8-15 digits")
       String phone,
       @NotBlank(message = "password is required")
       @Size(min = 8, message = "password must be at least 8 characters")

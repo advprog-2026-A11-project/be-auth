@@ -367,6 +367,44 @@ class AuthLoginServiceTest {
         "New User");
   }
 
+  @Test
+  void registerRejectsPhoneWithTooFewDigits() {
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.register(
+            "new@example.com",
+            "08123",
+            "password123",
+            "newuser",
+            "New User"));
+
+    assertEquals("phone must contain 8-15 digits", ex.getMessage());
+    verify(supabaseAuthClient, never()).registerWithPassword(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User");
+  }
+
+  @Test
+  void registerRejectsPhoneWithTooManyDigits() {
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.register(
+            "new@example.com",
+            "+628123456789012345",
+            "password123",
+            "newuser",
+            "New User"));
+
+    assertEquals("phone must contain 8-15 digits", ex.getMessage());
+    verify(supabaseAuthClient, never()).registerWithPassword(
+        "new@example.com",
+        "password123",
+        "newuser",
+        "New User");
+  }
+
   private Jwt jwt(String tokenValue, String publicUserId) {
     Map<String, Object> claims = new java.util.LinkedHashMap<>();
     claims.put("sub", "supabase-user-1");

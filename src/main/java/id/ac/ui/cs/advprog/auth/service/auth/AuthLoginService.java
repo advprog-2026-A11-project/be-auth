@@ -25,6 +25,8 @@ public class AuthLoginService {
       "phone number is not registered";
   private static final String PHONE_LOGIN_UNAVAILABLE_MESSAGE =
       "phone login is not available for this account";
+  private static final String INVALID_PHONE_MESSAGE =
+      "phone must contain 8-15 digits";
 
   private final SupabaseAuthClient supabaseAuthClient;
   private final UserProfileService userProfileService;
@@ -221,7 +223,7 @@ public class AuthLoginService {
   private String normalizeRegistrationPhone(String phone) {
     String normalizedPhone = normalizePhoneIdentifier(phone == null ? null : phone.trim());
     if (!StringUtils.hasText(normalizedPhone)) {
-      throw new IllegalArgumentException("phone is required");
+      throw new IllegalArgumentException(INVALID_PHONE_MESSAGE);
     }
     return normalizedPhone;
   }
