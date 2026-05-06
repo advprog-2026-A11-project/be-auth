@@ -28,11 +28,15 @@ public class GlobalExceptionHandler {
       validationErrors.put(error.getField(), error.getDefaultMessage());
     }
 
+    String message = validationErrors.values().stream()
+        .findFirst()
+        .orElse("Validation failed");
+
     ApiErrorResponse body = new ApiErrorResponse(
         Instant.now(),
         HttpStatus.BAD_REQUEST.value(),
         HttpStatus.BAD_REQUEST.getReasonPhrase(),
-        "Validation failed",
+        message,
         request.getRequestURI(),
         validationErrors);
 

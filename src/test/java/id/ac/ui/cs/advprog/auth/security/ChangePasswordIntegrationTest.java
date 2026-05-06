@@ -147,6 +147,7 @@ class ChangePasswordIntegrationTest {
                 }
                 """))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("newPassword must be at least 8 characters"))
         .andExpect(jsonPath("$.validationErrors.newPassword").exists());
   }
 
