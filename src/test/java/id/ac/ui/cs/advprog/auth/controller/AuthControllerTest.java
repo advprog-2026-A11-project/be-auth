@@ -3,33 +3,39 @@ package id.ac.ui.cs.advprog.auth.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import id.ac.ui.cs.advprog.auth.dto.auth.ChangePasswordRequest;
-import id.ac.ui.cs.advprog.auth.dto.auth.LoginRequest;
-import id.ac.ui.cs.advprog.auth.dto.auth.LoginResponse;
-import id.ac.ui.cs.advprog.auth.dto.auth.LogoutResponse;
-import id.ac.ui.cs.advprog.auth.dto.auth.RefreshTokenRequest;
-import id.ac.ui.cs.advprog.auth.dto.auth.RegisterRequest;
-import id.ac.ui.cs.advprog.auth.dto.auth.SsoUrlResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.ChangePasswordRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.LoginRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.RefreshTokenRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthRequests.RegisterRequest;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LogoutResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.SsoUrlResponse;
+import id.ac.ui.cs.advprog.auth.dto.common.CommonResponses.ErrorResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthLoginService;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.GoogleSsoService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthLoginService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.auth.SupabaseGoogleSsoService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -42,7 +48,7 @@ class AuthControllerTest {
   private AuthLoginService authLoginService;
 
   @Mock
-  private GoogleSsoService googleSsoService;
+  private SupabaseGoogleSsoService googleSsoService;
 
   @Mock
   private UserProfileService profileService;
@@ -50,69 +56,85 @@ class AuthControllerTest {
   @Mock
   private AuthSessionService authSessionService;
 
-  @Mock
   private CurrentUserProvider currentUserProvider;
 
   private AuthController controller;
 
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
+
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
+    currentUserProvider = spy(new CurrentUserProvider());
     controller = new AuthController(
         authLoginService,
         authSessionService,
         googleSsoService,
-        jwtService,
         profileService,
         currentUserProvider,
         true);
   }
 
   @Test
-  void meMissingHeaderReturnsUnauthorized() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn(null);
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+  void meReturnsUnauthorizedWithoutAuthenticatedJwt() {
+    ResponseEntity<?> resp = controller.me();
     assertEquals(401, resp.getStatusCodeValue());
-    assertTrue(resp.getBody().containsKey("error"));
-  }
-
-  @Test
-  void meNonBearerHeaderReturnsUnauthorized() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Basic abc");
-
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
-
-    assertEquals(401, resp.getStatusCodeValue());
-    assertEquals("Missing Bearer token", resp.getBody().get("error"));
+    assertEquals("Missing Bearer token", ((ErrorResponse) resp.getBody()).error());
   }
 
   @Test
   void meInvalidTokenReturnsUnauthorized() {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer bad");
-    when(jwtService.validateAccessToken("bad"))
-        .thenThrow(new SupabaseJwtService.InvalidTokenException("bad token"));
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
     assertEquals(401, resp.getStatusCodeValue());
   }
 
   @Test
+  void meUsesAuthenticatedJwtFromSecurityContext() throws Exception {
+    Jwt jwt = new Jwt(
+        "security-context-token",
+        Instant.now(),
+        Instant.now().plusSeconds(600),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", "ctx-sub-1",
+            "email", "ctx@example.com",
+            "role", "authenticated",
+            "yomu_user_id", "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "aud", List.of("authenticated"),
+            "iss", "https://supabase.test/auth/v1"));
+
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            jwt,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+
+    UserProfile user = new UserProfile();
+    user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    user.setSupabaseUserId("ctx-sub-1");
+    user.setEmail("ctx@example.com");
+    user.setRole("ADMIN");
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(user));
+
+    ResponseEntity<?> resp = controller.me();
+
+    assertEquals(200, resp.getStatusCodeValue());
+    assertAuthMeResponseType(resp);
+    assertEquals("ctx-sub-1", invokeRecordAccessor(resp.getBody(), "sub"));
+    verify(jwtService, never()).validateAccessToken(anyString());
+  }
+
+  @Test
   void meReturnsProfileWhenPresent() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("a@b");
-    when(jwt.getSubject()).thenReturn("sub");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-
-    when(jwtService.validateAccessToken("tkn")).thenReturn(jwt);
+    authenticateJwtWithPublicUserId(
+        "sub",
+        "a@b",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
 
     UserProfile user = new UserProfile();
     user.setId(UUID.randomUUID());
@@ -125,64 +147,68 @@ class AuthControllerTest {
     user.setGoogleSub("google-sub-1");
     user.setActive(true);
 
-    when(profileService.findByEmail("a@b")).thenReturn(Optional.of(user));
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(user));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
     assertEquals(200, resp.getStatusCodeValue());
-    assertNotNull(resp.getBody().get("profile"));
-    @SuppressWarnings("unchecked")
-    Map<String, Object> profilePayload = (Map<String, Object>) resp.getBody().get("profile");
-    assertEquals("+628123456789", profilePayload.get("phone"));
-    assertEquals("PASSWORD", profilePayload.get("authProvider"));
-    assertEquals("google-sub-1", profilePayload.get("googleSub"));
+    assertAuthMeResponseType(resp);
+    Object profilePayload = invokeRecordAccessor(resp.getBody(), "profile");
+    assertNotNull(profilePayload);
+    assertEquals("+628123456789", invokeRecordAccessor(profilePayload, "phone"));
+    assertEquals("PASSWORD", invokeRecordAccessor(profilePayload, "authProvider"));
+    assertEquals("google-sub-1", invokeRecordAccessor(profilePayload, "googleSub"));
   }
 
   @Test
-  void meUsesSupabaseUserIdProfileWithoutEmailFallback() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-sub");
+  void meReturnsUnauthorizedWhenPublicUserIdClaimMissing() {
+    authenticateJwt("sub-123", "sub@example.com", "authenticated");
 
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("sub@example.com");
-    when(jwt.getSubject()).thenReturn("sub-123");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-sub")).thenReturn(jwt);
+    ResponseEntity<?> resp = controller.me();
+
+    assertEquals(401, resp.getStatusCodeValue());
+    assertEquals("Missing public user id claim", ((ErrorResponse) resp.getBody()).error());
+    verify(profileService, never()).findByPublicUserId(anyString());
+    verify(profileService, never()).findByEmail(anyString());
+  }
+
+  @Test
+  void mePrefersPublicUserIdClaimWhenPresent() throws Exception {
+    UUID publicUserId = UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11");
+    authenticateJwtWithPublicUserId(
+        "sub-123",
+        "sub@example.com",
+        "authenticated",
+        publicUserId.toString());
 
     UserProfile user = new UserProfile();
+    user.setId(publicUserId);
     user.setSupabaseUserId("sub-123");
     user.setEmail("sub@example.com");
-    when(profileService.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(user));
+    when(profileService.findByPublicUserId(publicUserId.toString())).thenReturn(Optional.of(user));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
 
     assertEquals(200, resp.getStatusCodeValue());
-    verify(profileService).findBySupabaseUserId("sub-123");
-    verify(profileService, never()).findByEmail("sub@example.com");
+    assertAuthMeResponseType(resp);
+    verify(profileService).findByPublicUserId(publicUserId.toString());
+    verify(profileService, never()).findByEmail(anyString());
   }
 
   @Test
   void meReturnsNullProfileWhenAbsent() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn2");
+    authenticateJwtWithPublicUserId(
+        "sub",
+        "x@y",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.empty());
 
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("x@y");
-    when(jwt.getSubject()).thenReturn("sub");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(java.time.Instant.now());
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-
-    when(jwtService.validateAccessToken("tkn2")).thenReturn(jwt);
-    when(profileService.findByEmail("x@y")).thenReturn(Optional.empty());
-
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    ResponseEntity<?> resp = controller.me();
     assertEquals(200, resp.getStatusCodeValue());
-    assertNull(resp.getBody().get("profile"));
+    assertAuthMeResponseType(resp);
+    assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
   }
 
   @Test
@@ -224,7 +250,6 @@ class AuthControllerTest {
     assertEquals(200, response.getStatusCodeValue());
     assertEquals("https://sso", response.getBody().authorizationUrl());
     verify(googleSsoService).createSsoUrl("http://localhost:3000/callback");
-    verify(googleSsoService, never()).createSsoUrl();
   }
 
   @Test
@@ -233,7 +258,6 @@ class AuthControllerTest {
         authLoginService,
         authSessionService,
         googleSsoService,
-        jwtService,
         profileService,
         currentUserProvider,
         false);
@@ -245,73 +269,20 @@ class AuthControllerTest {
   }
 
   @Test
-  void meFallsBackToEmailLookupWhenSubIsBlank() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-email-only");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("fallback@example.com");
-    when(jwt.getSubject()).thenReturn(" ");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-email-only")).thenReturn(jwt);
-
-    UserProfile user = new UserProfile();
-    user.setEmail("fallback@example.com");
-    user.setUsername("fallback-user");
-    when(profileService.findByEmail("fallback@example.com")).thenReturn(Optional.of(user));
-
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
-
-    assertEquals(200, resp.getStatusCodeValue());
-    verify(profileService, never()).findBySupabaseUserId(anyString());
-    verify(profileService).findByEmail("fallback@example.com");
-  }
-
-  @Test
-  void meSkipsProfileLookupWhenSubjectAndEmailAreBlank() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-no-profile");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn(" ");
-    when(jwt.getSubject()).thenReturn(" ");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-no-profile")).thenReturn(jwt);
-
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
-
-    assertEquals(200, resp.getStatusCodeValue());
-    assertNull(resp.getBody().get("profile"));
-    verify(profileService, never()).findBySupabaseUserId(anyString());
-    verify(profileService, never()).findByEmail(anyString());
-  }
-
-  @Test
-  void meReturnsNullProfileWhenProfileLookupThrowsDataAccessException() throws Exception {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("Authorization")).thenReturn("Bearer tkn-err");
-
-    Jwt jwt = mock(Jwt.class);
-    when(jwt.getClaimAsString("email")).thenReturn("error@example.com");
-    when(jwt.getSubject()).thenReturn("sub-error");
-    when(jwt.getClaimAsString("role")).thenReturn("USER");
-    when(jwt.getAudience()).thenReturn(List.of("authenticated"));
-    when(jwt.getIssuer()).thenReturn(new java.net.URL("http://iss"));
-    when(jwt.getExpiresAt()).thenReturn(Instant.now());
-    when(jwtService.validateAccessToken("tkn-err")).thenReturn(jwt);
-    when(profileService.findBySupabaseUserId("sub-error"))
+  void mePropagatesDataAccessExceptionWhenProfileLookupFails() {
+    authenticateJwtWithPublicUserId(
+        "sub-error",
+        "error@example.com",
+        "authenticated",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
+    when(profileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenThrow(new DataAccessResourceFailureException("db down"));
 
-    ResponseEntity<Map<String, Object>> resp = controller.me(req);
+    DataAccessResourceFailureException ex = assertThrows(
+        DataAccessResourceFailureException.class,
+        controller::me);
 
-    assertEquals(200, resp.getStatusCodeValue());
-    assertNull(resp.getBody().get("profile"));
+    assertEquals("db down", ex.getMessage());
   }
 
   @Test
@@ -404,7 +375,7 @@ class AuthControllerTest {
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(currentUserProvider.getCurrentUser())
         .thenReturn(Optional.of(
-            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER")));
+            new AuthenticatedUserPrincipal("sub-123", "user@example.com", "USER", null)));
     when(request.getHeader("Authorization")).thenReturn("Bearer   ");
 
     ResponseStatusException ex = assertThrows(
@@ -416,4 +387,48 @@ class AuthControllerTest {
     assertEquals(401, ex.getStatusCode().value());
     assertEquals("Bearer token is empty", ex.getReason());
   }
+
+  private void assertAuthMeResponseType(ResponseEntity<?> response) {
+    assertNotNull(response.getBody());
+    assertEquals("AuthMeResponse", response.getBody().getClass().getSimpleName());
+  }
+
+  private Object invokeRecordAccessor(Object target, String accessorName) throws Exception {
+    Method method = target.getClass().getMethod(accessorName);
+    return method.invoke(target);
+  }
+
+  private void authenticateJwt(String sub, String email, String role) {
+    authenticateJwtWithPublicUserId(sub, email, role, null);
+  }
+
+  private void authenticateJwtWithPublicUserId(
+      String sub,
+      String email,
+      String role,
+      String publicUserId) {
+    Map<String, Object> claims = new java.util.LinkedHashMap<>();
+    claims.put("sub", sub);
+    claims.put("email", email);
+    claims.put("role", role);
+    claims.put("aud", List.of("authenticated"));
+    claims.put("iss", "https://supabase.test/auth/v1");
+    if (publicUserId != null) {
+      claims.put("yomu_user_id", publicUserId);
+    }
+
+    Jwt jwt = new Jwt(
+        "security-context-token",
+        Instant.now(),
+        Instant.now().plusSeconds(600),
+        Map.of("alg", "none"),
+        claims);
+
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            jwt,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+  }
 }
+

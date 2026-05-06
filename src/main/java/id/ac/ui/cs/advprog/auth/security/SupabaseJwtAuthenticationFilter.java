@@ -1,11 +1,11 @@
 package id.ac.ui.cs.advprog.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.auth.exception.ApiErrorResponse;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,10 +13,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -34,20 +34,22 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
   private static final String DEACTIVATED_ACCOUNT_MESSAGE =
       "Your account has been deactivated. Please contact an administrator.";
+  private static final String MISSING_PUBLIC_USER_ID_MESSAGE =
+      "Missing public user id claim";
 
-  private final SupabaseJwtService supabaseJwtService;
   private final TokenRevocationService tokenRevocationService;
   private final UserProfileService userProfileService;
+  private final CurrentUserProvider currentUserProvider;
   private final ObjectMapper objectMapper;
 
   public SupabaseJwtAuthenticationFilter(
-      SupabaseJwtService supabaseJwtService,
       TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
+      CurrentUserProvider currentUserProvider,
       ObjectMapper objectMapper) {
-    this.supabaseJwtService = supabaseJwtService;
     this.tokenRevocationService = tokenRevocationService;
     this.userProfileService = userProfileService;
+    this.currentUserProvider = currentUserProvider;
     this.objectMapper = objectMapper;
   }
 
@@ -72,11 +74,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
       return true;
     }
 
-    if ("/api/auth/sso/google/url".equals(path) && HttpMethod.GET.matches(method)) {
-      return true;
-    }
-
-    return "/api/auth/sso/google/callback".equals(path) && HttpMethod.POST.matches(method);
+    return "/api/auth/sso/google/url".equals(path) && HttpMethod.GET.matches(method);
   }
 
   @Override
@@ -92,45 +90,70 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     if (!authHeader.startsWith(BEARER_PREFIX)) {
-      writeUnauthorized(response, request, "Authorization header must use Bearer token");
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          "Authorization header must use Bearer token");
       return;
     }
 
     String token = authHeader.substring(BEARER_PREFIX.length()).trim();
     if (!StringUtils.hasText(token)) {
-      writeUnauthorized(response, request, "Bearer token is empty");
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          "Bearer token is empty");
       return;
     }
 
-    try {
-      if (tokenRevocationService.isRevoked(token)) {
-        SecurityContextHolder.clearContext();
-        writeUnauthorized(response, request, "Session has been revoked");
-        return;
-      }
-
-      Jwt jwt = supabaseJwtService.validateAccessToken(token);
-      String sub = jwt.getSubject();
-      String email = jwt.getClaimAsString("email");
-      Optional<UserProfile> profile = resolveProfile(sub, email);
-      if (profile.isPresent() && !profile.get().isActive()) {
-        SecurityContextHolder.clearContext();
-        writeUnauthorized(response, request, DEACTIVATED_ACCOUNT_MESSAGE);
-        return;
-      }
-      String role = resolveRole(profile, jwt.getClaimAsString("role"));
-      List<GrantedAuthority> authorities = buildAuthorities(role);
-
-      AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(sub, email, role);
-      UsernamePasswordAuthenticationToken authenticationToken =
-          new UsernamePasswordAuthenticationToken(principal, null, authorities);
-
-      SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-      filterChain.doFilter(request, response);
-    } catch (SupabaseJwtService.InvalidTokenException ex) {
+    if (tokenRevocationService.isRevoked(token)) {
       SecurityContextHolder.clearContext();
-      writeUnauthorized(response, request, ex.getMessage());
+      UnauthorizedResponseWriter.write(objectMapper, request, response, "Session has been revoked");
+      return;
     }
+
+    Optional<Jwt> currentJwt = currentUserProvider.getCurrentJwt();
+    if (currentJwt.isEmpty()) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    Jwt jwt = currentJwt.get();
+    Optional<UserProfile> profile;
+    try {
+      String publicUserId = currentUserProvider.requireCurrentPublicUserId();
+      profile = userProfileService.findByPublicUserId(publicUserId);
+    } catch (id.ac.ui.cs.advprog.auth.exception.UnauthorizedException ex) {
+      SecurityContextHolder.clearContext();
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          MISSING_PUBLIC_USER_ID_MESSAGE);
+      return;
+    } catch (DataAccessException ex) {
+      writeServiceUnavailable(request, response);
+      return;
+    }
+    if (profile.isPresent() && !profile.get().isActive()) {
+      SecurityContextHolder.clearContext();
+      UnauthorizedResponseWriter.write(
+          objectMapper,
+          request,
+          response,
+          DEACTIVATED_ACCOUNT_MESSAGE);
+      return;
+    }
+
+    String role = resolveRole(profile, jwt.getClaimAsString("user_role"));
+    List<GrantedAuthority> authorities = buildAuthorities(role);
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(jwt, token, authorities);
+
+    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+    filterChain.doFilter(request, response);
   }
 
   private List<GrantedAuthority> buildAuthorities(String role) {
@@ -140,38 +163,28 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   private String resolveRole(Optional<UserProfile> profile, String tokenRole) {
-    if (profile.isPresent() && StringUtils.hasText(profile.get().getRole())) {
-      return RoleMapper.canonicalize(profile.get().getRole());
+    if (profile.isPresent()) {
+      return Role.canonicalize(profile.get().getRole());
     }
 
-    return RoleMapper.canonicalize(tokenRole);
+    return Role.canonicalize(tokenRole);
   }
 
-  private Optional<UserProfile> resolveProfile(String sub, String email) {
-    Optional<UserProfile> profile = Optional.empty();
-    if (StringUtils.hasText(sub)) {
-      profile = userProfileService.findBySupabaseUserId(sub);
-    }
-    if (profile.isEmpty() && StringUtils.hasText(email)) {
-      profile = userProfileService.findByEmail(email);
-    }
-    return profile;
-  }
-
-  private void writeUnauthorized(
-      HttpServletResponse response,
+  private void writeServiceUnavailable(
       HttpServletRequest request,
-      String message) throws IOException {
-    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+      HttpServletResponse response) throws IOException {
+    response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("timestamp", Instant.now().toString());
-    payload.put("status", HttpStatus.UNAUTHORIZED.value());
-    payload.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
-    payload.put("message", message);
-    payload.put("path", request.getRequestURI());
-
+    ApiErrorResponse payload = new ApiErrorResponse(
+        Instant.now(),
+        HttpStatus.SERVICE_UNAVAILABLE.value(),
+        HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+        "Database unavailable. Check Supabase DB host/connection.",
+        request.getRequestURI(),
+        Map.of());
     response.getWriter().write(objectMapper.writeValueAsString(payload));
   }
+
 }
+

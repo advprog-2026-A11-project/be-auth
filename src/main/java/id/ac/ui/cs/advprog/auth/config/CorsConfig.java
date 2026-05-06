@@ -49,3 +49,4 @@ public class CorsConfig {
     return allowedOrigins;
   }
 }
+

@@ -1,41 +1,58 @@
 package id.ac.ui.cs.advprog.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
 import id.ac.ui.cs.advprog.auth.security.SupabaseJwtAuthenticationFilter;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.TokenRevocationService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import id.ac.ui.cs.advprog.auth.security.UnauthorizedResponseWriter;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
 
   @Bean
   public SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter(
-      SupabaseJwtService supabaseJwtService,
       TokenRevocationService tokenRevocationService,
       UserProfileService userProfileService,
+      CurrentUserProvider currentUserProvider,
       ObjectMapper objectMapper) {
     return new SupabaseJwtAuthenticationFilter(
-        supabaseJwtService,
         tokenRevocationService,
         userProfileService,
+        currentUserProvider,
         objectMapper);
+  }
+
+  @Bean
+  public JwtDecoder jwtDecoder(SupabaseJwtService supabaseJwtService) {
+    return token -> {
+      try {
+        return supabaseJwtService.validateAccessToken(token);
+      } catch (SupabaseJwtService.InvalidTokenException ex) {
+        throw new BadJwtException(ex.getMessage(), ex);
+      }
+    };
+  }
+
+  @Bean
+  public AuthenticationEntryPoint authenticationEntryPoint(ObjectMapper objectMapper) {
+    return (request, response, authException) -> UnauthorizedResponseWriter.write(
+        objectMapper,
+        request,
+        response,
+        authException.getMessage());
   }
 
   @Bean
@@ -43,7 +60,7 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       SupabaseJwtAuthenticationFilter supabaseJwtAuthenticationFilter,
-      ObjectMapper objectMapper) throws Exception {
+      AuthenticationEntryPoint authenticationEntryPoint) throws Exception {
     http
         // This service uses stateless Bearer tokens for /api/** endpoints.
         // NOSONAR
@@ -56,7 +73,6 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/auth/sso/google/url").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/auth/sso/google/callback").permitAll()
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
             .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
             .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -68,30 +84,16 @@ public class SecurityConfig {
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll())
-        .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
-            writeUnauthorized(response, request, objectMapper, "Unauthorized")))
-        .addFilterBefore(
+        .exceptionHandling(exceptions ->
+            exceptions.authenticationEntryPoint(authenticationEntryPoint))
+        .oauth2ResourceServer(oauth2 -> oauth2
+            .authenticationEntryPoint(authenticationEntryPoint)
+            .jwt(Customizer.withDefaults()))
+        .addFilterAfter(
             supabaseJwtAuthenticationFilter,
-            UsernamePasswordAuthenticationFilter.class);
+            BearerTokenAuthenticationFilter.class);
 
     return http.build();
   }
-
-  private void writeUnauthorized(
-      HttpServletResponse response,
-      HttpServletRequest request,
-      ObjectMapper objectMapper,
-      String message) throws IOException {
-    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("timestamp", Instant.now().toString());
-    payload.put("status", HttpStatus.UNAUTHORIZED.value());
-    payload.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
-    payload.put("message", message);
-    payload.put("path", request.getRequestURI());
-
-    response.getWriter().write(objectMapper.writeValueAsString(payload));
-  }
 }
+

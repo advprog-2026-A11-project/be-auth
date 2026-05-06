@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
-import id.ac.ui.cs.advprog.auth.dto.auth.AdminPingResponse;
+import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.AdminPingResponse;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,21 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
   private final CurrentUserProvider currentUserProvider;
-  private final UserProfileService userProfileService;
 
-  public AdminController(
-      CurrentUserProvider currentUserProvider,
-      UserProfileService userProfileService) {
+  public AdminController(CurrentUserProvider currentUserProvider) {
     this.currentUserProvider = currentUserProvider;
-    this.userProfileService = userProfileService;
   }
 
   @GetMapping("/ping")
   public ResponseEntity<AdminPingResponse> ping() {
-    var currentUser = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
-    var profile = userProfileService.findBySupabaseUserId(currentUser.sub())
-        .orElseThrow(() -> new IllegalStateException("Authenticated user profile not found"));
-    return ResponseEntity.ok(new AdminPingResponse("Admin access granted", profile.getId()));
+    var principal = currentUserProvider.requireCurrentUser();
+    return ResponseEntity.ok(new AdminPingResponse(
+        "Admin access granted",
+        UUID.fromString(principal.publicUserId())));
   }
 }
+

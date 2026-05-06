@@ -24,3 +24,4 @@ class UserProfileTest {
     assertTrue(u.isActive());
   }
 }
+

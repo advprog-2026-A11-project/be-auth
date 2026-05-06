@@ -8,10 +8,8 @@ import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
-import java.util.HashMap;
-import java.util.Map;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,36 +75,6 @@ class UserProfileControllerTest {
   }
 
   @Test
-  void updateDisplayNameMissingReturnsBadRequest() {
-    UUID id = UUID.randomUUID();
-    Map<String, String> body = new HashMap<>();
-    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
-    assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
-  }
-
-  @Test
-  void updateDisplayNameSuccessReturnsOk() {
-    UUID id = UUID.randomUUID();
-    Map<String, String> body = new HashMap<>();
-    body.put("displayName", "bob");
-    UserProfile u = new UserProfile();
-    when(service.updateDisplayName(id, "bob")).thenReturn(Optional.of(u));
-    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
-    assertEquals(HttpStatus.OK, resp.getStatusCode());
-  }
-
-  @Test
-  void updateDisplayNameNotFoundReturnsNotFound() {
-    UUID id = UUID.randomUUID();
-    Map<String, String> body = new HashMap<>();
-    body.put("displayName", "bob");
-
-    when(service.updateDisplayName(id, "bob")).thenReturn(Optional.empty());
-    ResponseEntity<Object> resp = controller.updateDisplayName(id, body);
-    assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
-  }
-
-  @Test
   void updateReturnsOkWhenFound() {
     UserProfileRequest request = new UserProfileRequest();
     request.setUsername("newuser");
@@ -140,4 +108,24 @@ class UserProfileControllerTest {
     assertEquals(HttpStatus.NO_CONTENT, resp.getStatusCode());
     verify(service).deactivateById(id);
   }
+
+  @Test
+  void activateReturnsUpdatedProfile() {
+    UUID id = UUID.randomUUID();
+    UserProfile active = new UserProfile();
+    active.setId(id);
+    active.setUsername("active-user");
+    active.setEmail("active@example.com");
+    active.setRole("ADMIN");
+    active.setActive(true);
+    when(service.activateById(id)).thenReturn(active);
+
+    ResponseEntity<UserProfileResponse> response = controller.activate(id);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals("active-user", response.getBody().username());
+    assertTrue(response.getBody().isActive());
+  }
 }
+

@@ -24,3 +24,4 @@ class UserProfileMoreTest {
     assertEquals("sub-123", u.getSupabaseUserId());
   }
 }
+

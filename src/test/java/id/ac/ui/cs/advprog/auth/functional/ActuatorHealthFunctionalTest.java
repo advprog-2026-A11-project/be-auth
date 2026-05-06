@@ -30,3 +30,4 @@ class ActuatorHealthFunctionalTest {
     assertEquals("UP", response.getBody().get("status"));
   }
 }
+

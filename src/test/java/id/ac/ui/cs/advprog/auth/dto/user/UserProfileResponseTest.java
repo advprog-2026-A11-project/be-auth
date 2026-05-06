@@ -39,3 +39,4 @@ class UserProfileResponseTest {
     assertEquals(updatedAt, response.updatedAt());
   }
 }
+

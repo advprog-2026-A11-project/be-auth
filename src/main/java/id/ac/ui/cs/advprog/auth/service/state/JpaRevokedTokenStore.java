@@ -1,0 +1,33 @@
+package id.ac.ui.cs.advprog.auth.service.state;
+
+import id.ac.ui.cs.advprog.auth.model.RevokedAccessToken;
+import id.ac.ui.cs.advprog.auth.repository.RevokedAccessTokenRepository;
+import java.time.Instant;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class JpaRevokedTokenStore implements RevokedTokenStore {
+
+  private final RevokedAccessTokenRepository repository;
+
+  public JpaRevokedTokenStore(RevokedAccessTokenRepository repository) {
+    this.repository = repository;
+  }
+
+  @Override
+  @Transactional
+  public void save(String tokenHash, Instant expiresAt, Instant now) {
+    repository.deleteAllByExpiresAtLessThanEqual(now);
+    repository.save(new RevokedAccessToken(tokenHash, expiresAt));
+  }
+
+  @Override
+  @Transactional
+  public boolean exists(String tokenHash, Instant now) {
+    repository.deleteAllByExpiresAtLessThanEqual(now);
+    return repository.existsByTokenHashAndExpiresAtAfter(tokenHash, now);
+  }
+}
+
+
