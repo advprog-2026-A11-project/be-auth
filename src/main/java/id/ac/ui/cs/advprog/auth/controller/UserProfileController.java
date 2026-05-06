@@ -3,10 +3,13 @@ package id.ac.ui.cs.advprog.auth.controller;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.LookupProfilesRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateEmailRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.DeleteAccountResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.LookupProfilesResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.PublicUserProfileResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateEmailResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdatePhoneResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateProfileResponse;
@@ -61,6 +64,16 @@ public class UserProfileController {
   @GetMapping
   public List<UserProfileResponse> all() {
     return service.findAll().stream().map(UserProfileResponse::from).collect(Collectors.toList());
+  }
+
+  @PostMapping("/lookup")
+  public ResponseEntity<LookupProfilesResponse> lookupProfiles(
+      @Valid @RequestBody LookupProfilesRequest request) {
+    List<PublicUserProfileResponse> profiles = service.findPublicProfilesByIds(request.userIds())
+        .stream()
+        .map(PublicUserProfileResponse::from)
+        .toList();
+    return ResponseEntity.ok(new LookupProfilesResponse(profiles));
   }
 
   @GetMapping("/{id}")

@@ -158,6 +158,36 @@ class SecurityIntegrationTest {
   }
 
   @Test
+  void lookupProfilesWithUserRoleReturnsOkAndMinimalFields() throws Exception {
+    UUID id = UUID.randomUUID();
+
+    when(supabaseJwtService.validateAccessToken("user-token"))
+        .thenReturn(jwt(
+            "user-token",
+            "supabase-user-2",
+            "user2@example.com",
+            "6e3fee90-5fc5-4c06-a7ae-a382cccf36ac"));
+    when(userProfileService.findByPublicUserId("6e3fee90-5fc5-4c06-a7ae-a382cccf36ac"))
+        .thenReturn(Optional.of(userProfile(
+            "6e3fee90-5fc5-4c06-a7ae-a382cccf36ac",
+            "supabase-user-2",
+            "user2@example.com",
+            "USER")));
+    when(userProfileService.findPublicProfilesByIds(List.of(id)))
+        .thenReturn(List.of(publicLookupProfile(id, "student-a", "Student A")));
+
+    mockMvc.perform(post("/api/users/lookup")
+            .header("Authorization", "Bearer user-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"userIds\":[\"" + id + "\"]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.profiles[0].id").value(id.toString()))
+        .andExpect(jsonPath("$.profiles[0].username").value("student-a"))
+        .andExpect(jsonPath("$.profiles[0].displayName").value("Student A"))
+        .andExpect(jsonPath("$.profiles[0].email").doesNotExist());
+  }
+
+  @Test
   void getUserByIdWithUserRoleReturnsForbidden() throws Exception {
     // Arrange
     when(supabaseJwtService.validateAccessToken("user-token"))
@@ -287,6 +317,17 @@ class SecurityIntegrationTest {
     user.setUsername(email);
     user.setDisplayName(role + " User");
     user.setRole(role);
+    user.setActive(true);
+    return user;
+  }
+
+  private UserProfile publicLookupProfile(UUID id, String username, String displayName) {
+    UserProfile user = new UserProfile();
+    user.setId(id);
+    user.setUsername(username);
+    user.setDisplayName(displayName);
+    user.setEmail(username + "@example.com");
+    user.setRole("USER");
     user.setActive(true);
     return user;
   }
