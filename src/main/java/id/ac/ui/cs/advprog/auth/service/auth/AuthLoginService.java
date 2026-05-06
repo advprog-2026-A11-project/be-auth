@@ -20,6 +20,10 @@ public class AuthLoginService {
   private static final Pattern PHONE_IDENTIFIER_PATTERN = Pattern.compile("^\\+?[0-9]{8,15}$");
   private static final String DEACTIVATED_ACCOUNT_MESSAGE =
       "Your account has been deactivated. Please contact an administrator.";
+  private static final String PHONE_NOT_REGISTERED_MESSAGE =
+      "phone number is not registered";
+  private static final String PHONE_LOGIN_UNAVAILABLE_MESSAGE =
+      "phone login is not available for this account";
 
   private final SupabaseAuthClient supabaseAuthClient;
   private final UserProfileService userProfileService;
@@ -125,20 +129,19 @@ public class AuthLoginService {
       throw new IllegalArgumentException("identifier is required");
     }
 
-    String normalized = identifier.trim();
-    if (normalized.contains("@")) {
-      return normalized;
+    String normalizedIdentifier = identifier.trim();
+    if (normalizedIdentifier.contains("@")) {
+      return normalizedIdentifier;
     }
 
-    if (PHONE_IDENTIFIER_PATTERN.matcher(normalized).matches()) {
-      Optional<String> resolvedPhone = userProfileService.findByPhone(normalized)
-          .flatMap(this::resolveEmailFromProfile);
-      if (resolvedPhone.isPresent()) {
-        return resolvedPhone.get();
-      }
+    String normalizedPhone = normalizePhoneIdentifier(normalizedIdentifier);
+    if (normalizedPhone != null) {
+      UserProfile profile = userProfileService.findByPhone(normalizedPhone)
+          .orElseThrow(() -> new IllegalArgumentException(PHONE_NOT_REGISTERED_MESSAGE));
+      return resolvePhoneLoginEmail(profile);
     }
 
-    Optional<UserProfile> byUsername = userProfileService.findByUsername(normalized);
+    Optional<UserProfile> byUsername = userProfileService.findByUsername(normalizedIdentifier);
     Optional<String> resolvedUsername = byUsername.flatMap(this::resolveEmailFromProfile);
     if (resolvedUsername.isPresent()) {
       return resolvedUsername.get();
@@ -164,6 +167,30 @@ public class AuthLoginService {
       return Optional.empty();
     }
     return Optional.of(profile.getEmail());
+  }
+
+  private String resolvePhoneLoginEmail(UserProfile profile) {
+    return resolveEmailFromProfile(profile)
+        .orElseThrow(() -> new IllegalArgumentException(PHONE_LOGIN_UNAVAILABLE_MESSAGE));
+  }
+
+  private String normalizePhoneIdentifier(String identifier) {
+    String compact = identifier.replaceAll("[\\s\\-()]", "");
+    if (!StringUtils.hasText(compact)) {
+      return null;
+    }
+
+    if (compact.startsWith("08")) {
+      compact = "+628" + compact.substring(2);
+    } else if (compact.startsWith("628")) {
+      compact = "+" + compact;
+    }
+
+    if (!PHONE_IDENTIFIER_PATTERN.matcher(compact).matches()) {
+      return null;
+    }
+
+    return compact;
   }
 
   private SupabaseAuthClient.LoginResult ensurePublicUserIdClaim(

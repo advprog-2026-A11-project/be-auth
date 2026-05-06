@@ -71,10 +71,7 @@ public class UserProfileService {
   }
 
   public Optional<UserProfile> findByPhone(String phone) {
-    if (!StringUtils.hasText(phone)) {
-      return Optional.empty();
-    }
-    return repository.findByPhone(phone.trim());
+    return normalizePhone(phone).flatMap(repository::findByPhone);
   }
 
   public UserProfile upsertFromIdentity(String supabaseUserId, String email, String incomingRole) {
@@ -151,10 +148,27 @@ public class UserProfileService {
   }
 
   private String normalizePhoneOrThrow(String phone) {
+    return normalizePhone(phone)
+        .orElseThrow(() -> new IllegalArgumentException("phone is required"));
+  }
+
+  private Optional<String> normalizePhone(String phone) {
     if (!StringUtils.hasText(phone)) {
-      throw new IllegalArgumentException("phone is required");
+      return Optional.empty();
     }
-    return phone.trim();
+
+    String compact = phone.trim().replaceAll("[\\s\\-()]", "");
+    if (!StringUtils.hasText(compact)) {
+      return Optional.empty();
+    }
+
+    if (compact.startsWith("08")) {
+      compact = "+628" + compact.substring(2);
+    } else if (compact.startsWith("628")) {
+      compact = "+" + compact;
+    }
+
+    return Optional.of(compact);
   }
 
   private void applyAdminManagedFields(UserProfile target, UserProfile incoming) {
