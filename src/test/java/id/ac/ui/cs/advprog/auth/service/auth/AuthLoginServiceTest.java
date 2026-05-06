@@ -111,6 +111,55 @@ class AuthLoginServiceTest {
   }
 
   @Test
+  void loginNormalizesLocalPhoneIdentifierBeforeLookup() {
+    UserProfile user = new UserProfile();
+    user.setId(UUID.randomUUID());
+    user.setPhone("+628123456789");
+    user.setEmail("normalized-phone@example.com");
+    user.setRole("STUDENT");
+    user.setActive(true);
+
+    when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.of(user));
+    when(userProfileService.findByEmail("normalized-phone@example.com")).thenReturn(Optional.of(user));
+    when(supabaseAuthClient.loginWithPassword("normalized-phone@example.com", "password123"))
+        .thenReturn(new SupabaseAuthClient.LoginResult(
+            "access-token",
+            "refresh-token",
+            3600L,
+            "supabase-user-phone",
+            "normalized-phone@example.com",
+            "STUDENT"));
+    when(userProfileService.upsertFromIdentity(
+        "supabase-user-phone",
+        "normalized-phone@example.com",
+        "STUDENT")).thenReturn(user);
+    when(supabaseJwtService.validateAccessToken("access-token"))
+        .thenReturn(jwt("access-token", "c1f84e7b-bb84-412d-81bb-4449df141f11"));
+
+    service.login("0812-345-6789", "password123");
+
+    verify(userProfileService).findByPhone("+628123456789");
+    verify(supabaseAuthClient).loginWithPassword("normalized-phone@example.com", "password123");
+  }
+
+  @Test
+  void loginFailsClosedWhenPhoneIdentifierResolvesToProfileWithoutEmail() {
+    UserProfile user = new UserProfile();
+    user.setPhone("+628123456789");
+    user.setUsername("phone-user");
+    user.setEmail(" ");
+    user.setActive(true);
+    when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.of(user));
+
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.login("08123456789", "password123"));
+
+    assertEquals("phone login is not available for this account", ex.getMessage());
+    verify(supabaseAuthClient, never()).loginWithPassword("phone-user", "password123");
+  }
+
+  @Test
   void loginRefreshesSessionWhenAccessTokenMissingPublicUserIdClaim() {
     UserProfile user = new UserProfile();
     user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
