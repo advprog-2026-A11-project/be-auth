@@ -160,6 +160,50 @@ class AuthLoginServiceTest {
   }
 
   @Test
+  void loginResolvesPhoneIdentifierWhenItStartsWithCountryCodeWithoutPlus() {
+    UserProfile user = new UserProfile();
+    user.setId(UUID.randomUUID());
+    user.setPhone("+628123456789");
+    user.setEmail("country-code-phone@example.com");
+    user.setRole("STUDENT");
+    user.setActive(true);
+
+    when(userProfileService.findByPhone("+628123456789")).thenReturn(Optional.of(user));
+    when(userProfileService.findByEmail("country-code-phone@example.com")).thenReturn(Optional.of(user));
+    when(supabaseAuthClient.loginWithPassword("country-code-phone@example.com", "password123"))
+        .thenReturn(new SupabaseAuthClient.LoginResult(
+            "access-token",
+            "refresh-token",
+            3600L,
+            "supabase-user-phone",
+            "country-code-phone@example.com",
+            "STUDENT"));
+    when(userProfileService.upsertFromIdentity(
+        "supabase-user-phone",
+        "country-code-phone@example.com",
+        "STUDENT")).thenReturn(user);
+    when(supabaseJwtService.validateAccessToken("access-token"))
+        .thenReturn(jwt("access-token", "c1f84e7b-bb84-412d-81bb-4449df141f11"));
+
+    service.login("628123456789", "password123");
+
+    verify(userProfileService).findByPhone("+628123456789");
+    verify(supabaseAuthClient).loginWithPassword("country-code-phone@example.com", "password123");
+  }
+
+  @Test
+  void loginRejectsUnregisteredPhoneNumber() {
+    when(userProfileService.findByPhone("+628111111111")).thenReturn(Optional.empty());
+
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.login("0811 1111 111", "password123"));
+
+    assertEquals("phone number is not registered", ex.getMessage());
+    verify(supabaseAuthClient, never()).loginWithPassword("0811 1111 111", "password123");
+  }
+
+  @Test
   void loginRefreshesSessionWhenAccessTokenMissingPublicUserIdClaim() {
     UserProfile user = new UserProfile();
     user.setId(UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
