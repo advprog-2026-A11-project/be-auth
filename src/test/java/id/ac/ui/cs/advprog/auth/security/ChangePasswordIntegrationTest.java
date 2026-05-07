@@ -61,6 +61,8 @@ class ChangePasswordIntegrationTest {
         .thenReturn(Optional.of(active));
     doNothing().when(authSessionService).changePassword(
         eq("token-password"),
+        eq("c1f84e7b-bb84-412d-81bb-4449df141f11"),
+        eq("sub-password"),
         eq("password@example.com"),
         eq("current-password"),
         eq("new-password"));
@@ -100,6 +102,8 @@ class ChangePasswordIntegrationTest {
         .when(authSessionService)
         .changePassword(
             eq("token-password"),
+            eq("c1f84e7b-bb84-412d-81bb-4449df141f11"),
+            eq("sub-password"),
             eq("password@example.com"),
             eq("wrong-password"),
             eq("new-password"));
@@ -149,6 +153,46 @@ class ChangePasswordIntegrationTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("newPassword must be at least 8 characters"))
         .andExpect(jsonPath("$.validationErrors.newPassword").exists());
+  }
+
+  @Test
+  void setPasswordForGoogleOnlyAccountWithoutCurrentPasswordReturnsOk() throws Exception {
+    when(supabaseJwtService.validateAccessToken("token-password"))
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
+
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    googleOnly.setSupabaseUserId("sub-password");
+    googleOnly.setEmail("password@example.com");
+    googleOnly.setRole("USER");
+    googleOnly.setActive(true);
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setGoogleSub("google-sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(googleOnly));
+    doNothing().when(authSessionService).changePassword(
+        eq("token-password"),
+        eq("c1f84e7b-bb84-412d-81bb-4449df141f11"),
+        eq("sub-password"),
+        eq("password@example.com"),
+        eq(null),
+        eq("new-password"));
+
+    mockMvc.perform(post("/api/auth/change-password")
+            .header("Authorization", "Bearer token-password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                """
+                {
+                  "newPassword": "new-password"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Password changed"));
   }
 
   private Jwt jwt(String tokenValue, String sub, String email, String publicUserId) {

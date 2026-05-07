@@ -125,6 +125,8 @@ public class AuthController {
 
     authSessionService.changePassword(
         BearerTokenExtractor.extractOrUnauthorized(httpRequest),
+        principal.publicUserId(),
+        principal.sub(),
         principal.email(),
         request.currentPassword(),
         request.newPassword());

@@ -53,6 +53,12 @@ class AuthSessionServiceTest {
 
   @Test
   void changePasswordUpdatesWhenCurrentPasswordIsValid() {
+    UserProfile passwordUser = new UserProfile();
+    passwordUser.setId(UUID.randomUUID());
+    passwordUser.setEmail("user@example.com");
+    passwordUser.setAuthProvider("PASSWORD");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(passwordUser));
     when(supabaseAuthClient.loginWithPassword("user@example.com", "current-password"))
         .thenReturn(new SupabaseAuthClient.LoginResult(
             "access-token",
@@ -64,6 +70,8 @@ class AuthSessionServiceTest {
 
     service.changePassword(
         "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-123",
         "user@example.com",
         "current-password",
         "new-password");
@@ -73,6 +81,12 @@ class AuthSessionServiceTest {
 
   @Test
   void changePasswordRejectsWhenCurrentPasswordIsWrong() {
+    UserProfile passwordUser = new UserProfile();
+    passwordUser.setId(UUID.randomUUID());
+    passwordUser.setEmail("user@example.com");
+    passwordUser.setAuthProvider("PASSWORD");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(passwordUser));
     when(supabaseAuthClient.loginWithPassword("user@example.com", "wrong-password"))
         .thenThrow(new UnauthorizedException("Invalid login credentials"));
 
@@ -80,11 +94,61 @@ class AuthSessionServiceTest {
         UnauthorizedException.class,
         () -> service.changePassword(
             "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
             "user@example.com",
             "wrong-password",
             "new-password"));
 
     assertEquals("Invalid login credentials", ex.getMessage());
+    verify(supabaseAuthClient, never()).updatePassword("access-token", "new-password");
+  }
+
+  @Test
+  void setPasswordAllowsGoogleOnlyAccountWithoutCurrentPassword() {
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(UUID.randomUUID());
+    googleOnly.setEmail("google-user@example.com");
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setGoogleSub("google-sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(googleOnly));
+
+    service.changePassword(
+        "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-123",
+        "google-user@example.com",
+        null,
+        "new-password");
+
+    verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
+    verify(supabaseAuthClient).updatePassword("access-token", "new-password");
+    verify(userProfileService).markCurrentUserPasswordEnabled(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
+  }
+
+  @Test
+  void setPasswordRejectsRegularPasswordAccountWithoutCurrentPassword() {
+    UserProfile passwordUser = new UserProfile();
+    passwordUser.setId(UUID.randomUUID());
+    passwordUser.setEmail("user@example.com");
+    passwordUser.setAuthProvider("PASSWORD");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(passwordUser));
+
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("currentPassword is required", ex.getMessage());
+    verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
     verify(supabaseAuthClient, never()).updatePassword("access-token", "new-password");
   }
 

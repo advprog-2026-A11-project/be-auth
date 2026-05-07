@@ -149,6 +149,11 @@ public class UserProfileService {
             "Phone already taken")));
   }
 
+  public UserProfile markCurrentUserPasswordEnabled(String publicUserId) {
+    return saveCurrentUser(publicUserId, existing -> existing.setAuthProvider(
+        mergeAuthProvider(existing.getAuthProvider(), "PASSWORD")));
+  }
+
   public Optional<UserProfile> update(UUID id, UserProfile incoming) {
     return repository.findById(id).map(existing -> {
       identitySyncService.syncAdminUpdate(existing, incoming);
@@ -291,6 +296,31 @@ public class UserProfileService {
       throw new ConflictException(conflictMessage);
     }
     return newValue;
+  }
+
+  private String mergeAuthProvider(String currentValue, String nextProvider) {
+    boolean hasGoogle = containsProvider(currentValue, "GOOGLE")
+        || containsProvider(nextProvider, "GOOGLE");
+    boolean hasPassword = containsProvider(currentValue, "PASSWORD")
+        || containsProvider(nextProvider, "PASSWORD");
+
+    if (hasGoogle && hasPassword) {
+      return "GOOGLE_PASSWORD";
+    }
+    if (hasGoogle) {
+      return "GOOGLE";
+    }
+    if (hasPassword) {
+      return "PASSWORD";
+    }
+    return StringUtils.hasText(nextProvider) ? nextProvider.trim().toUpperCase() : "PASSWORD";
+  }
+
+  private boolean containsProvider(String authProvider, String provider) {
+    if (!StringUtils.hasText(authProvider)) {
+      return false;
+    }
+    return authProvider.trim().toUpperCase().contains(provider);
   }
 
 }
