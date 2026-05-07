@@ -148,6 +148,20 @@ class UserProfileServiceTest {
     assertEquals("ADMIN", updated.get().getRole());
     assertFalse(updated.get().isActive());
   }
+
+  @Test
+  void markCurrentUserPasswordEnabledMergesGoogleAndPasswordProviders() {
+    UUID id = UUID.randomUUID();
+    UserProfile existing = new UserProfile();
+    existing.setId(id);
+    existing.setAuthProvider("GOOGLE");
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.markCurrentUserPasswordEnabled(id.toString());
+
+    assertEquals("GOOGLE_PASSWORD", updated.getAuthProvider());
+  }
 }
 
 

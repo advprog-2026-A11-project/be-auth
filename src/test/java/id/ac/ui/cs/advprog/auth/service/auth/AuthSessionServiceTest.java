@@ -129,6 +129,28 @@ class AuthSessionServiceTest {
   }
 
   @Test
+  void setPasswordAllowsGoogleOnlyAccountUsingSupabaseIdMatch() {
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(UUID.randomUUID());
+    googleOnly.setEmail("google-user@example.com");
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setSupabaseUserId("sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(googleOnly));
+
+    service.changePassword(
+        "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-123",
+        "google-user@example.com",
+        null,
+        "new-password");
+
+    verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
+    verify(supabaseAuthClient).updatePassword("access-token", "new-password");
+  }
+
+  @Test
   void setPasswordRejectsRegularPasswordAccountWithoutCurrentPassword() {
     UserProfile passwordUser = new UserProfile();
     passwordUser.setId(UUID.randomUUID());
@@ -150,6 +172,93 @@ class AuthSessionServiceTest {
     assertEquals("currentPassword is required", ex.getMessage());
     verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
     verify(supabaseAuthClient, never()).updatePassword("access-token", "new-password");
+  }
+
+  @Test
+  void setPasswordRejectsUnsupportedAccountWithoutPasswordOrGoogleIdentity() {
+    UserProfile unsupported = new UserProfile();
+    unsupported.setId(UUID.randomUUID());
+    unsupported.setEmail("user@example.com");
+    unsupported.setAuthProvider("SAML");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(unsupported));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("This account cannot change password yet.", ex.getMessage());
+    verify(supabaseAuthClient, never()).updatePassword(any(), any());
+  }
+
+  @Test
+  void setPasswordRejectsGoogleAccountWhenSupabaseUserIdDoesNotMatch() {
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(UUID.randomUUID());
+    googleOnly.setEmail("user@example.com");
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setSupabaseUserId("different-sub");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(googleOnly));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("This account cannot change password yet.", ex.getMessage());
+  }
+
+  @Test
+  void setPasswordRejectsWhenProviderMetadataIsBlank() {
+    UserProfile unknown = new UserProfile();
+    unknown.setId(UUID.randomUUID());
+    unknown.setEmail("user@example.com");
+    unknown.setAuthProvider(" ");
+    unknown.setSupabaseUserId("sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(unknown));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("This account cannot change password yet.", ex.getMessage());
+  }
+
+  @Test
+  void changePasswordRejectsWhenCurrentUserProfileIsMissing() {
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.empty());
+
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            "current-password",
+            "new-password"));
+
+    assertEquals("User profile not found", ex.getMessage());
   }
 
   @Test
