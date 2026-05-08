@@ -173,7 +173,7 @@ class AuthControllerTest {
   }
 
   @Test
-  void mePrefersPublicUserIdClaimWhenPresent() throws Exception {
+  void mePrefersPublicUserIdClaimWhenPresent() {
     UUID publicUserId = UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11");
     authenticateJwtWithPublicUserId(
         "sub-123",

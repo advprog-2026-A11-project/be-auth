@@ -14,6 +14,9 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class UserProfileService {
+  private static final String AUTH_PROVIDER_GOOGLE = "GOOGLE";
+  private static final String AUTH_PROVIDER_GOOGLE_PASSWORD = "GOOGLE_PASSWORD";
+  private static final String AUTH_PROVIDER_PASSWORD = "PASSWORD";
 
   private final UserProfileRepository repository;
   private final UserProfileIdentitySyncService identitySyncService;
@@ -130,28 +133,34 @@ public class UserProfileService {
   public UserProfile updateCurrentUserEmail(
       String publicUserId,
       String newEmail) {
-    return saveCurrentUser(publicUserId, existing -> existing.setEmail(
-        requireUnique(
-            existing.getEmail(),
-            normalizeEmailOrThrow(newEmail),
-            repository::existsByEmail,
-            "Email already taken")));
+    return saveCurrentUser(publicUserId, existing -> {
+      String normalizedEmail = normalizeEmailOrThrow(newEmail);
+      validateUnique(
+          existing.getEmail(),
+          normalizedEmail,
+          repository::existsByEmail,
+          "Email already taken");
+      existing.setEmail(normalizedEmail);
+    });
   }
 
   public UserProfile updateCurrentUserPhone(
       String publicUserId,
       String newPhone) {
-    return saveCurrentUser(publicUserId, existing -> existing.setPhone(
-        requireUnique(
-            existing.getPhone(),
-            normalizePhoneOrThrow(newPhone),
-            repository::existsByPhone,
-            "Phone already taken")));
+    return saveCurrentUser(publicUserId, existing -> {
+      String normalizedPhone = normalizePhoneOrThrow(newPhone);
+      validateUnique(
+          existing.getPhone(),
+          normalizedPhone,
+          repository::existsByPhone,
+          "Phone already taken");
+      existing.setPhone(normalizedPhone);
+    });
   }
 
   public UserProfile markCurrentUserPasswordEnabled(String publicUserId) {
     return saveCurrentUser(publicUserId, existing -> existing.setAuthProvider(
-        mergeAuthProvider(existing.getAuthProvider(), "PASSWORD")));
+        mergeAuthProvider(existing.getAuthProvider(), AUTH_PROVIDER_PASSWORD)));
   }
 
   public Optional<UserProfile> update(UUID id, UserProfile incoming) {
@@ -251,11 +260,13 @@ public class UserProfileService {
       String displayName,
       String phone) {
     if (StringUtils.hasText(username)) {
-      existing.setUsername(requireUnique(
+      String normalizedUsername = username.trim();
+      validateUnique(
           existing.getUsername(),
-          username.trim(),
+          normalizedUsername,
           repository::existsByUsername,
-          "Username already taken"));
+          "Username already taken");
+      existing.setUsername(normalizedUsername);
     }
 
     if (displayName != null) {
@@ -263,11 +274,13 @@ public class UserProfileService {
     }
 
     if (phone != null) {
-      existing.setPhone(requireUnique(
+      String normalizedPhone = normalizePhoneOrThrow(phone);
+      validateUnique(
           existing.getPhone(),
-          normalizePhoneOrThrow(phone),
+          normalizedPhone,
           repository::existsByPhone,
-          "Phone already taken"));
+          "Phone already taken");
+      existing.setPhone(normalizedPhone);
     }
   }
 
@@ -284,36 +297,37 @@ public class UserProfileService {
     }).orElseThrow(() -> new IllegalArgumentException("User profile not found"));
   }
 
-  private String requireUnique(
+  private void validateUnique(
       String currentValue,
       String newValue,
       Predicate<String> existsCheck,
       String conflictMessage) {
     if (newValue.equals(currentValue)) {
-      return newValue;
+      return;
     }
     if (existsCheck.test(newValue)) {
       throw new ConflictException(conflictMessage);
     }
-    return newValue;
   }
 
   private String mergeAuthProvider(String currentValue, String nextProvider) {
-    boolean hasGoogle = containsProvider(currentValue, "GOOGLE")
-        || containsProvider(nextProvider, "GOOGLE");
-    boolean hasPassword = containsProvider(currentValue, "PASSWORD")
-        || containsProvider(nextProvider, "PASSWORD");
+    boolean hasGoogle = containsProvider(currentValue, AUTH_PROVIDER_GOOGLE)
+        || containsProvider(nextProvider, AUTH_PROVIDER_GOOGLE);
+    boolean hasPassword = containsProvider(currentValue, AUTH_PROVIDER_PASSWORD)
+        || containsProvider(nextProvider, AUTH_PROVIDER_PASSWORD);
 
     if (hasGoogle && hasPassword) {
-      return "GOOGLE_PASSWORD";
+      return AUTH_PROVIDER_GOOGLE_PASSWORD;
     }
     if (hasGoogle) {
-      return "GOOGLE";
+      return AUTH_PROVIDER_GOOGLE;
     }
     if (hasPassword) {
-      return "PASSWORD";
+      return AUTH_PROVIDER_PASSWORD;
     }
-    return StringUtils.hasText(nextProvider) ? nextProvider.trim().toUpperCase() : "PASSWORD";
+    return StringUtils.hasText(nextProvider)
+        ? nextProvider.trim().toUpperCase()
+        : AUTH_PROVIDER_PASSWORD;
   }
 
   private boolean containsProvider(String authProvider, String provider) {
