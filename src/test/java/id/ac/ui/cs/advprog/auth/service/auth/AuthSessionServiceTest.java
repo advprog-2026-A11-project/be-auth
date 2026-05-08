@@ -1,0 +1,444 @@
+package id.ac.ui.cs.advprog.auth.service.auth;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.state.TokenRevocationService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseAuthClient;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+class AuthSessionServiceTest {
+
+  @Mock
+  private SupabaseAuthClient supabaseAuthClient;
+
+  @Mock
+  private SupabaseJwtService supabaseJwtService;
+
+  @Mock
+  private TokenRevocationService tokenRevocationService;
+
+  @Mock
+  private UserProfileService userProfileService;
+
+  private AuthSessionService service;
+
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    service = new AuthSessionService(
+        supabaseAuthClient,
+        supabaseJwtService,
+        tokenRevocationService,
+        userProfileService);
+  }
+
+  @Test
+  void changePasswordUpdatesWhenCurrentPasswordIsValid() {
+    UserProfile passwordUser = new UserProfile();
+    passwordUser.setId(UUID.randomUUID());
+    passwordUser.setEmail("user@example.com");
+    passwordUser.setAuthProvider("PASSWORD");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(passwordUser));
+    when(supabaseAuthClient.loginWithPassword("user@example.com", "current-password"))
+        .thenReturn(new SupabaseAuthClient.LoginResult(
+            "access-token",
+            "refresh-token",
+            3600L,
+            "sub-123",
+            "user@example.com",
+            "USER"));
+
+    service.changePassword(
+        "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-123",
+        "user@example.com",
+        "current-password",
+        "new-password");
+
+    verify(supabaseAuthClient).updatePassword("access-token", "new-password");
+  }
+
+  @Test
+  void changePasswordRejectsWhenCurrentPasswordIsWrong() {
+    UserProfile passwordUser = new UserProfile();
+    passwordUser.setId(UUID.randomUUID());
+    passwordUser.setEmail("user@example.com");
+    passwordUser.setAuthProvider("PASSWORD");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(passwordUser));
+    when(supabaseAuthClient.loginWithPassword("user@example.com", "wrong-password"))
+        .thenThrow(new UnauthorizedException("Invalid login credentials"));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            "wrong-password",
+            "new-password"));
+
+    assertEquals("Invalid login credentials", ex.getMessage());
+    verify(supabaseAuthClient, never()).updatePassword("access-token", "new-password");
+  }
+
+  @Test
+  void setPasswordAllowsGoogleOnlyAccountWithoutCurrentPassword() {
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(UUID.randomUUID());
+    googleOnly.setEmail("google-user@example.com");
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setGoogleSub("google-sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(googleOnly));
+
+    service.changePassword(
+        "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-123",
+        "google-user@example.com",
+        null,
+        "new-password");
+
+    verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
+    verify(supabaseAuthClient).updatePassword("access-token", "new-password");
+    verify(userProfileService).markCurrentUserPasswordEnabled(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11");
+  }
+
+  @Test
+  void setPasswordAllowsGoogleOnlyAccountUsingSupabaseIdMatch() {
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(UUID.randomUUID());
+    googleOnly.setEmail("google-user@example.com");
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setSupabaseUserId("sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(googleOnly));
+
+    service.changePassword(
+        "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-123",
+        "google-user@example.com",
+        null,
+        "new-password");
+
+    verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
+    verify(supabaseAuthClient).updatePassword("access-token", "new-password");
+  }
+
+  @Test
+  void setPasswordRejectsRegularPasswordAccountWithoutCurrentPassword() {
+    UserProfile passwordUser = new UserProfile();
+    passwordUser.setId(UUID.randomUUID());
+    passwordUser.setEmail("user@example.com");
+    passwordUser.setAuthProvider("PASSWORD");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(passwordUser));
+
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("currentPassword is required", ex.getMessage());
+    verify(supabaseAuthClient, never()).loginWithPassword(any(), any());
+    verify(supabaseAuthClient, never()).updatePassword("access-token", "new-password");
+  }
+
+  @Test
+  void setPasswordRejectsUnsupportedAccountWithoutPasswordOrGoogleIdentity() {
+    UserProfile unsupported = new UserProfile();
+    unsupported.setId(UUID.randomUUID());
+    unsupported.setEmail("user@example.com");
+    unsupported.setAuthProvider("SAML");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(unsupported));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("This account cannot change password yet.", ex.getMessage());
+    verify(supabaseAuthClient, never()).updatePassword(any(), any());
+  }
+
+  @Test
+  void setPasswordRejectsGoogleAccountWhenSupabaseUserIdDoesNotMatch() {
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(UUID.randomUUID());
+    googleOnly.setEmail("user@example.com");
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setSupabaseUserId("different-sub");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(googleOnly));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("This account cannot change password yet.", ex.getMessage());
+  }
+
+  @Test
+  void setPasswordRejectsWhenProviderMetadataIsBlank() {
+    UserProfile unknown = new UserProfile();
+    unknown.setId(UUID.randomUUID());
+    unknown.setEmail("user@example.com");
+    unknown.setAuthProvider(" ");
+    unknown.setSupabaseUserId("sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.of(unknown));
+
+    UnauthorizedException ex = assertThrows(
+        UnauthorizedException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            null,
+            "new-password"));
+
+    assertEquals("This account cannot change password yet.", ex.getMessage());
+  }
+
+  @Test
+  void changePasswordRejectsWhenCurrentUserProfileIsMissing() {
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(java.util.Optional.empty());
+
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> service.changePassword(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-123",
+            "user@example.com",
+            "current-password",
+            "new-password"));
+
+    assertEquals("User profile not found", ex.getMessage());
+  }
+
+  @Test
+  void changeEmailOrchestrationUpdatesLocalProfileThenIdentityProvider() {
+    UserProfile updated = new UserProfile();
+    updated.setId(UUID.randomUUID());
+    updated.setSupabaseUserId("sub-123");
+    updated.setEmail("new@example.com");
+
+    when(userProfileService.updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com"))
+        .thenReturn(updated);
+
+    service.changeEmail(
+        "access-token",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "old@example.com",
+        "new@example.com");
+
+    verify(userProfileService).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com");
+    verify(supabaseAuthClient).updateEmail("access-token", "new@example.com");
+    verify(userProfileService, never()).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "old@example.com");
+  }
+
+  @Test
+  void changeEmailOrchestrationRollsBackLocalProfileWhenIdentityProviderFails() {
+    UserProfile updated = new UserProfile();
+    updated.setId(UUID.randomUUID());
+    updated.setSupabaseUserId("sub-123");
+    updated.setEmail("new@example.com");
+
+    when(userProfileService.updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com"))
+        .thenReturn(updated);
+    doThrow(new IllegalStateException("Identity provider unavailable"))
+        .when(supabaseAuthClient)
+        .updateEmail("access-token", "new@example.com");
+
+    IllegalStateException ex = assertThrows(
+        IllegalStateException.class,
+        () -> service.changeEmail(
+            "access-token",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "old@example.com",
+            "new@example.com"));
+
+    assertEquals("Identity provider unavailable", ex.getMessage());
+    verify(userProfileService).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "new@example.com");
+    verify(userProfileService).updateCurrentUserEmail(
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "old@example.com");
+  }
+
+  @Test
+  void refreshReturnsSyncedProfileWhenDatabaseIsAvailable() {
+    final SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+        "new-access",
+        "new-refresh",
+        3600L,
+        "sub-123",
+        "user@example.com",
+        "USER");
+    UserProfile profile = new UserProfile();
+    profile.setId(UUID.randomUUID());
+    profile.setSupabaseUserId("sub-123");
+    profile.setRole("ADMIN");
+    when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(result);
+    when(userProfileService.upsertFromIdentity("sub-123", "user@example.com", "USER"))
+        .thenReturn(profile);
+
+    var response = service.refresh("refresh-token");
+
+    assertEquals(profile.getId().toString(), response.userId());
+    assertEquals("ADMIN", response.role());
+    assertEquals("Session refreshed", response.message());
+  }
+
+  @Test
+  void refreshFallsBackToDefaultUserRoleWhenProfileSyncFailsWithoutRole() {
+    SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+        "new-access",
+        "new-refresh",
+        3600L,
+        "sub-123",
+        "user@example.com",
+        null);
+    when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(result);
+    when(userProfileService.upsertFromIdentity("sub-123", "user@example.com", null))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    var response = service.refresh("refresh-token");
+
+    assertEquals("STUDENT", response.role());
+    assertTrue(response.message().contains("Profile sync pending"));
+  }
+
+  @Test
+  void refreshFallsBackToUserRoleWhenSupabaseRoleIsAuthenticated() {
+    SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+        "new-access",
+        "new-refresh",
+        3600L,
+        "sub-123",
+        "user@example.com",
+        "authenticated");
+    when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(result);
+    when(userProfileService.upsertFromIdentity("sub-123", "user@example.com", "authenticated"))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    var response = service.refresh("refresh-token");
+
+    assertEquals("STUDENT", response.role());
+  }
+
+  @Test
+  void refreshFallsBackToAdminRoleWhenSupabaseRoleIsAdmin() {
+    SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+        "new-access",
+        "new-refresh",
+        3600L,
+        "sub-123",
+        "user@example.com",
+        "admin");
+    when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(result);
+    when(userProfileService.upsertFromIdentity("sub-123", "user@example.com", "admin"))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    var response = service.refresh("refresh-token");
+
+    assertEquals("ADMIN", response.role());
+  }
+
+  @Test
+  void refreshFallsBackToUserRoleWhenSupabaseRoleIsUnknown() {
+    SupabaseAuthClient.LoginResult result = new SupabaseAuthClient.LoginResult(
+        "new-access",
+        "new-refresh",
+        3600L,
+        "sub-123",
+        "user@example.com",
+        "moderator");
+    when(supabaseAuthClient.refreshSession("refresh-token")).thenReturn(result);
+    when(userProfileService.upsertFromIdentity("sub-123", "user@example.com", "moderator"))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    var response = service.refresh("refresh-token");
+
+    assertEquals("STUDENT", response.role());
+  }
+
+  @Test
+  void revokeCurrentAccessTokenReturnsEarlyWhenTokenIsBlank() {
+    service.revokeCurrentAccessToken(" ");
+
+    verify(supabaseJwtService, never()).validateAccessToken(any());
+    verify(tokenRevocationService, never()).revoke(any(), any());
+  }
+
+  @Test
+  void revokeCurrentAccessTokenRevokesWhenTokenIsPresent() {
+    Jwt jwt = new Jwt(
+        "access-token",
+        Instant.now(),
+        Instant.now().plusSeconds(300),
+        Map.of("alg", "none"),
+        Map.of("sub", "sub-123"));
+    when(supabaseJwtService.validateAccessToken("access-token")).thenReturn(jwt);
+
+    service.revokeCurrentAccessToken("access-token");
+
+    verify(tokenRevocationService).revoke("access-token", jwt.getExpiresAt());
+  }
+}
+
+

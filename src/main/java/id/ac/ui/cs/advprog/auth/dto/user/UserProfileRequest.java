@@ -63,3 +63,4 @@ public class UserProfileRequest {
     this.active = active;
   }
 }
+

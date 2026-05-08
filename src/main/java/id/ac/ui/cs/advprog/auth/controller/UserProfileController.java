@@ -1,32 +1,32 @@
 package id.ac.ui.cs.advprog.auth.controller;
 
-import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.DeleteAccountResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateEmailResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdatePhoneResponse;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileRequest;
-import id.ac.ui.cs.advprog.auth.dto.user.UpdateProfileResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.LookupProfilesRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateEmailRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdatePhoneRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.DeleteAccountResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.LookupProfilesResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.PublicUserProfileResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateEmailResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdatePhoneResponse;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateProfileResponse;
+import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.security.AuthenticatedUserPrincipal;
+import id.ac.ui.cs.advprog.auth.security.BearerTokenExtractor;
 import id.ac.ui.cs.advprog.auth.security.CurrentUserProvider;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.RoleMapper;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,8 +40,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/users")
 public class UserProfileController {
-
-  private static final String BEARER_PREFIX = "Bearer ";
 
   private final UserProfileService service;
   private final AuthSessionService authSessionService;
@@ -59,7 +57,6 @@ public class UserProfileController {
   @PostMapping
   public ResponseEntity<UserProfileResponse> create(@RequestBody UserProfileRequest request) {
     UserProfile user = toEntity(request);
-    normalizeIntegrationDefaults(user);
     UserProfile created = service.create(user);
     return new ResponseEntity<>(UserProfileResponse.from(created), HttpStatus.CREATED);
   }
@@ -67,6 +64,16 @@ public class UserProfileController {
   @GetMapping
   public List<UserProfileResponse> all() {
     return service.findAll().stream().map(UserProfileResponse::from).collect(Collectors.toList());
+  }
+
+  @PostMapping("/lookup")
+  public ResponseEntity<LookupProfilesResponse> lookupProfiles(
+      @Valid @RequestBody LookupProfilesRequest request) {
+    List<PublicUserProfileResponse> profiles = service.findPublicProfilesByIds(request.userIds())
+        .stream()
+        .map(PublicUserProfileResponse::from)
+        .toList();
+    return ResponseEntity.ok(new LookupProfilesResponse(profiles));
   }
 
   @GetMapping("/{id}")
@@ -77,29 +84,11 @@ public class UserProfileController {
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
-  @PutMapping("/{id}/displayName")
-  public ResponseEntity<Object> updateDisplayName(
-      @PathVariable UUID id,
-      @RequestBody Map<String, String> body) {
-    String name = body.get("displayName");
-    if (name == null) {
-      Map<String, String> err = new HashMap<>();
-      err.put("error", "displayName is required");
-      return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
-    }
-
-    return service.updateDisplayName(id, name)
-        .map(UserProfileResponse::from)
-        .map(u -> ResponseEntity.ok((Object) u))
-        .orElseGet(() -> ResponseEntity.notFound().build());
-  }
-
   @PutMapping("/{id}")
   public ResponseEntity<UserProfileResponse> update(
       @PathVariable UUID id,
       @RequestBody UserProfileRequest request) {
     UserProfile user = toEntity(request);
-    normalizeIntegrationDefaults(user);
     return service.update(id, user)
         .map(UserProfileResponse::from)
         .map(ResponseEntity::ok)
@@ -126,12 +115,10 @@ public class UserProfileController {
           "At least one field must be provided: username or displayName");
     }
 
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile updated = service.updateCurrentUserProfile(
-        principal.sub(),
-        principal.email(),
+        principal.publicUserId(),
         request.username(),
         request.displayName());
 
@@ -147,24 +134,14 @@ public class UserProfileController {
   public ResponseEntity<UpdateEmailResponse> updateEmail(
       @Valid @RequestBody UpdateEmailRequest request,
       HttpServletRequest httpRequest) {
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
-    String accessToken = extractBearerToken(httpRequest);
-    UserProfile updated = service.updateCurrentUserEmail(
-        principal.sub(),
+    String accessToken = BearerTokenExtractor.extractOrBadRequest(httpRequest);
+    UserProfile updated = authSessionService.changeEmail(
+        accessToken,
+        principal.publicUserId(),
         principal.email(),
         request.email());
-
-    try {
-      authSessionService.changeEmail(accessToken, request.email());
-    } catch (RuntimeException ex) {
-      service.updateCurrentUserEmail(
-          principal.sub(),
-          updated.getEmail(),
-          principal.email());
-      throw ex;
-    }
 
     return ResponseEntity.ok(new UpdateEmailResponse(
         "Email updated",
@@ -175,12 +152,10 @@ public class UserProfileController {
   @PatchMapping("/me/phone")
   public ResponseEntity<UpdatePhoneResponse> updatePhone(
       @Valid @RequestBody UpdatePhoneRequest request) {
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
     UserProfile updated = service.updateCurrentUserPhone(
-        principal.sub(),
-        principal.email(),
+        principal.publicUserId(),
         request.phone());
 
     return ResponseEntity.ok(new UpdatePhoneResponse(
@@ -197,59 +172,30 @@ public class UserProfileController {
       throw new IllegalArgumentException("confirmation must be DELETE");
     }
 
-    AuthenticatedUserPrincipal principal = currentUserProvider.getCurrentUser()
-        .orElseThrow(() -> new IllegalStateException("No authenticated user in security context"));
+    AuthenticatedUserPrincipal principal = currentUserProvider.requireCurrentUser();
 
-    UserProfile deactivated = service.deactivateCurrentUser(principal.sub(), principal.email());
-    authSessionService.logout(extractBearerToken(httpRequest));
+    UserProfile deactivated = service.deactivateCurrentUser(principal.publicUserId());
+    authSessionService.logout(BearerTokenExtractor.extractOrBadRequest(httpRequest));
 
     return ResponseEntity.ok(new DeleteAccountResponse(
         "Account deleted",
         deactivated.getId()));
   }
 
-  private void normalizeIntegrationDefaults(UserProfile user) {
-    String username = user.getUsername() == null ? "" : user.getUsername().trim();
-    user.setUsername(username);
-
-    if (user.getDisplayName() == null) {
-      user.setDisplayName("");
-    }
-
-    if (user.getRole() == null || user.getRole().isBlank()) {
-      user.setRole("STUDENT");
-    } else {
-      user.setRole(RoleMapper.canonicalize(user.getRole()));
-    }
-
-    if (user.getEmail() == null || user.getEmail().isBlank()) {
-      user.setEmail(username + "@local.test");
-    }
-  }
-
   private UserProfile toEntity(UserProfileRequest request) {
     UserProfile user = new UserProfile();
-    user.setUsername(request.getUsername());
-    user.setEmail(request.getEmail());
+    String username = request.getUsername() == null ? "" : request.getUsername().trim();
+    String email = request.getEmail();
+
+    user.setUsername(username);
+    user.setEmail((email == null || email.isBlank()) ? username + "@local.test" : email);
     user.setSupabaseUserId(request.getSupabaseUserId());
-    user.setDisplayName(request.getDisplayName());
-    user.setRole(request.getRole());
+    user.setDisplayName(request.getDisplayName() == null ? "" : request.getDisplayName());
+    user.setRole(Role.canonicalize(request.getRole()));
     if (request.getActive() != null) {
       user.setActive(request.getActive());
     }
     return user;
   }
-
-  private String extractBearerToken(HttpServletRequest request) {
-    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-    if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
-      throw new IllegalArgumentException("Missing Bearer token");
-    }
-
-    String token = authHeader.substring(BEARER_PREFIX.length()).trim();
-    if (!StringUtils.hasText(token)) {
-      throw new IllegalArgumentException("Bearer token is empty");
-    }
-    return token;
-  }
 }
+

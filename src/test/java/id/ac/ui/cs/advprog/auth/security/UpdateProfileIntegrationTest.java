@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.repository.UserProfileRepository;
-import id.ac.ui.cs.advprog.auth.service.SupabaseAuthClient;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseAuthClient;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +56,11 @@ class UpdateProfileIntegrationTest {
     userProfileRepository.save(me);
 
     when(supabaseJwtService.validateAccessToken("token-user-1"))
-        .thenReturn(jwt("token-user-1", "sub-user-1", "user1@example.com"));
+        .thenReturn(jwt(
+            "token-user-1",
+            "sub-user-1",
+            "user1@example.com",
+            me.getId().toString()));
 
     mockMvc.perform(patch("/api/users/me")
             .header("Authorization", "Bearer token-user-1")
@@ -89,7 +93,11 @@ class UpdateProfileIntegrationTest {
     userProfileRepository.save(other);
 
     when(supabaseJwtService.validateAccessToken("token-user-2"))
-        .thenReturn(jwt("token-user-2", "sub-user-2", "user2@example.com"));
+        .thenReturn(jwt(
+            "token-user-2",
+            "sub-user-2",
+            "user2@example.com",
+            me.getId().toString()));
 
     mockMvc.perform(patch("/api/users/me")
             .header("Authorization", "Bearer token-user-2")
@@ -119,7 +127,11 @@ class UpdateProfileIntegrationTest {
     userProfileRepository.save(me);
 
     when(supabaseJwtService.validateAccessToken("token-user-4"))
-        .thenReturn(jwt("token-user-4", "sub-user-4", "user4@example.com"));
+        .thenReturn(jwt(
+            "token-user-4",
+            "sub-user-4",
+            "user4@example.com",
+            me.getId().toString()));
 
     mockMvc.perform(put("/api/users/999")
             .header("Authorization", "Bearer token-user-4")
@@ -142,7 +154,11 @@ class UpdateProfileIntegrationTest {
     userProfileRepository.save(me);
 
     when(supabaseJwtService.validateAccessToken("token-email"))
-        .thenReturn(jwt("token-email", "sub-user-email", "old@example.com"));
+        .thenReturn(jwt(
+            "token-email",
+            "sub-user-email",
+            "old@example.com",
+            me.getId().toString()));
 
     mockMvc.perform(patch("/api/users/me/email")
             .header("Authorization", "Bearer token-email")
@@ -165,7 +181,11 @@ class UpdateProfileIntegrationTest {
     userProfileRepository.save(me);
 
     when(supabaseJwtService.validateAccessToken("token-phone"))
-        .thenReturn(jwt("token-phone", "sub-user-phone", "phone@example.com"));
+        .thenReturn(jwt(
+            "token-phone",
+            "sub-user-phone",
+            "phone@example.com",
+            me.getId().toString()));
 
     mockMvc.perform(patch("/api/users/me/phone")
             .header("Authorization", "Bearer token-phone")
@@ -176,7 +196,7 @@ class UpdateProfileIntegrationTest {
         .andExpect(jsonPath("$.phone").value("+628123456789"));
   }
 
-  private Jwt jwt(String tokenValue, String sub, String email) {
+  private Jwt jwt(String tokenValue, String sub, String email, String publicUserId) {
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
@@ -187,7 +207,9 @@ class UpdateProfileIntegrationTest {
             "sub", sub,
             "email", email,
             "role", "authenticated",
+            "yomu_user_id", publicUserId,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
   }
 }
+

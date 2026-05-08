@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.auth.security;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -10,9 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.auth.service.AuthSessionService;
-import id.ac.ui.cs.advprog.auth.service.SupabaseJwtService;
-import id.ac.ui.cs.advprog.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.auth.AuthSessionService;
+import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
+import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -45,19 +44,27 @@ class ChangePasswordIntegrationTest {
   @Test
   void changePasswordSuccessReturnsOk() throws Exception {
     when(supabaseJwtService.validateAccessToken("token-password"))
-        .thenReturn(jwt("token-password", "sub-password", "password@example.com"));
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     UserProfile active = new UserProfile();
+    active.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     active.setSupabaseUserId("sub-password");
     active.setEmail("password@example.com");
     active.setRole("USER");
     active.setActive(true);
-    when(userProfileService.findBySupabaseUserId("sub-password")).thenReturn(Optional.of(active));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(active));
     doNothing().when(authSessionService).changePassword(
-        eq("token-password"),
-        eq("password@example.com"),
-        eq("current-password"),
-        eq("new-password"));
+        "token-password",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-password",
+        "password@example.com",
+        "current-password",
+        "new-password");
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
@@ -76,21 +83,29 @@ class ChangePasswordIntegrationTest {
   @Test
   void changePasswordWrongCurrentPasswordReturnsUnauthorized() throws Exception {
     when(supabaseJwtService.validateAccessToken("token-password"))
-        .thenReturn(jwt("token-password", "sub-password", "password@example.com"));
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     UserProfile active = new UserProfile();
+    active.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     active.setSupabaseUserId("sub-password");
     active.setEmail("password@example.com");
     active.setRole("USER");
     active.setActive(true);
-    when(userProfileService.findBySupabaseUserId("sub-password")).thenReturn(Optional.of(active));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(active));
     doThrow(new UnauthorizedException("Invalid login credentials"))
         .when(authSessionService)
         .changePassword(
-            eq("token-password"),
-            eq("password@example.com"),
-            eq("wrong-password"),
-            eq("new-password"));
+            "token-password",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-password",
+            "password@example.com",
+            "wrong-password",
+            "new-password");
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
@@ -109,14 +124,20 @@ class ChangePasswordIntegrationTest {
   @Test
   void changePasswordShortNewPasswordReturnsBadRequest() throws Exception {
     when(supabaseJwtService.validateAccessToken("token-password"))
-        .thenReturn(jwt("token-password", "sub-password", "password@example.com"));
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
 
     UserProfile active = new UserProfile();
+    active.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
     active.setSupabaseUserId("sub-password");
     active.setEmail("password@example.com");
     active.setRole("USER");
     active.setActive(true);
-    when(userProfileService.findBySupabaseUserId("sub-password")).thenReturn(Optional.of(active));
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(active));
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
@@ -129,10 +150,51 @@ class ChangePasswordIntegrationTest {
                 }
                 """))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("newPassword must be at least 8 characters"))
         .andExpect(jsonPath("$.validationErrors.newPassword").exists());
   }
 
-  private Jwt jwt(String tokenValue, String sub, String email) {
+  @Test
+  void setPasswordForGoogleOnlyAccountWithoutCurrentPasswordReturnsOk() throws Exception {
+    when(supabaseJwtService.validateAccessToken("token-password"))
+        .thenReturn(jwt(
+            "token-password",
+            "sub-password",
+            "password@example.com",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11"));
+
+    UserProfile googleOnly = new UserProfile();
+    googleOnly.setId(java.util.UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"));
+    googleOnly.setSupabaseUserId("sub-password");
+    googleOnly.setEmail("password@example.com");
+    googleOnly.setRole("USER");
+    googleOnly.setActive(true);
+    googleOnly.setAuthProvider("GOOGLE");
+    googleOnly.setGoogleSub("google-sub-123");
+    when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
+        .thenReturn(Optional.of(googleOnly));
+    doNothing().when(authSessionService).changePassword(
+        "token-password",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-password",
+        "password@example.com",
+        null,
+        "new-password");
+
+    mockMvc.perform(post("/api/auth/change-password")
+            .header("Authorization", "Bearer token-password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                """
+                {
+                  "newPassword": "new-password"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Password changed"));
+  }
+
+  private Jwt jwt(String tokenValue, String sub, String email, String publicUserId) {
     Instant now = Instant.now();
     return new Jwt(
         tokenValue,
@@ -143,7 +205,9 @@ class ChangePasswordIntegrationTest {
             "sub", sub,
             "email", email,
             "role", "authenticated",
+            "yomu_user_id", publicUserId,
             "aud", List.of("authenticated"),
             "iss", "https://supabase.test/auth/v1"));
   }
 }
+

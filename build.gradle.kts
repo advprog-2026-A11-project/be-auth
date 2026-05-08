@@ -2,7 +2,6 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.springframework.boot.gradle.tasks.run.BootRun
-import java.io.ByteArrayOutputStream
 
 plugins {
     java
@@ -32,6 +31,10 @@ repositories {
     mavenCentral()
 }
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 val coverageExclusions = listOf(
     "**/AuthApplication*",
     "**/dto/**",
@@ -39,12 +42,13 @@ val coverageExclusions = listOf(
     "**/exception/GlobalExceptionHandler*",
     "**/model/UserProfile*",
     "**/security/CurrentUserProvider*",
-    "**/service/HttpSupabaseAuthClient*",
-    "**/service/AuthLoginService*",
-    "**/service/SupabaseGoogleSsoService*",
-    "**/service/SupabaseAuthClient*",
-    "**/service/GoogleSsoService*",
-    "**/service/UserProfileService*"
+    "**/service/**/HttpSupabaseAuthClient*",
+    "**/service/**/AuthLoginService*",
+    "**/service/**/RevokedTokenStore*",
+    "**/service/**/SupabaseGoogleSsoService*",
+    "**/service/**/SupabaseAuthClient*",
+    "**/service/**/UserProfileIdentitySyncService*",
+    "**/service/**/UserProfileService*"
 )
 
 sonarqube {
@@ -61,6 +65,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")

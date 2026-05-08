@@ -25,3 +25,4 @@ class UserProfileRequestTest {
     assertFalse(request.getActive());
   }
 }
+
