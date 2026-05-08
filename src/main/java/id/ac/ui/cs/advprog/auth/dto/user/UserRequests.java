@@ -28,7 +28,7 @@ public final class UserRequests {
   public record UpdatePhoneRequest(
       @NotBlank(message = "phone is required")
       @Pattern(
-          regexp = "^\\+?[0-9]{8,15}$",
+          regexp = "^\\+?\\d{8,15}$",
           message = "phone must be a valid E.164-like number")
       String phone) {
   }

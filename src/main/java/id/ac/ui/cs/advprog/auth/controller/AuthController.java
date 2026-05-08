@@ -59,7 +59,7 @@ public class AuthController {
   }
 
   @GetMapping("/me")
-  public ResponseEntity<?> me() {
+  public ResponseEntity<Object> me() {
     Jwt claims = currentUserProvider.getCurrentJwt().orElse(null);
     if (claims == null) {
       return unauthorized("Missing Bearer token");
@@ -140,7 +140,7 @@ public class AuthController {
     return ResponseEntity.ok(googleSsoService.createSsoUrl(redirectTo));
   }
 
-  private ResponseEntity<ErrorResponse> unauthorized(String message) {
+  private ResponseEntity<Object> unauthorized(String message) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(message));
   }
 

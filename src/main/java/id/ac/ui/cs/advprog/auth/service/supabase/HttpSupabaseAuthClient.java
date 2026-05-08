@@ -12,9 +12,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 public class HttpSupabaseAuthClient implements SupabaseAuthClient {
+  private static final String API_KEY_HEADER = "apikey";
+  private static final String BEARER_PREFIX = "Bearer ";
 
   private final String supabaseUrl;
   private final String supabaseApiKey;
@@ -37,13 +40,13 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
   public SupabaseAuthClient.IdentityUser getUserById(String supabaseUserId) {
     ensureAdminConfig();
 
-    String userUrl = trimTrailingSlash(supabaseUrl) + "/auth/v1/admin/users/" + supabaseUserId;
+    String userUrl = buildSupabaseUri("auth", "v1", "admin", "users", supabaseUserId);
 
     try {
       IdentityPayload responseBody = restClient.get()
           .uri(userUrl)
-          .header("apikey", supabaseServiceRoleKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseServiceRoleKey)
+          .header(API_KEY_HEADER, supabaseServiceRoleKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(supabaseServiceRoleKey))
           .accept(MediaType.APPLICATION_JSON)
           .retrieve()
           .body(IdentityPayload.class);
@@ -90,8 +93,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       TokenPayload responseBody = restClient.post()
           .uri(tokenUrl)
-          .header("apikey", supabaseApiKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
+          .header(API_KEY_HEADER, supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(supabaseApiKey))
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
@@ -145,8 +148,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       TokenPayload responseBody = restClient.post()
           .uri(tokenUrl)
-          .header("apikey", supabaseApiKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
+          .header(API_KEY_HEADER, supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(supabaseApiKey))
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
@@ -199,8 +202,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       restClient.post()
           .uri(logoutUrl)
-          .header("apikey", supabaseApiKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+          .header(API_KEY_HEADER, supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(accessToken))
           .accept(MediaType.APPLICATION_JSON)
           .retrieve()
           .toBodilessEntity();
@@ -223,8 +226,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       restClient.put()
           .uri(userUrl)
-          .header("apikey", supabaseApiKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+          .header(API_KEY_HEADER, supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(accessToken))
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
@@ -249,8 +252,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       restClient.put()
           .uri(userUrl)
-          .header("apikey", supabaseApiKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+          .header(API_KEY_HEADER, supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(accessToken))
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
@@ -285,8 +288,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       TokenPayload responseBody = restClient.post()
           .uri(registerUrl)
-          .header("apikey", supabaseApiKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseApiKey)
+          .header(API_KEY_HEADER, supabaseApiKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(supabaseApiKey))
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)
@@ -371,6 +374,18 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
       return value;
     }
     return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+  }
+
+  private String buildSupabaseUri(String... pathSegments) {
+    return UriComponentsBuilder.fromUriString(trimTrailingSlash(supabaseUrl))
+        .pathSegment(pathSegments)
+        .build()
+        .encode()
+        .toUriString();
+  }
+
+  private String bearerToken(String token) {
+    return BEARER_PREFIX + token;
   }
 
   private String extractSupabaseErrorMessage(String body) {
@@ -481,8 +496,8 @@ public class HttpSupabaseAuthClient implements SupabaseAuthClient {
     try {
       IdentityPayload responseBody = restClient.post()
           .uri(adminUrl)
-          .header("apikey", supabaseServiceRoleKey)
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseServiceRoleKey)
+          .header(API_KEY_HEADER, supabaseServiceRoleKey)
+          .header(HttpHeaders.AUTHORIZATION, bearerToken(supabaseServiceRoleKey))
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           .body(requestPayload)

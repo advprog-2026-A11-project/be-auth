@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.auth.security;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -60,12 +59,12 @@ class ChangePasswordIntegrationTest {
     when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenReturn(Optional.of(active));
     doNothing().when(authSessionService).changePassword(
-        eq("token-password"),
-        eq("c1f84e7b-bb84-412d-81bb-4449df141f11"),
-        eq("sub-password"),
-        eq("password@example.com"),
-        eq("current-password"),
-        eq("new-password"));
+        "token-password",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-password",
+        "password@example.com",
+        "current-password",
+        "new-password");
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
@@ -101,12 +100,12 @@ class ChangePasswordIntegrationTest {
     doThrow(new UnauthorizedException("Invalid login credentials"))
         .when(authSessionService)
         .changePassword(
-            eq("token-password"),
-            eq("c1f84e7b-bb84-412d-81bb-4449df141f11"),
-            eq("sub-password"),
-            eq("password@example.com"),
-            eq("wrong-password"),
-            eq("new-password"));
+            "token-password",
+            "c1f84e7b-bb84-412d-81bb-4449df141f11",
+            "sub-password",
+            "password@example.com",
+            "wrong-password",
+            "new-password");
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")
@@ -175,12 +174,12 @@ class ChangePasswordIntegrationTest {
     when(userProfileService.findByPublicUserId("c1f84e7b-bb84-412d-81bb-4449df141f11"))
         .thenReturn(Optional.of(googleOnly));
     doNothing().when(authSessionService).changePassword(
-        eq("token-password"),
-        eq("c1f84e7b-bb84-412d-81bb-4449df141f11"),
-        eq("sub-password"),
-        eq("password@example.com"),
-        eq(null),
-        eq("new-password"));
+        "token-password",
+        "c1f84e7b-bb84-412d-81bb-4449df141f11",
+        "sub-password",
+        "password@example.com",
+        null,
+        "new-password");
 
     mockMvc.perform(post("/api/auth/change-password")
             .header("Authorization", "Bearer token-password")

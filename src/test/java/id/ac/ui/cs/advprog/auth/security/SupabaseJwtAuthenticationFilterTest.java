@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.auth.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
@@ -232,7 +233,7 @@ class SupabaseJwtAuthenticationFilterTest {
     filter.doFilterInternal(request, response, chain);
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    assertTrue(auth != null);
+    assertNotNull(auth);
     assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
     verify(chain).doFilter(request, response);
     verify(supabaseJwtService, never()).validateAccessToken(anyString());
@@ -346,7 +347,7 @@ class SupabaseJwtAuthenticationFilterTest {
     filter.doFilterInternal(request, response, chain);
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    assertTrue(auth != null);
+    assertNotNull(auth);
     assertTrue(auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
     verify(userProfileService).findByPublicUserId(publicUserId.toString());
     verify(userProfileService, never()).findByEmail(anyString());
@@ -401,14 +402,10 @@ class SupabaseJwtAuthenticationFilterTest {
     filter.doFilterInternal(request, response, chain);
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    assertTrue(auth != null);
+    assertNotNull(auth);
     assertTrue(
         auth.getAuthorities().stream().anyMatch(a -> "ROLE_STUDENT".equals(a.getAuthority())));
     verify(chain).doFilter(request, response);
-  }
-
-  private Jwt jwt(String tokenValue, String sub, String email, String role) {
-    return jwt(tokenValue, sub, email, role, null, null);
   }
 
   private Jwt jwt(

@@ -11,6 +11,9 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class UserProfileIdentitySyncService {
+  private static final String AUTH_PROVIDER_GOOGLE = "GOOGLE";
+  private static final String AUTH_PROVIDER_GOOGLE_PASSWORD = "GOOGLE_PASSWORD";
+  private static final String AUTH_PROVIDER_PASSWORD = "PASSWORD";
 
   private final UserProfileRepository repository;
   private final SupabaseAuthClient supabaseAuthClient;
@@ -23,7 +26,13 @@ public class UserProfileIdentitySyncService {
   }
 
   public UserProfile upsertFromIdentity(String supabaseUserId, String email, String incomingRole) {
-    return upsertFromIdentity(supabaseUserId, email, incomingRole, "PASSWORD", null, null);
+    return upsertFromIdentity(
+        supabaseUserId,
+        email,
+        incomingRole,
+        AUTH_PROVIDER_PASSWORD,
+        null,
+        null);
   }
 
   public UserProfile upsertFromIdentity(
@@ -189,25 +198,25 @@ public class UserProfileIdentitySyncService {
 
   private String resolveAuthProvider(String authProvider) {
     if (!StringUtils.hasText(authProvider)) {
-      return "PASSWORD";
+      return AUTH_PROVIDER_PASSWORD;
     }
     return authProvider.trim().toUpperCase();
   }
 
   private String mergeAuthProvider(String currentValue, String nextValue) {
-    boolean hasGoogle = containsProvider(currentValue, "GOOGLE")
-        || containsProvider(nextValue, "GOOGLE");
-    boolean hasPassword = containsProvider(currentValue, "PASSWORD")
-        || containsProvider(nextValue, "PASSWORD");
+    boolean hasGoogle = containsProvider(currentValue, AUTH_PROVIDER_GOOGLE)
+        || containsProvider(nextValue, AUTH_PROVIDER_GOOGLE);
+    boolean hasPassword = containsProvider(currentValue, AUTH_PROVIDER_PASSWORD)
+        || containsProvider(nextValue, AUTH_PROVIDER_PASSWORD);
 
     if (hasGoogle && hasPassword) {
-      return "GOOGLE_PASSWORD";
+      return AUTH_PROVIDER_GOOGLE_PASSWORD;
     }
     if (hasGoogle) {
-      return "GOOGLE";
+      return AUTH_PROVIDER_GOOGLE;
     }
     if (hasPassword) {
-      return "PASSWORD";
+      return AUTH_PROVIDER_PASSWORD;
     }
     return resolveAuthProvider(nextValue);
   }
