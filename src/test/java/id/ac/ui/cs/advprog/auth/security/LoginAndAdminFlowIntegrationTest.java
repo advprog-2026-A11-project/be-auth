@@ -104,6 +104,7 @@ class LoginAndAdminFlowIntegrationTest {
 
     when(authLoginService.register(
         eq("new@example.com"),
+        eq("+628123456789"),
         eq("password123"),
         eq("newuser"),
         eq("New User"))).thenReturn(registerResponse);
@@ -112,6 +113,7 @@ class LoginAndAdminFlowIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(
                 "{\"email\":\"new@example.com\",\"password\":\"password123\","
+                    + "\"phone\":\"+628123456789\","
                     + "\"username\":\"newuser\",\"displayName\":\"New User\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.userId").value("8aab73b9-1f18-4fc3-b645-5932daff10fa"))

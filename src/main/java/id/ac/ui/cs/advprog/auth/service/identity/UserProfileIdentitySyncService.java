@@ -171,7 +171,7 @@ public class UserProfileIdentitySyncService {
       String authProvider,
       String googleSub,
       String displayName) {
-    user.setAuthProvider(resolveAuthProvider(authProvider));
+    user.setAuthProvider(mergeAuthProvider(user.getAuthProvider(), authProvider));
     if (StringUtils.hasText(googleSub)) {
       user.setGoogleSub(googleSub.trim());
     }
@@ -192,6 +192,31 @@ public class UserProfileIdentitySyncService {
       return "PASSWORD";
     }
     return authProvider.trim().toUpperCase();
+  }
+
+  private String mergeAuthProvider(String currentValue, String nextValue) {
+    boolean hasGoogle = containsProvider(currentValue, "GOOGLE")
+        || containsProvider(nextValue, "GOOGLE");
+    boolean hasPassword = containsProvider(currentValue, "PASSWORD")
+        || containsProvider(nextValue, "PASSWORD");
+
+    if (hasGoogle && hasPassword) {
+      return "GOOGLE_PASSWORD";
+    }
+    if (hasGoogle) {
+      return "GOOGLE";
+    }
+    if (hasPassword) {
+      return "PASSWORD";
+    }
+    return resolveAuthProvider(nextValue);
+  }
+
+  private boolean containsProvider(String authProvider, String provider) {
+    if (!StringUtils.hasText(authProvider)) {
+      return false;
+    }
+    return authProvider.trim().toUpperCase().contains(provider);
   }
 
   private String normalizeOptionalValue(String value) {

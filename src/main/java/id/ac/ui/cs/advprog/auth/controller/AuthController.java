@@ -94,6 +94,7 @@ public class AuthController {
     ensurePasswordAuthEnabled();
     LoginResponse response = authLoginService.register(
         request.email(),
+        request.phone(),
         request.password(),
         request.username(),
         request.displayName());
@@ -124,6 +125,8 @@ public class AuthController {
 
     authSessionService.changePassword(
         BearerTokenExtractor.extractOrUnauthorized(httpRequest),
+        principal.publicUserId(),
+        principal.sub(),
         principal.email(),
         request.currentPassword(),
         request.newPassword());

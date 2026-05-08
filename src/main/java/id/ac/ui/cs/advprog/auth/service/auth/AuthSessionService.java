@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.auth.service.auth;
 
 import id.ac.ui.cs.advprog.auth.dto.auth.AuthResponses.LoginResponse;
+import id.ac.ui.cs.advprog.auth.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.auth.model.Role;
 import id.ac.ui.cs.advprog.auth.model.UserProfile;
 import id.ac.ui.cs.advprog.auth.service.identity.UserProfileService;
@@ -10,6 +11,7 @@ import id.ac.ui.cs.advprog.auth.service.supabase.SupabaseJwtService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class AuthSessionService {
@@ -96,11 +98,45 @@ public class AuthSessionService {
 
   public void changePassword(
       String accessToken,
+      String publicUserId,
+      String supabaseUserId,
       String email,
       String currentPassword,
       String newPassword) {
-    supabaseAuthClient.loginWithPassword(email, currentPassword);
+    UserProfile profile = userProfileService.findByPublicUserId(publicUserId)
+        .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+    if (supportsPasswordAuth(profile)) {
+      if (!StringUtils.hasText(currentPassword)) {
+        throw new IllegalArgumentException("currentPassword is required");
+      }
+      supabaseAuthClient.loginWithPassword(email, currentPassword);
+    } else if (!supportsGoogleOnlyPasswordSetup(profile, supabaseUserId)) {
+      throw new UnauthorizedException("This account cannot change password yet.");
+    }
+
     supabaseAuthClient.updatePassword(accessToken, newPassword);
+
+    if (!supportsPasswordAuth(profile)) {
+      userProfileService.markCurrentUserPasswordEnabled(publicUserId);
+    }
+  }
+
+  private boolean supportsPasswordAuth(UserProfile profile) {
+    return containsProvider(profile.getAuthProvider(), "PASSWORD");
+  }
+
+  private boolean supportsGoogleOnlyPasswordSetup(UserProfile profile, String supabaseUserId) {
+    return StringUtils.hasText(profile.getGoogleSub())
+        || (StringUtils.hasText(profile.getSupabaseUserId())
+            && profile.getSupabaseUserId().equals(supabaseUserId)
+            && containsProvider(profile.getAuthProvider(), "GOOGLE"));
+  }
+
+  private boolean containsProvider(String authProvider, String provider) {
+    if (!StringUtils.hasText(authProvider)) {
+      return false;
+    }
+    return authProvider.trim().toUpperCase().contains(provider);
   }
 
 }

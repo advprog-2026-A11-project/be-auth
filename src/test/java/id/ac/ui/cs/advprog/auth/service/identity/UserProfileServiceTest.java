@@ -71,6 +71,25 @@ class UserProfileServiceTest {
   }
 
   @Test
+  void findPublicProfilesByIdsPreservesRequestOrderAndDeduplicatesIds() {
+    UUID id1 = UUID.randomUUID();
+    UUID id2 = UUID.randomUUID();
+    UserProfile user1 = new UserProfile();
+    user1.setId(id1);
+    user1.setUsername("alpha");
+    UserProfile user2 = new UserProfile();
+    user2.setId(id2);
+    user2.setUsername("beta");
+
+    when(repository.findAllById(List.of(id2, id1))).thenReturn(List.of(user1, user2));
+
+    List<UserProfile> profiles = service.findPublicProfilesByIds(List.of(id2, id1, id2));
+
+    assertEquals(List.of(user2, user1), profiles);
+    verify(repository).findAllById(List.of(id2, id1));
+  }
+
+  @Test
   void findByEmailDelegates() {
     when(repository.findByEmail("a@b")).thenReturn(Optional.of(new UserProfile()));
     assertTrue(service.findByEmail("a@b").isPresent());
@@ -128,6 +147,20 @@ class UserProfileServiceTest {
     assertEquals("new-user", updated.get().getUsername());
     assertEquals("ADMIN", updated.get().getRole());
     assertFalse(updated.get().isActive());
+  }
+
+  @Test
+  void markCurrentUserPasswordEnabledMergesGoogleAndPasswordProviders() {
+    UUID id = UUID.randomUUID();
+    UserProfile existing = new UserProfile();
+    existing.setId(id);
+    existing.setAuthProvider("GOOGLE");
+    when(repository.findById(id)).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.markCurrentUserPasswordEnabled(id.toString());
+
+    assertEquals("GOOGLE_PASSWORD", updated.getAuthProvider());
   }
 }
 

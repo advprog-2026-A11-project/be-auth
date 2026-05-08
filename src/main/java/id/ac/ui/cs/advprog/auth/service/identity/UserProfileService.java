@@ -47,6 +47,23 @@ public class UserProfileService {
     return repository.findById(id);
   }
 
+  public List<UserProfile> findPublicProfilesByIds(List<UUID> userIds) {
+    if (userIds == null || userIds.isEmpty()) {
+      return List.of();
+    }
+
+    List<UUID> distinctIds = userIds.stream().distinct().toList();
+    List<UserProfile> profiles = repository.findAllById(distinctIds);
+
+    return distinctIds.stream()
+        .flatMap(
+            id -> profiles.stream()
+                .filter(profile -> id.equals(profile.getId()))
+                .findFirst()
+                .stream())
+        .toList();
+  }
+
   public Optional<UserProfile> findByPublicUserId(String publicUserId) {
     if (!StringUtils.hasText(publicUserId)) {
       return Optional.empty();
@@ -71,10 +88,7 @@ public class UserProfileService {
   }
 
   public Optional<UserProfile> findByPhone(String phone) {
-    if (!StringUtils.hasText(phone)) {
-      return Optional.empty();
-    }
-    return repository.findByPhone(phone.trim());
+    return normalizePhone(phone).flatMap(repository::findByPhone);
   }
 
   public UserProfile upsertFromIdentity(String supabaseUserId, String email, String incomingRole) {
@@ -95,8 +109,17 @@ public class UserProfileService {
       String email,
       String username,
       String displayName) {
+    return updateIdentityProfile(supabaseUserId, email, username, displayName, null);
+  }
+
+  public UserProfile updateIdentityProfile(
+      String supabaseUserId,
+      String email,
+      String username,
+      String displayName,
+      String phone) {
     UserProfile existing = resolveProfileByIdentityOrThrow(supabaseUserId, email);
-    applyProfileFields(existing, username, displayName);
+    applyProfileFields(existing, username, displayName, phone);
     return repository.save(existing);
   }
 
@@ -126,6 +149,11 @@ public class UserProfileService {
             "Phone already taken")));
   }
 
+  public UserProfile markCurrentUserPasswordEnabled(String publicUserId) {
+    return saveCurrentUser(publicUserId, existing -> existing.setAuthProvider(
+        mergeAuthProvider(existing.getAuthProvider(), "PASSWORD")));
+  }
+
   public Optional<UserProfile> update(UUID id, UserProfile incoming) {
     return repository.findById(id).map(existing -> {
       identitySyncService.syncAdminUpdate(existing, incoming);
@@ -151,14 +179,31 @@ public class UserProfileService {
   }
 
   private String normalizePhoneOrThrow(String phone) {
+    return normalizePhone(phone)
+        .orElseThrow(() -> new IllegalArgumentException("phone is required"));
+  }
+
+  private Optional<String> normalizePhone(String phone) {
     if (!StringUtils.hasText(phone)) {
-      throw new IllegalArgumentException("phone is required");
+      return Optional.empty();
     }
-    return phone.trim();
+
+    String compact = phone.trim().replaceAll("[\\s\\-()]", "");
+    if (!StringUtils.hasText(compact)) {
+      return Optional.empty();
+    }
+
+    if (compact.startsWith("08")) {
+      compact = "+628" + compact.substring(2);
+    } else if (compact.startsWith("628")) {
+      compact = "+" + compact;
+    }
+
+    return Optional.of(compact);
   }
 
   private void applyAdminManagedFields(UserProfile target, UserProfile incoming) {
-    applyProfileFields(target, incoming.getUsername(), incoming.getDisplayName());
+    applyProfileFields(target, incoming.getUsername(), incoming.getDisplayName(), null);
 
     if (StringUtils.hasText(incoming.getRole())) {
       target.setRole(Role.canonicalize(incoming.getRole()));
@@ -197,6 +242,14 @@ public class UserProfileService {
   }
 
   private void applyProfileFields(UserProfile existing, String username, String displayName) {
+    applyProfileFields(existing, username, displayName, null);
+  }
+
+  private void applyProfileFields(
+      UserProfile existing,
+      String username,
+      String displayName,
+      String phone) {
     if (StringUtils.hasText(username)) {
       existing.setUsername(requireUnique(
           existing.getUsername(),
@@ -207,6 +260,14 @@ public class UserProfileService {
 
     if (displayName != null) {
       existing.setDisplayName(displayName.trim());
+    }
+
+    if (phone != null) {
+      existing.setPhone(requireUnique(
+          existing.getPhone(),
+          normalizePhoneOrThrow(phone),
+          repository::existsByPhone,
+          "Phone already taken"));
     }
   }
 
@@ -235,6 +296,31 @@ public class UserProfileService {
       throw new ConflictException(conflictMessage);
     }
     return newValue;
+  }
+
+  private String mergeAuthProvider(String currentValue, String nextProvider) {
+    boolean hasGoogle = containsProvider(currentValue, "GOOGLE")
+        || containsProvider(nextProvider, "GOOGLE");
+    boolean hasPassword = containsProvider(currentValue, "PASSWORD")
+        || containsProvider(nextProvider, "PASSWORD");
+
+    if (hasGoogle && hasPassword) {
+      return "GOOGLE_PASSWORD";
+    }
+    if (hasGoogle) {
+      return "GOOGLE";
+    }
+    if (hasPassword) {
+      return "PASSWORD";
+    }
+    return StringUtils.hasText(nextProvider) ? nextProvider.trim().toUpperCase() : "PASSWORD";
+  }
+
+  private boolean containsProvider(String authProvider, String provider) {
+    if (!StringUtils.hasText(authProvider)) {
+      return false;
+    }
+    return authProvider.trim().toUpperCase().contains(provider);
   }
 
 }

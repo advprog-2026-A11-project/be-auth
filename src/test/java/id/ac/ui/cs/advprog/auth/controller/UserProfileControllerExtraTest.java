@@ -6,9 +6,11 @@ import static org.mockito.Mockito.*;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserProfileResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.DeleteAccountRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.LookupProfilesRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateEmailRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdatePhoneRequest;
 import id.ac.ui.cs.advprog.auth.dto.user.UserRequests.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.LookupProfilesResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdateEmailResponse;
 import id.ac.ui.cs.advprog.auth.dto.user.UserResponses.UpdatePhoneResponse;
 import id.ac.ui.cs.advprog.auth.exception.ConflictException;
@@ -104,6 +106,34 @@ class UserProfileControllerExtraTest {
     assertNotNull(created.displayName());
     assertEquals("STUDENT", created.role());
     assertTrue(created.email().endsWith("@local.test"));
+  }
+
+  @Test
+  void lookupProfilesReturnsMinimalPublicProfilesInRequestOrder() {
+    UUID id1 = UUID.randomUUID();
+    UserProfile u1 = new UserProfile();
+    u1.setId(id1);
+    u1.setUsername("alpha");
+    u1.setDisplayName("Alpha User");
+    u1.setEmail("alpha@example.com");
+    UUID id2 = UUID.randomUUID();
+    UserProfile u2 = new UserProfile();
+    u2.setId(id2);
+    u2.setUsername("beta");
+    u2.setDisplayName("Beta User");
+    u2.setEmail("beta@example.com");
+
+    when(service.findPublicProfilesByIds(List.of(id2, id1))).thenReturn(List.of(u2, u1));
+
+    ResponseEntity<LookupProfilesResponse> response =
+        controller.lookupProfiles(new LookupProfilesRequest(List.of(id2, id1)));
+
+    assertEquals(200, response.getStatusCodeValue());
+    assertNotNull(response.getBody());
+    assertEquals(2, response.getBody().profiles().size());
+    assertEquals(id2, response.getBody().profiles().get(0).id());
+    assertEquals("beta", response.getBody().profiles().get(0).username());
+    assertEquals("Beta User", response.getBody().profiles().get(0).displayName());
   }
 
   @Test

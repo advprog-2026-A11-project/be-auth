@@ -151,6 +151,27 @@ class UserProfileIdentitySyncServiceTest {
     assertEquals("sub-123@local.test", created.getEmail());
     assertFalse(created.getUsername().isBlank());
   }
+
+  @Test
+  void upsertFromIdentityMergesPasswordAndGoogleProvidersOnExistingProfile() {
+    UserProfile existing = new UserProfile();
+    existing.setSupabaseUserId("sub-123");
+    existing.setEmail("user@example.com");
+    existing.setAuthProvider("PASSWORD");
+    when(repository.findBySupabaseUserId("sub-123")).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    UserProfile updated = service.upsertFromIdentity(
+        "sub-123",
+        "user@example.com",
+        "authenticated",
+        "GOOGLE",
+        "google-sub-123",
+        "Google User");
+
+    assertEquals("GOOGLE_PASSWORD", updated.getAuthProvider());
+    assertEquals("google-sub-123", updated.getGoogleSub());
+  }
 }
 
 
