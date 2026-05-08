@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 
 class AdminControllerTest {
 
@@ -40,7 +41,7 @@ class AdminControllerTest {
 
     var response = controller.ping();
 
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("Admin access granted", response.getBody().message());
     assertEquals(
         UUID.fromString("c1f84e7b-bb84-412d-81bb-4449df141f11"),

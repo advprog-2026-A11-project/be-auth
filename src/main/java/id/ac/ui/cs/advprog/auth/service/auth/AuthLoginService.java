@@ -18,7 +18,7 @@ import org.springframework.util.StringUtils;
 @Service
 public class AuthLoginService {
 
-  private static final Pattern PHONE_IDENTIFIER_PATTERN = Pattern.compile("^\\+?[0-9]{8,15}$");
+  private static final Pattern PHONE_IDENTIFIER_PATTERN = Pattern.compile("^\\+?\\d{8,15}$");
   private static final String DEACTIVATED_ACCOUNT_MESSAGE =
       "Your account has been deactivated. Please contact an administrator.";
   private static final String PHONE_NOT_REGISTERED_MESSAGE =
@@ -90,26 +90,16 @@ public class AuthLoginService {
         displayName);
 
     try {
-      UserProfile profile = userProfileService.upsertFromIdentity(
+      userProfileService.upsertFromIdentity(
           result.supabaseUserId(),
           result.email(),
           result.role());
-
-      if (StringUtils.hasText(username) || StringUtils.hasText(displayName)) {
-        profile = userProfileService.updateIdentityProfile(
-            result.supabaseUserId(),
-            result.email(),
-            username,
-            displayName,
-            normalizedPhone);
-      } else {
-        profile = userProfileService.updateIdentityProfile(
-            result.supabaseUserId(),
-            result.email(),
-            null,
-            null,
-            normalizedPhone);
-      }
+      UserProfile profile = userProfileService.updateIdentityProfile(
+          result.supabaseUserId(),
+          result.email(),
+          StringUtils.hasText(username) ? username : null,
+          StringUtils.hasText(displayName) ? displayName : null,
+          normalizedPhone);
       result = ensurePublicUserIdClaim(result);
 
       String message = StringUtils.hasText(result.accessToken())

@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 class UserProfileControllerExtraTest {
@@ -70,7 +71,7 @@ class UserProfileControllerExtraTest {
     UUID id = UUID.randomUUID();
     when(service.findById(id)).thenReturn(Optional.empty());
     ResponseEntity<UserProfileResponse> resp = controller.getById(id);
-    assertEquals(404, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
   }
 
   @Test
@@ -79,7 +80,7 @@ class UserProfileControllerExtraTest {
     UserProfile u = new UserProfile();
     when(service.findById(id)).thenReturn(Optional.of(u));
     ResponseEntity<UserProfileResponse> resp = controller.getById(id);
-    assertEquals(200, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, resp.getStatusCode());
   }
 
   @Test
@@ -87,7 +88,7 @@ class UserProfileControllerExtraTest {
     UUID id = UUID.randomUUID();
     when(service.update(eq(id), any())).thenReturn(Optional.empty());
     ResponseEntity<UserProfileResponse> resp = controller.update(id, new UserProfileRequest());
-    assertEquals(404, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
   }
 
   @Test
@@ -100,7 +101,7 @@ class UserProfileControllerExtraTest {
     // call create to trigger normalizeIntegrationDefaults
     when(service.create(any())).thenAnswer(i -> i.getArgument(0));
     var resp = controller.create(request);
-    assertEquals(201, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.CREATED, resp.getStatusCode());
     UserProfileResponse created = resp.getBody();
     assertNotNull(created.username());
     assertNotNull(created.displayName());
@@ -128,7 +129,7 @@ class UserProfileControllerExtraTest {
     ResponseEntity<LookupProfilesResponse> response =
         controller.lookupProfiles(new LookupProfilesRequest(List.of(id2, id1)));
 
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(2, response.getBody().profiles().size());
     assertEquals(id2, response.getBody().profiles().get(0).id());
@@ -149,7 +150,7 @@ class UserProfileControllerExtraTest {
 
     ResponseEntity<UserProfileResponse> response = controller.create(request);
 
-    assertEquals(201, response.getStatusCodeValue());
+    assertEquals(HttpStatus.CREATED, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals("spaced-user", response.getBody().username());
     assertEquals("Display Name", response.getBody().displayName());
@@ -183,7 +184,7 @@ class UserProfileControllerExtraTest {
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("Profile updated", response.getBody().message());
     assertEquals(profileId, response.getBody().userId());
   }
@@ -214,7 +215,7 @@ class UserProfileControllerExtraTest {
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("new-user", response.getBody().username());
   }
 
@@ -244,7 +245,7 @@ class UserProfileControllerExtraTest {
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("New User", response.getBody().displayName());
   }
 
@@ -274,7 +275,7 @@ class UserProfileControllerExtraTest {
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("new-user", response.getBody().username());
   }
 
@@ -304,7 +305,7 @@ class UserProfileControllerExtraTest {
         .thenReturn(updated);
 
     var response = controller.updateMe(request);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("New User", response.getBody().displayName());
   }
 
@@ -356,7 +357,7 @@ class UserProfileControllerExtraTest {
         .thenReturn(deactivated);
 
     var response = controller.deleteMe(request, httpRequest);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("Account deleted", response.getBody().message());
     assertEquals(profileId, response.getBody().userId());
     verify(authSessionService).logout("token-delete-789");
@@ -499,7 +500,7 @@ class UserProfileControllerExtraTest {
 
     ResponseEntity<UpdateEmailResponse> response = controller.updateEmail(request, httpRequest);
 
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("Email updated", response.getBody().message());
     assertEquals("new@example.com", response.getBody().email());
     verify(authSessionService).changeEmail(
@@ -604,7 +605,7 @@ class UserProfileControllerExtraTest {
 
     ResponseEntity<UpdatePhoneResponse> response = controller.updatePhone(request);
 
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("Phone updated", response.getBody().message());
     assertEquals("+628123456789", response.getBody().phone());
     verify(authSessionService, never()).changeEmail(

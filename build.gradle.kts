@@ -31,6 +31,10 @@ repositories {
     mavenCentral()
 }
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 val coverageExclusions = listOf(
     "**/AuthApplication*",
     "**/dto/**",

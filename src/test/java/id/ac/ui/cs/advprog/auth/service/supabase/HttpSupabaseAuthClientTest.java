@@ -428,26 +428,6 @@ class HttpSupabaseAuthClientTest {
     assertEquals("supabase.service-role-key must be configured", ex.getMessage());
   }
 
-  private static class JsonHandler implements HttpHandler {
-
-    private final int statusCode;
-    private final byte[] responseBody;
-
-    private JsonHandler(int statusCode, String responseBody) {
-      this.statusCode = statusCode;
-      this.responseBody = responseBody.getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    public void handle(HttpExchange exchange) throws IOException {
-      exchange.getResponseHeaders().add("Content-Type", "application/json");
-      exchange.sendResponseHeaders(statusCode, responseBody.length);
-      try (OutputStream outputStream = exchange.getResponseBody()) {
-        outputStream.write(responseBody);
-      }
-    }
-  }
-
   private static class AdminUserHandler implements HttpHandler {
 
     @Override

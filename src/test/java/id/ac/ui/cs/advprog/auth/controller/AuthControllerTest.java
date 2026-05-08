@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -81,14 +82,14 @@ class AuthControllerTest {
   @Test
   void meReturnsUnauthorizedWithoutAuthenticatedJwt() {
     ResponseEntity<?> resp = controller.me();
-    assertEquals(401, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.UNAUTHORIZED, resp.getStatusCode());
     assertEquals("Missing Bearer token", ((ErrorResponse) resp.getBody()).error());
   }
 
   @Test
   void meInvalidTokenReturnsUnauthorized() {
     ResponseEntity<?> resp = controller.me();
-    assertEquals(401, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.UNAUTHORIZED, resp.getStatusCode());
   }
 
   @Test
@@ -122,7 +123,7 @@ class AuthControllerTest {
 
     ResponseEntity<?> resp = controller.me();
 
-    assertEquals(200, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, resp.getStatusCode());
     assertAuthMeResponseType(resp);
     assertEquals("ctx-sub-1", invokeRecordAccessor(resp.getBody(), "sub"));
     verify(jwtService, never()).validateAccessToken(anyString());
@@ -151,7 +152,7 @@ class AuthControllerTest {
         .thenReturn(Optional.of(user));
 
     ResponseEntity<?> resp = controller.me();
-    assertEquals(200, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, resp.getStatusCode());
     assertAuthMeResponseType(resp);
     Object profilePayload = invokeRecordAccessor(resp.getBody(), "profile");
     assertNotNull(profilePayload);
@@ -166,7 +167,7 @@ class AuthControllerTest {
 
     ResponseEntity<?> resp = controller.me();
 
-    assertEquals(401, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.UNAUTHORIZED, resp.getStatusCode());
     assertEquals("Missing public user id claim", ((ErrorResponse) resp.getBody()).error());
     verify(profileService, never()).findByPublicUserId(anyString());
     verify(profileService, never()).findByEmail(anyString());
@@ -189,7 +190,7 @@ class AuthControllerTest {
 
     ResponseEntity<?> resp = controller.me();
 
-    assertEquals(200, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, resp.getStatusCode());
     assertAuthMeResponseType(resp);
     verify(profileService).findByPublicUserId(publicUserId.toString());
     verify(profileService, never()).findByEmail(anyString());
@@ -206,7 +207,7 @@ class AuthControllerTest {
         .thenReturn(Optional.empty());
 
     ResponseEntity<?> resp = controller.me();
-    assertEquals(200, resp.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, resp.getStatusCode());
     assertAuthMeResponseType(resp);
     assertNull(invokeRecordAccessor(resp.getBody(), "profile"));
   }
@@ -236,7 +237,7 @@ class AuthControllerTest {
 
     ResponseEntity<LoginResponse> result = controller.register(request);
 
-    assertEquals(201, result.getStatusCodeValue());
+    assertEquals(HttpStatus.CREATED, result.getStatusCode());
     assertNotNull(result.getBody());
     assertEquals("535251d5-a941-49b0-9a04-5b26dc55ec61", result.getBody().userId());
   }
@@ -249,7 +250,7 @@ class AuthControllerTest {
     ResponseEntity<SsoUrlResponse> response =
         controller.googleSsoUrl("http://localhost:3000/callback");
 
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("https://sso", response.getBody().authorizationUrl());
     verify(googleSsoService).createSsoUrl("http://localhost:3000/callback");
   }
@@ -302,7 +303,7 @@ class AuthControllerTest {
 
     ResponseEntity<LoginResponse> result = controller.refresh(request);
 
-    assertEquals(200, result.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, result.getStatusCode());
     assertNotNull(result.getBody());
     assertEquals("new-access", result.getBody().accessToken());
     assertEquals("new-refresh", result.getBody().refreshToken());
@@ -315,7 +316,7 @@ class AuthControllerTest {
 
     ResponseEntity<LogoutResponse> result = controller.logout(request);
 
-    assertEquals(200, result.getStatusCodeValue());
+    assertEquals(HttpStatus.OK, result.getStatusCode());
     assertNotNull(result.getBody());
     assertEquals("Logout successful", result.getBody().message());
     verify(authSessionService).logout("access-token");
